@@ -1,20 +1,17 @@
 # Haskell Fall 2023
 
-Haskell course homework
+### Homework 1
 
-### How to pass the course
+1. Create the environment using [the guide](https://www.haskell.org/get-started/)
+    - make sure you answer yes to installing HLS using GHCup
+    - VSCode may ask you which HLS to use in a pop-up window -- select the one from GHCup
+2. Do your homework in the `hw1.hs` file from this branch
 
-- homework
-    - after each lecture
-    - write tests! no tests -- your grade goes down
-    - deadline: Thursday 23:59
-- exam
-    - theory + practice
-- [grade for the course] = [average homework grade] * 0.5 + [exam] * 0.5
+### Selected commands
 
-#### How to pass your homework
-
-1. Fork this repo -- each branch contains the homework for the corresponding lecture
-2. As you complete the assignment, open the PR in this repo.
-   - The PR should be named: <HW###>, <LastName FirstName>.
-3. I review your PR and leave my comments: accepted or requires fixes
+* `ghci` to call REPL
+    - you should see `ghci>`
+* for `ghci>`:
+    - `:l hw1.hs` to load your file `hw1.hs`
+    - `:r` to reload already loaded files
+    - `:t [1, 2]` to see the type of your expression `[1, 2]`
