@@ -1,3 +1,6 @@
+-- import Test.HUnit  -- это фрейворк для тестирования в Хаскеле (спасибо гугл)
+
+
 -- 1. Реализуйте логическое И как функцию и как оператор (выберете произвольные символы для вашего оператора).
 
 myAnd :: Bool -> Bool -> Bool
@@ -22,7 +25,7 @@ _ /\||/\* _ = False
 
 -- | c хвостовой рекурсией
 --
-fibTail :: Int -> Int
+fibTail :: Int -> Integer
 fibTail n = go n 0 1
     where 
         go 0 a _ = a
@@ -81,10 +84,19 @@ myUncurry f (a, b) = f a b
 --    - напишите тесты
 
 -- | возвращает длину списка
---
-myLength :: [a] -> Int
-myLength [] = 0
-myLength (_:xs) = 1 + myLength xs  -- мы как обы отщипываем 1 кусок от списка и запускаемся с len-1
+-- ЭТО ПРЯМАЯ РЕКУРСИЯ, ЛОМАЕТСЯ НА БОЛЬШИХ ЧИСЛАХ 
+-- myLength :: [a] -> Int
+-- myLength [] = 0
+-- myLength (_:xs) = 1 + myLength xs  -- мы как обы отщипываем 1 кусок от списка и запускаемся с len-1
+
+-- А ЭТО ХВОСТОВАЯ РЕКУРСИЯ, РАБОТАЕТ ВСЕГДА
+myLengthTail :: [a] -> Integer
+myLengthTail xs = myLengthTailHelper xs 0
+  where
+    myLengthTailHelper [] acc = acc
+    myLengthTailHelper (_:xs) acc = myLengthTailHelper xs (acc + 1)
+-- по идее оно должно работать, но я ловлю какой-то странный баг, связанный с объемом файлов подкачки на моем компьютере
+-- <interactive>: osCommitMemory: VirtualAlloc MEM_COMMIT failed to commit 1048576 bytes of memory  (error code: 1455): Файл подкачки слишком мал для завершения операции.
 
 -- | возвращает хвост списка
 --
@@ -94,11 +106,18 @@ myTail (_:xs) = Just xs  -- просто вернули список без на
 
 -- | возвращает список без последнего элемента
 --
-myInit :: [a] -> Maybe [a]
-myInit [] = Nothing
-myInit [x] = Just []
-myInit (x:xs) = Just (x : fromJust (myInit xs))  -- дойдем рекурсивно до конца списка и не возьмем последний элемент
-  where fromJust (Just x) = x
+-- myInit :: [a] -> Maybe [a]
+-- myInit [] = Nothing
+-- myInit [x] = Just []
+-- myInit (x:xs) = Just (x : fromJust (myInit xs))  -- дойдем рекурсивно до конца списка и не возьмем последний элемент
+--   where fromJust (Just x) = x
+
+-- ПЕРЕПИСАЛ ФУНКЦИЮ ЧЕРЕЗ mapMaybe
+myInitTail :: [a] -> Maybe Int
+myInitTail xs = mapMaybe (myInitTailHelper xs) (Just 0)
+  where
+    myInitTailHelper [] acc = acc
+    myInitTailHelper (_:xs) acc = myInitTailHelper xs (acc + 1)
 
 -- | объединяет 2 списка
 --
@@ -108,9 +127,17 @@ myAppend (x:xs) ys = x : myAppend xs ys  -- просто рекурсивно м
 
 -- | разворачивает список
 --
-myReverse :: [a] -> [a]
-myReverse [] = []
-myReverse (x:xs) = myAppend (myReverse xs) [x]  -- разворачиваем список поэлементно и мерджим
+-- myReverse :: [a] -> [a]
+-- myReverse [] = []
+-- myReverse (x:xs) = myAppend (myReverse xs) [x]  -- разворачиваем список поэлементно и мерджим
+
+-- а теперь через хвостовую рекурсию!
+
+myReverseTail :: [a] -> Maybe Int
+myReverseTail xs = myReverseTailHelper xs []
+  where
+    myReverseTailHelper [] acc = acc
+    myReverseTailHelper (x:xs) acc = myReverseTailHelper xs (x:acc)
 
 -- | выдаёт элемент списка по индексу
 elemByIndex :: Int -> [a] -> Either String a
@@ -123,7 +150,7 @@ elemByIndex n (x:xs)  -- уменьшаем n до нуля, идя по спи�
 
 -- -- ТЕСТЫ
 
--- import Test.HUnit  -- это фрейворк для тестирования в Хаскеле (спасибо гугл)
+
 -- -- тесты на хаскеле пишутся (согласно тому же гуглу) по следующей схеме (+- похожи на питоновские assert)
 -- -- сначала объявляется ключевое слово TestCase, который выдаст либо войд резалт, либо assertFailure
 -- -- затем пишется к чему оно применяется в скобочках, там идет функция проверки 
@@ -232,8 +259,9 @@ chMult Zero n = Zero
 
 -- | Raising to the power of a Church numeral
 chPow :: ChurchNumber -> ChurchNumber -> ChurchNumber
-chPow (Succ m) n = chMult n (chPow m n)
 chPow Zero n = chSucc Zero
+chPow (Succ m) n = chMult n (chPow m n)
+
 
 -- | Previous of a Church numeral
 chPrev :: ChurchNumber -> ChurchNumber
@@ -242,12 +270,45 @@ chPrev _ = Zero
 
 -- | Тесты могут выглядеть так
 --
+-- testChSucc :: Bool
+-- testChSucc = chSucc churchTwo == churchThree
+--   where
+--     churchTwo :: ChurchNumber
+--     churchTwo = Succ (Succ Zero)
+
+
+-- ТЕСТЫ
+
 testChSucc :: Bool
 testChSucc = chSucc churchTwo == churchThree
-  where
-    churchTwo :: ChurchNumber
-    churchTwo = Succ (Succ Zero)
 
+testChAdd1 :: Bool
+testChAdd1 = chAdd churchTwo churchThree == churchFive
+
+testChAdd2 :: Bool
+testChAdd2 = chAdd churchZero churchThree == churchThree
+
+testChMult1 :: Bool
+testChMult1 = chMult churchTwo churchThree == churchSix
+
+testChMult2 :: Bool
+testChMult2 = chMult churchZero churchThree == churchZero
+
+testChPow1 :: Bool
+testChPow1 = chPow churchTwo churchThree == churchEight
+
+testChPow2 :: Bool
+testChPow2 = chPow churchThree churchZero == churchOne
+
+testChPrev1 :: Bool
+testChPrev1 = chPrev churchThree == churchTwo 
+
+testChPrev2 :: Bool
+testChPrev2 = chPrev churchZero == churchZero
+
+testAll = and [
+      testChSucc, testChAdd1, testChAdd2, testChMult1, testChMult2, testChPow1, testChPow2, testChPrev1, testChPrev2
+    ]
 
 -- -------------------------------------------------------------------------------
 -- 7. Создайте тип данных `Point` для 2D-точек. Используйте рекорды для именования полей (см. `Person` из практики).
