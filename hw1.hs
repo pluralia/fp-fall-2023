@@ -113,11 +113,13 @@ myTail (_:xs) = Just xs  -- просто вернули список без на
 --   where fromJust (Just x) = x
 
 -- ПЕРЕПИСАЛ ФУНКЦИЮ ЧЕРЕЗ mapMaybe
-myInitTail :: [a] -> Maybe Int
-myInitTail xs = mapMaybe (myInitTailHelper xs) (Just 0)
+myInitTail :: [a] -> Maybe [a]
+myInitTail xs = myInitTailHelper xs Nothing
   where
+    myInitTailHelper :: [a] -> Maybe [a] -> Maybe [a]
     myInitTailHelper [] acc = acc
-    myInitTailHelper (_:xs) acc = myInitTailHelper xs (acc + 1)
+    myInitTailHelper [x] acc = Just []
+    myInitTailHelper (x:xs) acc = myInitTailHelper xs (mapMaybe (\_ -> x) acc)
 
 -- | объединяет 2 списка
 --
@@ -132,10 +134,11 @@ myAppend (x:xs) ys = x : myAppend xs ys  -- просто рекурсивно м
 -- myReverse (x:xs) = myAppend (myReverse xs) [x]  -- разворачиваем список поэлементно и мерджим
 
 -- а теперь через хвостовую рекурсию!
-
-myReverseTail :: [a] -> Maybe Int
+-- т.е. аккумуляторный список как бы "накапливает" элементы исходного списка в обратном порядке
+myReverseTail :: [a] -> [a]
 myReverseTail xs = myReverseTailHelper xs []
   where
+    myReverseTailHelper :: [a] -> [a] -> [a]
     myReverseTailHelper [] acc = acc
     myReverseTailHelper (x:xs) acc = myReverseTailHelper xs (x:acc)
 
@@ -218,9 +221,18 @@ mapEither :: (a -> c) -> (b -> d) -> Either a b -> Either c d
 mapEither f _ (Left x) = Left (f x)
 mapEither _ g (Right y) = Right (g y)
 
-mapMaybe :: (a -> b) -> Maybe a -> Maybe b
-mapMaybe _ Nothing = Nothing
-mapMaybe f (Just x) = Just (f x)
+-- mapMaybe :: (a -> b) -> Maybe a -> Maybe b
+-- mapMaybe _ Nothing = Nothing
+-- mapMaybe f (Just x) = Just (f x)
+
+-- Реализация через хвостовую рекурсию
+
+mapMaybeTail :: (a -> b) -> Maybe a -> Maybe b
+mapMaybeTail f x = mapMaybeHelper f x Nothing
+  where
+    mapMaybeHelper :: (a -> b) -> Maybe a -> Maybe b -> Maybe b
+    mapMaybeHelper _ Nothing acc = acc
+    mapMaybeHelper f (Just x) acc = mapMaybeHelper f Nothing (Just (f x):acc)
 
 mapList :: (a -> b) -> [a] -> [b]
 mapList _ [] = []
