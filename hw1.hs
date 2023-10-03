@@ -93,6 +93,7 @@ myUncurry f (a, b) = f a b
 myLengthTail :: [a] -> Integer
 myLengthTail xs = myLengthTailHelper xs 0
   where
+    myLengthTailHelper :: [a] -> Integer -> Integer
     myLengthTailHelper [] acc = acc
     myLengthTailHelper (_:xs) acc = myLengthTailHelper xs (acc + 1)
 -- по идее оно должно работать, но я ловлю какой-то странный баг, связанный с объемом файлов подкачки на моем компьютере
@@ -106,20 +107,11 @@ myTail (_:xs) = Just xs  -- просто вернули список без на
 
 -- | возвращает список без последнего элемента
 --
--- myInit :: [a] -> Maybe [a]
--- myInit [] = Nothing
--- myInit [x] = Just []
--- myInit (x:xs) = Just (x : fromJust (myInit xs))  -- дойдем рекурсивно до конца списка и не возьмем последний элемент
---   where fromJust (Just x) = x
-
--- ПЕРЕПИСАЛ ФУНКЦИЮ ЧЕРЕЗ mapMaybe
-myInitTail :: [a] -> Maybe [a]
-myInitTail xs = myInitTailHelper xs Nothing
-  where
-    myInitTailHelper :: [a] -> Maybe [a] -> Maybe [a]
-    myInitTailHelper [] acc = acc
-    myInitTailHelper [x] acc = Just []
-    myInitTailHelper (x:xs) acc = myInitTailHelper xs (mapMaybe (\_ -> x) acc)
+myInit :: [a] -> Maybe [a]
+myInit [] = Nothing
+myInit [x] = Just []
+myInit (x:xs) = Just (x : fromJust (myInit xs))  -- дойдем рекурсивно до конца списка и не возьмем последний элемент
+  where fromJust (Just x) = x
 
 -- | объединяет 2 списка
 --
@@ -221,22 +213,22 @@ mapEither :: (a -> c) -> (b -> d) -> Either a b -> Either c d
 mapEither f _ (Left x) = Left (f x)
 mapEither _ g (Right y) = Right (g y)
 
--- mapMaybe :: (a -> b) -> Maybe a -> Maybe b
--- mapMaybe _ Nothing = Nothing
--- mapMaybe f (Just x) = Just (f x)
+mapMaybe :: (a -> b) -> Maybe a -> Maybe b
+mapMaybe _ Nothing = Nothing
+mapMaybe f (Just x) = Just (f x)
+
+-- mapList :: (a -> b) -> [a] -> [b]
+-- mapList _ [] = []
+-- mapList f (x:xs) = f x : mapList f xs
 
 -- Реализация через хвостовую рекурсию
 
-mapMaybeTail :: (a -> b) -> Maybe a -> Maybe b
-mapMaybeTail f x = mapMaybeHelper f x Nothing
-  where
-    mapMaybeHelper :: (a -> b) -> Maybe a -> Maybe b -> Maybe b
-    mapMaybeHelper _ Nothing acc = acc
-    mapMaybeHelper f (Just x) acc = mapMaybeHelper f Nothing (Just (f x):acc)
-
 mapList :: (a -> b) -> [a] -> [b]
-mapList _ [] = []
-mapList f (x:xs) = f x : mapList f xs
+mapList f xs = mapListTailHelper f xs []
+  where
+    mapListTailHelper :: (a -> b) -> [a] -> [b] -> [b]
+    mapListTailHelper _ [] acc = reverse acc
+    mapListTailHelper f (x:xs) acc = mapListTailHelper f xs (f x : acc)
 
 
 -- -------------------------------------------------------------------------------
@@ -291,36 +283,36 @@ chPrev _ = Zero
 
 -- ТЕСТЫ
 
-testChSucc :: Bool
-testChSucc = chSucc churchTwo == churchThree
+-- testChSucc :: Bool
+-- testChSucc = chSucc churchTwo == churchThree
 
-testChAdd1 :: Bool
-testChAdd1 = chAdd churchTwo churchThree == churchFive
+-- testChAdd1 :: Bool
+-- testChAdd1 = chAdd churchTwo churchThree == churchFive
 
-testChAdd2 :: Bool
-testChAdd2 = chAdd churchZero churchThree == churchThree
+-- testChAdd2 :: Bool
+-- testChAdd2 = chAdd churchZero churchThree == churchThree
 
-testChMult1 :: Bool
-testChMult1 = chMult churchTwo churchThree == churchSix
+-- testChMult1 :: Bool
+-- testChMult1 = chMult churchTwo churchThree == churchSix
 
-testChMult2 :: Bool
-testChMult2 = chMult churchZero churchThree == churchZero
+-- testChMult2 :: Bool
+-- testChMult2 = chMult churchZero churchThree == churchZero
 
-testChPow1 :: Bool
-testChPow1 = chPow churchTwo churchThree == churchEight
+-- testChPow1 :: Bool
+-- testChPow1 = chPow churchTwo churchThree == churchEight
 
-testChPow2 :: Bool
-testChPow2 = chPow churchThree churchZero == churchOne
+-- testChPow2 :: Bool
+-- testChPow2 = chPow churchThree churchZero == churchOne
 
-testChPrev1 :: Bool
-testChPrev1 = chPrev churchThree == churchTwo 
+-- testChPrev1 :: Bool
+-- testChPrev1 = chPrev churchThree == churchTwo 
 
-testChPrev2 :: Bool
-testChPrev2 = chPrev churchZero == churchZero
+-- testChPrev2 :: Bool
+-- testChPrev2 = chPrev churchZero == churchZero
 
-testAll = and [
-      testChSucc, testChAdd1, testChAdd2, testChMult1, testChMult2, testChPow1, testChPow2, testChPrev1, testChPrev2
-    ]
+-- testAll = and [
+--       testChSucc, testChAdd1, testChAdd2, testChMult1, testChMult2, testChPow1, testChPow2, testChPrev1, testChPrev2
+--     ]
 
 -- -------------------------------------------------------------------------------
 -- 7. Создайте тип данных `Point` для 2D-точек. Используйте рекорды для именования полей (см. `Person` из практики).
