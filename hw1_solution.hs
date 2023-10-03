@@ -12,7 +12,7 @@ myAnd _ _ = False
 
 -- Как бинарный оператор:
 -- 
-infix 3 &&&
+infixl 3 &&&
 (&&&) :: Bool -> Bool -> Bool
 True &&& True = True
 _ &&& _ = False
