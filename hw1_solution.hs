@@ -10,11 +10,13 @@ myAnd _ _ = False
 -- myAnd False True => False
 -- myAnd True False => False
 
--- Как оператор:
+-- Как бинарный оператор:
+-- 
 infix 3 &&&
 (&&&) :: Bool -> Bool -> Bool
 True &&& True = True
 _ &&& _ = False
+
 
 -- Tests 1.2
 -- True &&& True => True
@@ -110,9 +112,10 @@ myLength (x : xs) = 1 + myLength xs
 
 -- | возвращает хвост списка
 --
-myTail :: [a] -> [a]
-myTail []       = error "The list is empty"
-myTail (_ : xs) = xs
+myTail :: [a] -> Maybe [a]
+myTail []       = Nothing
+myTail (_ : xs) = Just xs
+
 
 -- Test 4.2
 -- myTail [1, 2, 3, 4] => [2,3,4]
@@ -121,10 +124,12 @@ myTail (_ : xs) = xs
 
 -- | возвращает список без последнего элемента
 --
-myInit :: [a] -> [a]
-myInit []        = error "The list is empty"
-myInit [x]       = []
-myInit (x : xs)  = x : myInit xs
+myInit :: [a] -> Either String [a]
+myInit []        = Left "The list is empty"
+myInit [x]       = Right []
+myInit (x : xs)  = Right (x : myInitResult)
+  where
+    Right myInitResult = myInit xs --------------------------------------------
 
 -- Test 4.3
 -- myInit [1, 2, 3, 4] => [1,2,3]
@@ -147,10 +152,13 @@ myAppend (x : xs) y = x : myAppend xs y
 
 -- | разворачивает список
 -- 
-myReverse :: [a] -> [a]
-myReverse []        = error "The list is empty"
-myReverse [x]       = [x]
-myReverse (x : xs)  = myReverse xs ++ [x] 
+myReverse :: [a] -> Either String [a]
+myReverse xs = myReverseHelper xs []
+  where
+    myReverseHelper :: [a] -> [a] -> Either String [a]
+    myReverseHelper [] acc = Right acc
+    myReverseHelper (x : xs) acc = myReverseHelper xs (x : acc)
+
 
 -- Test 4.5
 -- myReverse [1, 2, 3, 4] => [4,3,2,1]
@@ -158,12 +166,13 @@ myReverse (x : xs)  = myReverse xs ++ [x]
 -- myReverse [] => *** Exception: The list is empty
 
 -- | выдаёт элемент списка по индексу
-elemByIndex :: [a] -> Int -> a
-elemByIndex [] _                   = error "The list is empty"
-elemByIndex _ 0                    = error "Invalid index, index must be greater than 0"
-elemByIndex (x : _) 1              = x
-elemByIndex (x : xs) n | n < 0     = error "Invalid index, index must be positive"
+elemByIndex :: [a] -> Int -> Either String a
+elemByIndex [] _                   = Left "Error"
+elemByIndex _ 0                    = Left "Invalid index, index must be greater than 0"
+elemByIndex (x : _) 1              = Right x
+elemByIndex (x : xs) n | n < 0     = Left "Invalid index, index must be positive"
                        | otherwise = elemByIndex xs (n - 1)
+
 
 -- Test 4.6
 -- elemByIndex [1, 2, 3, 4] 3 => 3
@@ -192,12 +201,18 @@ mapMaybe f (Just x) = Just (f x)
 -- mapMaybe fib (Just 10) => Just 55
 
 mapList :: (a -> b) -> [a] -> [b]
-mapList _ [] = []
-mapList f (x : xs) = (f x) : mapList f xs 
+mapList f xs = mapListHelper f xs []
+  where
+    mapListHelper :: (a -> b) -> [a] -> [b] -> [b]
+    mapListHelper _ [] acc = acc
+    mapListHelper f (x:xs) acc = mapListHelper f xs (acc ++ [f x])
+
 
 -- Test 5.3
 -- mapList fib [3, 6] => [2,8]
 -- mapList fib [] => []
+
+
 
 -------------------------------------------------------------------------------
 
