@@ -102,10 +102,14 @@ curAdd x y = x + y
 -- | возвращает длину списка
 --
 myLength :: [a] -> Int
-myLength [] = 0
-myLength (x : xs) = 1 + myLength xs
+myLength list = myLengthHelper list 0
+  where
+    myLengthHelper :: [a] -> Int -> Int
+    myLengthHelper [] acc = acc
+    myLengthHelper (x : xs) acc = myLengthHelper xs (acc + 1)
 
 -- Tests 4.1
+-- myLength [1..10000000] => 10000000
 -- myLength [1, 2, 3, 4] => 4
 -- myLength [1] => 1
 -- myLength [] => 0
