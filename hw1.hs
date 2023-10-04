@@ -60,7 +60,9 @@ myUncurry f (x, y) = f x y
 --
 myLength :: [a] -> Integer
 myLength [] = 0
-myLength (_ : xs) = 1 + myLength xs
+myLength (_ : xs) = helper xs 1
+  where helper [] acc       = acc
+        helper (_ : xs) acc = helper xs (acc + 1)
 
 -- | возвращает хвост списка
 --
