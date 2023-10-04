@@ -58,10 +58,9 @@ myUncurry f (x, y) = f x y
 
 -- | возвращает длину списка
 --
-myLength :: [a] -> Int
+myLength :: [a] -> Integer
 myLength [] = 0
 myLength (_ : xs) = 1 + myLength xs
--- На списках большой длины может не работать тк переполнение Int
 
 -- | возвращает хвост списка
 --
@@ -91,7 +90,7 @@ myReverse (x : xs) = helper xs [x]
         helper (x : xs) acc = helper xs (x : acc)
 
 -- | выдаёт элемент списка по индексу
-elemByIndex :: [a] -> Int -> Either String a
+elemByIndex :: [a] -> Integer -> Either String a
 elemByIndex [] _ = Left "Index out of range"
 elemByIndex (x : xs) ind | myLength (x : xs) <= ind   = Left "Index out of range"
                          | ind < 0                    = Left "Index out of range"
