@@ -1,7 +1,8 @@
 -- 1. Реализуйте логическое И как функцию и как оператор (выберете произвольные символы для вашего оператора).
 
 myAnd :: Bool -> Bool -> Bool
-myAnd x y = if x && y then True else False
+myAnd True True = True
+myAnd _ _ = False
 
 (<^>) :: Bool -> Bool -> Bool
 (<^>) x y = myAnd x y
@@ -20,9 +21,9 @@ fib n | n < 0     = error "Lower than 0"
 
 -- | c хвостовой рекурсией
 --
-fibTail :: Int -> Int
-fibTail n | n < 0     = error "Lower than 0"
-          | otherwise = helper 0 1 n
+fibTail :: Int -> Either String Int
+fibTail n | n < 0     = Left "Negative n"
+          | otherwise = Right (helper 0 1 n)
   where
     helper a b n | n == 0    = a
                  | otherwise = helper b (a + b) (n - 1)
@@ -30,7 +31,7 @@ fibTail n | n < 0     = error "Lower than 0"
 -- Позапускайте обе функции на больших числах (> 1000). Какой результат вы получили и почему?
 
 -- | без хвостовой рекурсии: Не выполнимо, тк образуется огромное дерево рекурсии и компьютеру становится плохо.
--- | c хвостовой рекурсией: Int переполняется 
+-- | c хвостовой рекурсией: Int переполняется. Integer не переполняется
 
 -------------------------------------------------------------------------------
 
@@ -60,6 +61,7 @@ myUncurry f (x, y) = f x y
 myLength :: [a] -> Int
 myLength [] = 0
 myLength (_ : xs) = 1 + myLength xs
+-- На списках большой длины может не работать тк переполнение Int
 
 -- | возвращает хвост списка
 --
@@ -69,11 +71,10 @@ myTail (_ : xs) = Right xs
 
 -- | возвращает список без последнего элемента
 --
-myInit :: [a] -> Either String [a]
-myInit [] = Left "Empty List"
-myInit [x] = Right []
-myInit (x : xs) = Right (x : unpack (myInit xs))
-    where unpack (Right x) = x
+myInit :: [a] -> Maybe [a]
+myInit [] = Nothing
+myInit [x] = Just []
+myInit (x : xs) = mapMaybe (x :) (myInit xs)
 
 -- | объединяет 2 списка
 --
@@ -85,7 +86,9 @@ myAppend x (y : ys) = myAppend (x ++ [y]) ys
 --
 myReverse :: [a] -> [a]
 myReverse [] = []
-myReverse (x : xs) = (myReverse xs) ++ [x]
+myReverse (x : xs) = helper xs [x]
+  where helper [] acc       = acc
+        helper (x : xs) acc = helper xs (x : acc)
 
 -- | выдаёт элемент списка по индексу
 elemByIndex :: [a] -> Int -> Either String a
@@ -101,7 +104,7 @@ testMyLength = myLength [1, 2, 3, 4, 5] == 5
 testMyTail :: Bool
 testMyTail = myTail [1, 2, 3, 4, 5] == Right [2, 3, 4, 5]
 testMyInit :: Bool
-testMyInit = myInit [1, 2, 3, 4, 5] == Right [1, 2, 3, 4]
+testMyInit = myInit [1, 2, 3, 4, 5] == Just [1, 2, 3, 4]
 testMyAppend :: Bool
 testMyAppend = myAppend [1, 2, 3, 4, 5] [6, 7, 8, 9, 10] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 testMyReverse :: Bool
@@ -110,7 +113,7 @@ testElemByIndex :: Bool
 testElemByIndex = elemByIndex [1, 2, 3, 4, 5] 2 == Right 3
 
 allTests4 :: Bool
-allTests4 = testMyLength <^> testMyTail <^> testMyInit <^> testMyAppend <^> testMyReverse <^> testElemByIndex
+allTests4 = and [testMyLength, testMyTail, testMyInit, testMyAppend, testMyReverse, testElemByIndex]
 
 -------------------------------------------------------------------------------
 
@@ -123,6 +126,7 @@ mapEither _ g (Right y) = Right (g y)
 mapMaybe :: (a -> b) -> Maybe a -> Maybe b
 mapMaybe _ Nothing = Nothing
 mapMaybe f (Just x) = Just (f x)
+
 
 mapList :: (a -> b) -> [a] -> [b]
 mapList _ [] = []
@@ -196,7 +200,7 @@ testChPrev :: Bool
 testChPrev = chPrev churchThree == churchTwo
 
 allTests6 :: Bool
-allTests6 = testChSucc <^> testChAdd <^> testChMult1 <^> testChMult2 <^> testChPow1 <^> testChPow2 <^> testChPrev
+allTests6 = and [testChSucc, testChAdd, testChMult1, testChMult2, testChPow1, testChPow2, testChPrev]
 
 -------------------------------------------------------------------------------
 
@@ -299,9 +303,9 @@ testIsPresented2 :: Bool
 testIsPresented2 = isPresented 10 binTreeOfInts == False
 
 allTests8 :: Bool
-allTests8 = testIsPresented2 <^> testIsPresented1
+allTests8 = and [testIsPresented1, testIsPresented2]
 
 -------------------------------------------------------------------------------
 
 allTests :: Bool
-allTests = allTests4 <^> allTests6 <^> allTests8
+allTests = and [allTests4, allTests6, allTests8]
