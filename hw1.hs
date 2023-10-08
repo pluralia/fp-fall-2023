@@ -23,7 +23,7 @@ False #$# False =  False
 
 -- | без хвостовой рекурсии
 --
-fib :: Int -> Int
+fib :: Integer -> Integer
 fib n
   | n == 0 = 0
   | n == 1 = 1
@@ -68,9 +68,16 @@ myUncurry f (x, y) = f x y
 
 -- | возвращает длину списка
 --
+--myLength :: [a] -> Int
+--myLength [] = 0
+--myLength (_:xs) = 1 + myLength xs
+
 myLength :: [a] -> Int
-myLength [] = 0
-myLength (_:xs) = 1 + myLength xs
+myLength xs = myLength_help xs 0
+  where
+    myLength_help [] n = n
+    myLength_help (_:xs) n = myLength_help xs (n+1)
+
 
 -- | возвращает хвост списка
 --
@@ -80,15 +87,29 @@ myTail (_:xs) = Just xs
 
 -- | возвращает список без последнего элемента
 --
+-- с библиотечной функцией
+--myInit :: [a] -> Maybe [a]
+--myInit [] = Nothing
+--myInit xs = Just (init xs)
+--
+-- Без библиотечной функции
 myInit :: [a] -> Maybe [a]
 myInit [] = Nothing
-myInit xs = Just (init xs)
+myInit [_] = Just []
+myInit (x:xs) = fmap (x:) (myInit xs)
+
 
 -- | объединяет 2 списка
 --
-myAppend :: [a] -> [a] -> [a]
+-- с библиотечной функцией
+--myAppend :: [a] -> [a] -> [a]
 --myAppend [] [] = Nothing
-myAppend xs ys = xs ++ ys
+--myAppend xs ys = xs ++ ys
+--
+-- Без библиотечной функции
+myAppend :: [a] -> [a] -> [a]
+myAppend [] ys = ys
+myAppend (x:xs) ys = x : myAppend xs ys
 
 -- | разворачивает список
 --
@@ -107,23 +128,59 @@ elemByIndex i xs
                 [] -> Left "Error!"
                 x:_ -> Right x 
 
-testMyLength :: Bool
-testMyLength = myLength [1, 2, 3, 4, 5] == 5
+testMyLength1 :: Bool
+testMyLength1 = myLength [1..5] == 5
 
-testMyTail :: Bool
-testMyTail = myTail [1, 2, 3, 4, 5] == Just [2, 3, 4, 5]
+testMyLength2 :: Bool
+testMyLength2 = myLength [] == 0
 
-testMyInit :: Bool
-testMyInit = myInit [1, 2, 3, 4, 5] == Just [1, 2, 3, 4]
+testMyLength3 :: Bool
+testMyLength3 = myLength [1] == 1
 
-testMyAppend :: Bool
-testMyAppend = myAppend [1, 2, 3] [4, 5] == [1, 2, 3, 4, 5]
+testMyTail1 :: Bool
+testMyTail1 = myTail [1..5] == Just [2..5]
 
-testMyReverse :: Bool
-testMyReverse = myReverse [1, 2, 3, 4, 5] == [5, 4, 3, 2, 1]
+testMyTail2 :: Bool
+testMyTail2 = myTail ([] :: [Int]) == Nothing
 
-testElemByIndex :: Bool
-testElemByIndex = elemByIndex 1 [1, 2, 3, 4, 5] == Right 2
+testMyTail3 :: Bool
+testMyTail3 = myTail [1] == Just []
+
+testMyInit1 :: Bool
+testMyInit1 = myInit [1..5] == Just [1..4]
+
+testMyInit2 :: Bool
+testMyInit2 = myInit ([] :: [Int]) == Nothing
+
+testMyInit3 :: Bool
+testMyInit3 = myInit [1] == Just []
+
+testMyAppend1 :: Bool
+testMyAppend1 = myAppend [1, 2, 3] [4, 5] == [1..5]
+
+testMyAppend2 :: Bool
+testMyAppend2 = myReverse ([] :: [Int]) == []
+
+testMyAppend3 :: Bool
+testMyAppend3 = myAppend [1, 2, 3] [] == [1, 2, 3]
+
+testMyReverse1 :: Bool
+testMyReverse1 = myReverse [1..5] == [5, 4, 3, 2, 1]
+
+testMyReverse2 :: Bool
+testMyReverse2 = myReverse ([] :: [Int]) == []
+
+testMyReverse3 :: Bool
+testMyReverse3 = myReverse [1] == [1]
+
+testElemByIndex1 :: Bool
+testElemByIndex1 = elemByIndex 1 [1..5] == Right 2
+
+testElemByIndex2 :: Bool
+testElemByIndex2 = elemByIndex 0 [1, 2, 3, 4, 5] == Right 1
+
+testElemByIndex3 :: Bool
+testElemByIndex3 = elemByIndex (-1) [1, 2, 3, 4, 5] == Left "Error!"
 
 
 -------------------------------------------------------------------------------
@@ -191,6 +248,15 @@ testChSucc = chSucc churchTwo == churchThree
     churchThree :: ChurchNumber
     churchThree = Succ (Succ (Succ Zero))
 
+testChSucc2 :: Bool
+testChSucc2 = chSucc churchThree == churchFour
+  where
+    churchThree :: ChurchNumber
+    churchThree = Succ (Succ (Succ Zero))
+
+    churchFour :: ChurchNumber
+    churchFour = Succ (Succ (Succ (Succ Zero)))
+
 testChAdd :: Bool
 testChAdd = chAdd churchTwo churchThree == churchFive
   where
@@ -202,6 +268,15 @@ testChAdd = chAdd churchTwo churchThree == churchFive
     
     churchFive :: ChurchNumber
     churchFive = Succ (Succ (Succ (Succ (Succ Zero))))
+
+testChAdd2 :: Bool
+testChAdd2 = chAdd churchTwo churchTwo == churchFour
+  where
+    churchTwo :: ChurchNumber
+    churchTwo = Succ (Succ Zero)
+
+    churchFour :: ChurchNumber
+    churchFour = Succ (Succ (Succ (Succ Zero)))
 
 
 testChMult :: Bool
@@ -216,6 +291,15 @@ testChMult = chMult churchTwo churchThree == churchSix
     churchSix :: ChurchNumber
     churchSix = Succ (Succ (Succ (Succ (Succ (Succ Zero)))))
 
+testChMult2 :: Bool
+testChMult2 = chMult churchTwo churchTwo == churchFour
+  where
+    churchTwo :: ChurchNumber
+    churchTwo = Succ (Succ Zero)
+
+    churchFour :: ChurchNumber
+    churchFour = Succ (Succ (Succ (Succ Zero)))
+
 testChPow :: Bool
 testChPow = chPow churchTwo churchThree == churchEight
   where
@@ -228,6 +312,16 @@ testChPow = chPow churchTwo churchThree == churchEight
     churchEight :: ChurchNumber
     churchEight = chAdd (chMult churchTwo churchTwo) (chMult churchTwo churchTwo)
 
+testChPow2 :: Bool
+testChPow2 = chPow churchTwo churchTwo == churchFour
+  where
+    churchTwo :: ChurchNumber
+    churchTwo = chSucc (chSucc Zero)
+
+    churchFour :: ChurchNumber
+    churchFour = chAdd (chMult churchTwo churchTwo) (chMult churchTwo churchTwo)
+
+
 testChPrev :: Bool
 testChPrev = chPrev churchThree == churchTwo
   where
@@ -237,6 +331,14 @@ testChPrev = chPrev churchThree == churchTwo
     churchThree :: ChurchNumber
     churchThree = Succ (Succ (Succ Zero))
 
+testChPrev2 :: Bool
+testChPrev2 = chPrev churchFour == churchThree
+  where
+    churchThree :: ChurchNumber
+    churchThree = Succ (Succ (Succ Zero))
+
+    churchFour :: ChurchNumber
+    churchFour = Succ (Succ (Succ (Succ Zero)))
 
 -------------------------------------------------------------------------------
 
@@ -337,23 +439,60 @@ main :: IO ()
 main = do
   putStrLn "Task 4"
   putStrLn " "
-  putStrLn "testMyLength"
-  print testMyLength
 
-  putStrLn "testMyTail"
-  print testMyTail
+  putStrLn "testMyLength1"
+  print testMyLength1
 
-  putStrLn "testMyInit"
-  print testMyInit
+  putStrLn "testMyLength2"
+  print testMyLength2
 
-  putStrLn "testMyAppend"
-  print testMyAppend
+  putStrLn "testMyLength3"
+  print testMyLength3
 
-  putStrLn "testMyReverse"
-  print testMyReverse
+  putStrLn "testMyTail1"
+  print testMyTail1
 
-  putStrLn "testElemByIndex"
-  print testElemByIndex
+  putStrLn "testMyTail2"
+  print testMyTail2
+
+  putStrLn "testMyTail3"
+  print testMyTail3
+
+  putStrLn "testMyInit1"
+  print testMyInit1
+
+  putStrLn "testMyInit2"
+  print testMyInit2
+
+  putStrLn "testMyInit3"
+  print testMyInit3
+
+  putStrLn "testMyAppend1"
+  print testMyAppend1
+
+  putStrLn "testMyAppend2"
+  print testMyAppend2
+
+  putStrLn "testMyAppend3"
+  print testMyAppend3
+
+  putStrLn "testMyReverse1"
+  print testMyReverse1
+
+  putStrLn "testMyReverse2"
+  print testMyReverse2
+
+  putStrLn "testMyReverse3"
+  print testMyReverse3
+
+  putStrLn "testElemByIndex1"
+  print testElemByIndex1
+
+  putStrLn "testElemByIndex2"
+  print testElemByIndex2
+
+  putStrLn "testElemByIndex3"
+  print testElemByIndex3
 
   putStrLn " "
 
@@ -364,17 +503,32 @@ main = do
   putStrLn "testChSucc"
   print testChSucc
 
+  putStrLn "testChSucc2"
+  print testChSucc2
+
   putStrLn "testChAdd"
   print testChAdd
+
+  putStrLn "testChAdd2"
+  print testChAdd2
 
   putStrLn "testChMult"
   print testChMult
 
+  putStrLn "testChMult2"
+  print testChMult2
+
   putStrLn "testChPow"
   print testChPow
 
+  putStrLn "testChPow2"
+  print testChPow2
+
   putStrLn "testChPrev"
   print testChPrev
+
+  putStrLn "testChPrev2"
+  print testChPrev2
 
   putStrLn " "
 
