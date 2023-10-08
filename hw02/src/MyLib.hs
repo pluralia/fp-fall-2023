@@ -39,10 +39,10 @@ traceFoldl f acc (x : xs) =
 -- Подумайте, какую функцию сверки когда лучше использовать
 
 or' :: [Bool] -> Bool 
-or' = L.foldr (\x acc -> x || acc) False
+or' = L.foldr (||) False
 
 length' :: [a] -> Int
-length' x = L.foldl' (\count _ -> count + 1) 0 x
+length' = L.foldl' (\count _ -> count + 1) 0
 
 maximum' :: [Int] -> Maybe Int
 maximum'[]        = Nothing
@@ -51,9 +51,21 @@ maximum' (x : xs) = Just
                             (\maxVal elem -> if elem > maxVal
                                 then elem
                                     else maxVal) x xs)
+-- src\MyLib.hs:(51,46)-(53,47): Warning: Use max
+-- Found:
+--   if elem > maxVal then elem else maxVal
+-- Perhaps:
+--   max elem maxVal
+-- по очевидным причинам использовать готовые функции нам нельзя
 
 reverse' :: [a] -> [a]
 reverse' = L.foldl' (\x acc -> acc : x) []
+-- src\MyLib.hs:56:22-38: Suggestion: Avoid lambda
+--Found:
+--  \ x acc -> acc : x
+--Perhaps:
+--  flip (:)
+-- тренируюсь в написании лямбда выражений
 
 -- Если порядок на выходе не важен
 filterl' :: (a -> Bool) -> [a] -> [a]
