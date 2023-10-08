@@ -22,7 +22,12 @@ spec = do
 
     it "False items" $ do
       or' [False, False] `shouldBe` (False :: Bool)
-
+--test\TestSpec.hs:21:7-22: Suggestion: Use ||
+--Found:
+--   or [True, False]
+-- Perhaps:
+--  (True || False)      
+-- тестируем хэндмейд функцию
 
   describe "test `lenght'" $ do
     it "empty list" $ do
@@ -84,6 +89,25 @@ spec = do
   
     it "case 2" $ do
       map' show [1, 2, 3, 4, 5] `shouldBe` (["1", "2", "3", "4", "5"] :: [String])
+
+--test\TestSpec.hs:73:16-28: Suggestion: Avoid lambda using `infix`
+--Found:
+--  (\ x -> x > 0)
+--Perhaps:
+--  (> 0)
+
+--test\TestSpec.hs:79:16-29: Suggestion: Avoid lambda using `infix`
+--Found:
+--  (\ x -> x == 3)
+--Perhaps:
+--  (== 3)
+
+--test\TestSpec.hs:83:12-24: Suggestion: Avoid lambda using `infix`
+--Found:
+--  (\ x -> x * 2)
+--Perhaps:
+--  (* 2)
+-- опять же для теста задаю лямбда функции
 
 
   describe "test head'" $ do
