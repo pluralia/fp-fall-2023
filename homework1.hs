@@ -1,10 +1,15 @@
+import GHC.Base (VecElem(Int16ElemRep))
 -- 1. Реализуйте логическое И как функцию и как оператор (выберете произвольные символы для вашего оператора).
 
 myAnd :: Bool -> Bool -> Bool
 myAnd True True = True
 myAnd _ _ = False
 
--------------------------------------------------------------------------------
+infix 3 $$
+($$) :: Bool -> Bool -> Bool
+True $$ True  = True
+_    $$ _     = False
+------------------------------------------------------------------------------
 
 -- 2. Реализуйте вычисление чисел Фибоначчи 2 способами.
 
@@ -13,23 +18,26 @@ myAnd _ _ = False
 fib :: Int -> Int
 fib 0 = 1
 fib 1 = 1
-fib n = (fib (n - 1)) + (fib (n - 2))
+fib n = fib (n - 1) + fib (n - 2)
 
 -- | c хвостовой рекурсией
 --
-fibHelper :: Int -> Int -> Int -> Int
-fibHelper a b 0 = b
-fibHelper a b n = fibHelper b (a + b) (n - 1)
-
 fibTail :: Int -> Int
 fibTail n = fibHelper 0 1 n
+  where
+    fibHelper :: Int -> Int -> Int -> Int
+    fibHelper a b 0 = b
+    fibHelper a b n = fibHelper b (a + b) (n - 1)
 
 -- Позапускайте обе функции на больших числах (> 1000). Какой результат вы получили и почему?
--- Хвостовая рекурсия работает значительно быстрее, так как ей не требуется дважды рекурсивно вычислять саму себя.
--- Кроме того, вычисление без хвостовой рекурсии может вызывать переполнение стека.
+
+-- При вычислении чисел Фибоначчи без хвостовой рекурсии время работы программы возрастает экспоненциально,
+-- что можно увидеть при запуске вычислений для числел хотя бы порядка 10^3. 
+-- Хвостовая рекурсия же позволяет вычислять нужное число за линию времени.
+-- (при запуске на 1500 функция fib бесконечно думает и не выдаёт результат, 
+-- а функцияция с хвостовой рекурсией всё хорошо считает - дело в асимптотике).
 
 -------------------------------------------------------------------------------
-
 -- 3. Повторяем каррирование. Реализуйте 2 функции.
 
 -- | превращает некаррированную функцию в каррированную
@@ -59,6 +67,14 @@ myLength :: [a] -> Int
 myLength [] = 0
 myLength (x : xs) = 1 + (myLength xs)
 
+-- с хвостовой рекурсией
+myLengthTail :: [a] -> Int
+myLengthTail array = myLengthHelper array 0
+  where
+    myLengthHelper :: [a] -> Int -> Int
+    myLengthHelper []       len = len
+    myLengthHelper (_ : xs) len = myLengthHelper xs (len + 1)
+
 -- | возвращает хвост списка
 --
 myTail :: [a] -> Either String [a]
@@ -80,22 +96,20 @@ myAppend (x : xs) y = x : (myAppend xs y)
 
 -- | разворачивает список
 --
-myReverseHelper :: [a] -> [a] -> [a]
-myReverseHelper [] y = y
-myReverseHelper (x : xs) y = myReverseHelper xs (x : y)
+
 
 myReverse :: [a] -> [a]
 myReverse x = myReverseHelper x []
+  where
+    myReverseHelper :: [a] -> [a] -> [a]
+    myReverseHelper [] y = y
+    myReverseHelper (x : xs) y = myReverseHelper xs (x : y)
 
 -- | выдаёт элемент списка по индексу (0-индексация)
-elemByIndexHealper :: [a] -> Int -> Maybe a
-elemByIndexHealper [] _ = Nothing
-elemByIndexHealper (x : xs) 0 = Just x
-elemByIndexHealper (x : xs) left = elemByIndexHealper xs (left - 1)
-
 elemByIndex :: [a] -> Int -> Maybe a
-elemByIndex x ind = elemByIndexHealper x ind
-
+elemByIndex [] _ = Nothing
+elemByIndex (x : xs) 0 = Just x
+elemByIndex (x : xs) left = elemByIndex xs (left - 1)
 -------------------------------------------------------------------------------
 -- | Тесты
 
@@ -160,13 +174,13 @@ testIndex2 = elemByIndex a (length a) == Nothing
 
 -- 5. Реализуйте map для разных типов.
 
-mapEither :: (a -> c) -> (b -> d) -> Either a b -> Either c d 
+mapEither :: (a -> c) -> (b -> d) -> Either a b -> Either c d
 mapEither f _ (Left x) = Left (f x)
 mapEither _ g (Right x) = Right (g x)
 
 mapMaybe :: (a -> b) -> Maybe a -> Maybe b
 mapMaybe f (Just a) = Just (f a)
-mapMaybe _ Nothing = Nothing 
+mapMaybe _ Nothing = Nothing
 
 mapList :: (a -> b) -> [a] -> [b]
 mapList _ [] = []
@@ -269,10 +283,14 @@ testChPrev3 = chPrev Zero == Nothing
 
 -- | двигает точку на заданное расстояние по каждой из координат
 --
-data Point = Point Float Float
+data Point = Point {
+  x :: Float,
+  y :: Float
+}
+  deriving (Show)
 
 move :: Point -> Float -> Point
-move (Point x y) delta = (Point (x + delta) (y + delta))
+move (Point x y) delta = Point (x + delta) (y + delta)
 
 -- | возвращает дистанцию между 2 точками
 --
@@ -283,9 +301,9 @@ dist (Point x1 y1) (Point x2 y2) = sqrt ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2
 
 -- 8. Бинарное дерево может быть задано следующим образом:
 
-data BinaryTree a 
+data BinaryTree a
   = Leaf
-  | Node 
+  | Node
     { nodeValue  :: a
     , leftChild  :: BinaryTree a
     , rightChild :: BinaryTree a
@@ -295,17 +313,17 @@ data BinaryTree a
 -- | Для примера заведём дерево строк.
 --
 binTreeOfStrings :: BinaryTree String
-binTreeOfStrings = 
-  Node "This" 
-    (Node "is" 
-      (Node "Tree" Leaf Leaf) 
+binTreeOfStrings =
+  Node "This"
+    (Node "is"
+      (Node "Tree" Leaf Leaf)
       (Node "too" Leaf Leaf)
-    ) 
-    (Node "and" 
-      (Node "don't" 
-        (Node "forget" Leaf Leaf) 
+    )
+    (Node "and"
+      (Node "don't"
+        (Node "forget" Leaf Leaf)
         (Node "me!" Leaf Leaf)
-      ) 
+      )
       Leaf
     )
 
@@ -327,7 +345,7 @@ binTreeOfStringsCopy = binTreeOfStrings
 type IntTree = BinaryTree Int
 
 binTreeOfInts :: IntTree
-binTreeOfInts = 
+binTreeOfInts =
   Node 5
     (Node 3
       (Node 1 Leaf Leaf)
@@ -343,9 +361,9 @@ binTreeOfInts =
 --
 isPresented :: Int -> IntTree -> Bool
 isPresented _ Leaf = False
-isPresented findVal (Node val left right) = 
-  if (val == findVal) 
-    then True 
+isPresented findVal (Node val left right) =
+  if (val == findVal)
+    then True
     else (isPresented findVal left) || (isPresented findVal right)
 
 -------------------------------------------------------------------------------
