@@ -1,0 +1,53 @@
+Test suite hw2-test: RUNNING...
+
+Test
+  traceFoldl
+0
+1
+3
+1
+1
+2
+6
+    returns the correct result [✔]
+  or'
+    returns the correct result [✔]
+  length'
+    returns the correct result [✔]
+  maximum'
+    returns the correct result [✔]
+  reverse'
+    returns the correct result [✔]
+  filter'
+    returns the correct result [✔]
+  map'
+    returns the correct result [✔]
+  head'
+    returns the correct result [✔]
+  last'
+    returns the correct result [✔]
+  take'
+    returns the correct result [✔]
+  take''
+    returns the correct result [✔]
+  quicksort
+    returns the correct result [✔]
+  insert
+    returns the correct result [✔]
+  insertionSort
+    returns the correct result [✔]
+  myZipWith
+    returns the correct result [✔]
+  fibs
+    returns the correct result [✔]
+  fibSum
+    returns the correct result [✔]
+  bfs
+    returns the correct result [✔]
+  dfs
+    returns the correct result [✔]
+
+Finished in 0.0019 seconds
+19 examples, 0 failures
+Test suite hw2-test: PASS
+Test suite logged to: /home/langley/Documents/11sem/fp-fall-2023/hw2/dist-newstyle/build/x86_64-linux/ghc-9.2.6/hw2-0.1.0.0/t/hw2-test/test/hw2-0.1.0.0-hw2-test.log
