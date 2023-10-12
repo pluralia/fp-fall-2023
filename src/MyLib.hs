@@ -44,16 +44,16 @@ or' :: [Bool] -> Bool
 or' = myFoldr (||) False
 
 length' :: [a] -> Int
-length' xs = foldr (\_ acc -> acc + 1) 0 xs
+length' = foldr (\_ acc -> acc + 1) 0 
 
 -- По подсказке hlint можно дропнуть xs с обеих сторон и все равно все будет работать 
 -- Т.е. последнюю строчку можно переписать как length' = foldr (\_ acc -> acc + 1) 0
 
 maximum' :: (Ord a) => [a] -> Maybe a
 maximum' [] = Nothing
-maximum' xs = Just $ foldr1 (\x acc -> if x > acc then x else acc) xs
+maximum' xs = Just $ foldr1 (max) xs
 
--- hlint предлагает использовать max, но нам ведь так нельзя, да :с
+-- hlint предлагает использовать max, и я его переписал по его совету
 -- foldr1, which is similar to foldr but doesn't require an initial accumulator value. 
 -- Instead, it uses the first element of the list as the initial accumulator value
 -- А еще hlint предложил добавить (Ord a), без этого не работало 
