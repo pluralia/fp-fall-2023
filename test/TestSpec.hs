@@ -26,7 +26,6 @@ import Test.Hspec
   , it
   , shouldBe
   , describe
-  , shouldMatchList
   )
 
 spec :: Spec
@@ -43,6 +42,9 @@ spec = do
 
     it "False items" $ do
       or' [False, False] `shouldBe` (False :: Bool)
+
+    it "Different size" $ do
+      or' [False, False, False, False, False, False, False, False, True] `shouldBe` (True :: Bool)
 
   describe "test `length'" $ do
     it "Empty list" $ do
