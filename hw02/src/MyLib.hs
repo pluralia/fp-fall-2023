@@ -2,7 +2,7 @@ module MyLib where
 
 
 -- импортируем foldl', чтобы можно было вызывать как L.foldl'
-import qualified Data.List as L (foldl', foldr)
+import qualified Data.List as L (foldl')
 
 ------------------------------------------------------------------------------------------------
 
@@ -39,33 +39,29 @@ traceFoldl f acc (x : xs) =
 -- Подумайте, какую функцию сверки когда лучше использовать
 
 or' :: [Bool] -> Bool 
-or' = L.foldr (||) False
+or' = foldr (||) False
 
 length' :: [a] -> Int
 length' = L.foldl' (\count _ -> count + 1) 0
 
 maximum' :: [Int] -> Maybe Int
 maximum'[]        = Nothing
-maximum' (x : xs) = Just 
-                        (L.foldl'
-                            (\maxVal elem -> if elem > maxVal
-                                then elem
-                                    else maxVal) x xs)
+maximum' (x : xs) = Just (L.foldl' max x xs)
 -- src\MyLib.hs:(51,46)-(53,47): Warning: Use max
 -- Found:
 --   if elem > maxVal then elem else maxVal
 -- Perhaps:
 --   max elem maxVal
--- по очевидным причинам использовать готовые функции нам нельзя
+-- Исправил
 
 reverse' :: [a] -> [a]
-reverse' = L.foldl' (\x acc -> acc : x) []
+reverse' = L.foldl' (flip (:)) []
 -- src\MyLib.hs:56:22-38: Suggestion: Avoid lambda
 --Found:
 --  \ x acc -> acc : x
 --Perhaps:
 --  flip (:)
--- тренируюсь в написании лямбда выражений
+-- Исправил
 
 -- Если порядок на выходе не важен
 filterl' :: (a -> Bool) -> [a] -> [a]
@@ -73,13 +69,13 @@ filterl' predicate = L.foldl' (\acc x -> if predicate x then x : acc else acc) [
 
 -- Если порядок на выходе важен
 filterr' :: (a -> Bool) -> [a] -> [a]
-filterr' predicate = L.foldr (\x acc -> if predicate x then x : acc else acc) []
+filterr' predicate = foldr (\x acc -> if predicate x then x : acc else acc) []
 
 map' :: (a -> b) -> [a] -> [b]
-map' f = L.foldr (\x acc -> f x : acc) []
+map' f = foldr (\x acc -> f x : acc) []
 
 head' :: [a] -> Maybe a
-head' = L.foldr (\x _ -> Just x) Nothing
+head' = foldr (\x _ -> Just x) Nothing
 
 last' :: [a] -> Maybe a
 last' [] = Nothing
@@ -94,7 +90,7 @@ take' n = L.foldl'
 
 -- используйте foldr
 take'' :: Int -> [a] -> [a]
-take'' n = L.foldr (\x acc -> if length acc < n then x : acc else acc) []
+take'' n = foldr (\x acc -> if length acc < n then x : acc else acc) []
 
 ------------------------------------------------------------------------------------------------
 
