@@ -18,16 +18,10 @@ spec = do
       or' [] `shouldBe` (False :: Bool)
   
     it "True item" $ do
-      or [True, False] `shouldBe` (True :: Bool)
+      or' [True, False] `shouldBe` (True :: Bool)
 
     it "False items" $ do
       or' [False, False] `shouldBe` (False :: Bool)
---test\TestSpec.hs:21:7-22: Suggestion: Use ||
---Found:
---   or [True, False]
--- Perhaps:
---  (True || False)      
--- тестируем хэндмейд функцию
 
   describe "test `lenght'" $ do
     it "empty list" $ do
@@ -63,31 +57,31 @@ spec = do
 
 
   describe "test `filterl'" $ do
-    it "case 2" $ do
-      filterl' (\x -> x > 0) [-2, 0, 5, -10, 7] `shouldMatchList` ([5, 7] :: [Int])
+    it "it >0" $ do
+      filterl' (> 0) [-2, 0, 5, -10, 7] `shouldMatchList` ([5, 7] :: [Int])
 
-    it "case 3" $ do
+    it "it null" $ do
       filterl' null [[1, 2], [], [3, 4], []] `shouldMatchList` ([[], []] :: [[Int]])
 
-    it "case 4" $ do
-      filterl' (\x -> x == 3) [3, 2, 3, 1, 3] `shouldMatchList` ([3, 3, 3] :: [Int])
+    it "it ==3" $ do
+      filterl' (== 3) [3, 2, 3, 1, 3] `shouldMatchList` ([3, 3, 3] :: [Int])
 
   describe "test `filterr'" $ do
 
-    it "case 2" $ do
-      filterr' (\x -> x > 0) [-2, 0, 5, -10, 7] `shouldMatchList` ([5, 7] :: [Int])
+    it "it >0" $ do
+      filterr' ( > 0) [-2, 0, 5, -10, 7] `shouldBe` ([5, 7] :: [Int])
 
-    it "case 3" $ do
-      filterr' null [[1, 2], [], [3, 4], []] `shouldMatchList` ([[], []] :: [[Int]])
+    it "it null" $ do
+      filterr' null [[1, 2], [], [3, 4], []] `shouldBe` ([[], []] :: [[Int]])
 
-    it "case 4" $ do
-      filterr' (\x -> x == 3) [3, 2, 3, 1, 3] `shouldMatchList` ([3, 3, 3] :: [Int])
+    it "it ==3" $ do
+      filterr' ( == 3) [3, 2, 3, 1, 3] `shouldBe` ([3, 3, 3] :: [Int])
 
   describe "test `map'" $ do
-    it "case 1" $ do
-      map' (\x -> x * 2) [1, 2, 3, 4, 5] `shouldBe` ([2, 4, 6, 8, 10] :: [Int])
+    it "it *2" $ do
+      map' ( * 2) [1, 2, 3, 4, 5] `shouldBe` ([2, 4, 6, 8, 10] :: [Int])
   
-    it "case 2" $ do
+    it "it show" $ do
       map' show [1, 2, 3, 4, 5] `shouldBe` (["1", "2", "3", "4", "5"] :: [String])
 
 --test\TestSpec.hs:73:16-28: Suggestion: Avoid lambda using `infix`
@@ -220,20 +214,43 @@ spec = do
 
 
   describe "test bfs" $ do
-    it "case 1" $ do
-      let tree = Node 1 [Node 2 [Node 3 [], Node 4 []], Node 5 [Node 6 [], Node 7 []]]
-      bfs tree `shouldBe` ([1, 2, 5, 3, 4, 6, 7] :: [Int])
+      it "case 1" $ do
+        let tree = Node 1 [Node 2 [Node 3 [], Node 4 []], Node 5 [Node 6 [], Node 7 []]]
+        bfs tree `shouldBe` ([1, 2, 5, 3, 4, 6, 7] :: [Int])
 
-    it "case 2" $ do
-      let tree = Node 'A' [Node 'B' [Node 'C' [], Node 'D' []], Node 'E' [Node 'F' []]]
-      bfs tree `shouldBe` ("ABECDF" :: [Char])
+      it "case 2" $ do
+        let tree = Node 'A' [Node 'B' [Node 'C' [], Node 'D' []], Node 'E' [Node 'F' []]]
+        bfs tree `shouldBe` ("ABECDF" :: [Char])
 
+      it "case 3" $ do
+        let tree = Node 0 [Node 1 [Node 2 [Node 3 []]], Node 4 [Node 5 []]]
+        bfs tree `shouldBe` ([0, 1, 4, 2, 5, 3] :: [Int])
+
+      it "case 4" $ do
+        let tree = Node 'X' [Node 'Y' [Node 'Z' []], Node 'W' []]
+        bfs tree `shouldBe` ("XYWZ" :: [Char])
+
+      it "case 5" $ do
+        let tree = Node 10 []
+        bfs tree `shouldBe` ([10] :: [Int])
 
   describe "test dfs" $ do
-    it "case 1" $ do
-      let tree = Node 1 [Node 2 [Node 3 [], Node 4 []], Node 5 [Node 6 [], Node 7 []]]
-      dfs tree `shouldBe` ([1, 2, 3, 4, 5, 6, 7] :: [Int])
+      it "case 1" $ do
+        let tree = Node 1 [Node 2 [Node 3 [], Node 4 []], Node 5 [Node 6 [], Node 7 []]]
+        dfs tree `shouldBe` ([1, 2, 3, 4, 5, 6, 7] :: [Int])
 
-    it "case 2" $ do
-      let tree = Node 'A' [Node 'B' [Node 'C' [], Node 'D' []], Node 'E' [Node 'F' []]]
-      dfs tree `shouldBe` ("ABCDEF" :: [Char])
+      it "case 2" $ do
+        let tree = Node 'A' [Node 'B' [Node 'C' [], Node 'D' []], Node 'E' [Node 'F' []]]
+        dfs tree `shouldBe` ("ABCDEF" :: [Char])
+
+      it "case 3" $ do
+        let tree = Node 0 [Node 1 [Node 2 [Node 3 []]], Node 4 [Node 5 []]]
+        dfs tree `shouldBe` ([0, 1, 2, 3, 4, 5] :: [Int])
+
+      it "case 4" $ do
+        let tree = Node 'X' [Node 'Y' [Node 'Z' []], Node 'W' []]
+        dfs tree `shouldBe` ("XYZW" :: [Char])
+
+      it "case 5" $ do
+        let tree = Node 10 []
+        dfs tree `shouldBe` ([10] :: [Int])
