@@ -43,15 +43,37 @@ or' = foldr (||) False
 -- Тк True || _ == True нам нужно чтобы or' использовал правую свертку и был ленивым
 
 length' :: [a] -> Int
-length' = L.foldl' (\x _ -> x + 1) 0
--- Все равно проходить по всем элементам. Можем и без ленивости
+length' = foldr (\_ x -> x + 1) 0
+--
+-- Вопрос. Я юзал эту функцию:
+-- length' = L.foldl' (\x _ -> x + 1) 0
+--
+-- Я не знаю почему, но у меня warning на этом тесте. Причем не всегда:
+-- length' [1..10000] `shouldBe` (10000 :: Int)
+--
+-- test/TestSpec.hs:34:16: warning: [-Wtype-defaults]
+--    • Defaulting the type variable ‘a0’ to type ‘Integer’ in the following constraints
+--        (Num a0) arising from the literal ‘1’ at test/TestSpec.hs:34:16
+--        (Enum a0)
+--          arising from the arithmetic sequence ‘1 .. 10000’
+--          at test/TestSpec.hs:34:15-24
+--    • In the expression: 1
+--      In the first argument of ‘length'’, namely ‘[1 .. 10000]’
+--      In the first argument of ‘shouldBe’, namely ‘length' [1 .. 10000]’
+--
+-- Я не знаю почему..
+-- 
+-- ghci> k = length' [1..10000]
+-- ghci> :t k
+-- k :: Int
+--
 
 maximum' :: [Int] -> Maybe Int
 maximum' = L.foldl' (\x y -> if x > Just y then x else Just y) Nothing
 -- Оказывается (Just 3) > Nothing == True. ¯\_(ツ)_/¯
 
 reverse' :: [a] -> [a]
-reverse' = L.foldl' (\x y -> y : x) []
+reverse' = L.foldl' (flip (:)) []
 
 filter' :: (a -> Bool) -> [a] -> [a]
 filter' f = foldr (\x y -> if f x then x : y else y) []
@@ -84,16 +106,13 @@ quicksort :: [Int] -> [Int]
 quicksort [] = []
 quicksort (x : xs) = quicksort [y | y <- xs, y < x] ++ [x] ++ quicksort [y | y <- xs, y >= x]
 
-
 -- | Функция, которая вставляет в уже отсортированный список элементов
 --   новый элемент на такую позицию, что все элементы левее будут меньше или
 --   равны нового элемента, а все элементы справа будут строго больше
 --   (1 балл)
 --
 insert :: Ord a => [a] -> a -> [a]
-insert xs val = foldr helper [val] xs
-  where helper x []       = [x]
-        helper x (y : ys) = if x <= val then x : y : ys else y : x : ys
+insert xs val = [x | x <- xs, x < val] ++ [val] ++ [x | x <- xs, x >= val]
 
 -- | Сортировка вставками (0,5 балла)
 --   В реализации можно использовать функцию insert, если вы её реализовали
@@ -143,8 +162,10 @@ fibSum xs = sum [x | (x, y) <- zip xs [0..], isInFibs y]
 -- Показывает есть ли число в последовательности Фибоначчи
 isInFibs :: Integer -> Bool
 isInFibs n = helper n fibs
-  where helper _ [] = False
-        helper ind (x:xs) | ind == x  = True
+  where 
+    helper :: Integer -> [Integer] -> Bool
+    helper _ [] = False
+    helper ind (x:xs) | ind == x  = True
                           | ind < x   = False
                           | otherwise = helper n xs
 
@@ -163,6 +184,7 @@ data Tree a = Node {value :: a, children  :: [Tree a]}
 bfs :: Tree a -> [a]
 bfs tree = map' value (helper [tree])
   where
+    helper :: [Tree a] -> [Tree a]  
     helper [] = []
     helper nodes = nodes ++ helper (concatMap children nodes)
 
@@ -172,6 +194,7 @@ bfs tree = map' value (helper [tree])
 dfs :: Tree a -> [a]
 dfs tree = map' value (helper [tree])
   where
+    helper :: [Tree a] -> [Tree a]
     helper [] = []
     helper (node : nodes) = node : helper (children node ++ nodes)
 
