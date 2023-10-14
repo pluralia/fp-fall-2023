@@ -26,12 +26,9 @@ traceFoldr f acc (x : xs) =
 --
 traceFoldl :: Show b => (b -> a -> b) -> b -> [a] -> b
 traceFoldl _ acc []       = acc
-traceFoldl f acc xs = 
-  let 
-    y  = last xs
-    ys = init xs
-    res = traceFoldl f acc ys
-  in f (traceShow res res) y
+traceFoldl f ini (x:xs) = 
+    let res = f ini x
+     in traceShow res (traceFoldl f res xs)
 
 ------------------------------------------------------------------------------------------------
 
