@@ -136,6 +136,28 @@ spec = do
       it "Days before nearest Saturday from Saturday" $ do
         daysBeforeWeekend Saturday `shouldBe` 0
 
+{-
+    describe "Functor instance for List" $ do
+      it "Functor preserves structure" $ do
+        fmap id (Cons 1 (Cons 2 Nil)) `shouldBe` (Cons 1 (Cons 2 Nil))
+
+      it "Functor applies function" $ do
+        fmap (*2) (Cons 1 (Cons 2 Nil)) `shouldBe` (Cons 2 (Cons 4 Nil))
+
+    describe "Functor instance for Tree" $ do
+      it "Functor preserves structure" $ do
+        let tree = Node 1 [Node 2 [], Node 3 [Node 4 []]]
+        fmap id tree `shouldBe` tree
+
+      it "Functor applies function" $ do
+        let tree = Node 1 [Node 2 [], Node 3 [Node 4 []]]
+        let expectedTree = Node 2 [Node 4 [], Node 6 [Node 8 []]]
+        fmap (*2) tree `shouldBe` expectedTree
+
+    describe "Functor instance for Pair" $ do
+      it "Functor applies function to the second element" $ do
+        fmap length (Pair 1 "hello") `shouldBe` (Pair 1 5)
+-}
     describe "GumRats instance for Monday" $ do
       it "Monday workout" $ do
         workout Chest `shouldBe` "Chest workout on Monday"
