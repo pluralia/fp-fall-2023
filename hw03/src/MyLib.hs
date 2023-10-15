@@ -89,7 +89,7 @@ cabal test также ругается на тесты для Ix, я не пон
 data Tree a = Node
   { value :: a
   , children :: [Tree a]
-  }
+  } deriving (Show)
 
 ---------------------------------------
 
@@ -330,7 +330,7 @@ daysBeforeWeekend day = (fromEnum Saturday - fromEnum day) `mod` 7
 -- https://hackage.haskell.org/package/base-4.19.0.0/docs/Data-Functor.html
 
 ---------------------------------------
-{-
+
 -- 6.a Реализуйте инстанс Functor для списка (0,25 балла)
 
 data List a = Nil | Cons a (List a)
@@ -345,6 +345,7 @@ instance Functor List where
 
 -- 6.b Реализуйте инстанс Functor для дерева из задания 2 (0,5 балла)
 
+{-
 instance Functor Tree where
   fmap :: (a -> b) -> Tree a -> Tree b
   fmap f (Node val children) = Node (f val) (map (fmap f) children)
@@ -360,10 +361,38 @@ instance Functor (Pair a) where
   fmap :: (b -> c) -> Pair a b -> Pair a c
   fmap f (Pair a b) = Pair a (f b)
 
-
 -- С какими трудностями вы столкнулись?
 -- Большие трудности возникают с тем, что cabal test ругается на изначальный код из домашки
 -- и возникают ошибки компиляции со всем кодом из 6 и 7 заданий, но при :r все компилируется.
+
+src\MyLib.hs:340:11: error:
+    * Illegal type signature in instance declaration:
+        fmap :: (a -> b) -> List a -> List b
+      (Use InstanceSigs to allow this)
+    * In the instance declaration for `Functor List'
+    |
+340 |   fmap :: (a -> b) -> List a -> List b
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+src\MyLib.hs:349:11: error:
+    * Illegal type signature in instance declaration:
+        fmap :: (a -> b) -> Tree a -> Tree b
+      (Use InstanceSigs to allow this)
+    * In the instance declaration for `Functor Tree'
+    |
+349 |   fmap :: (a -> b) -> Tree a -> Tree b
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+src\MyLib.hs:360:11: error:
+    * Illegal type signature in instance declaration:
+        fmap :: (b -> c) -> Pair a b -> Pair a c
+      (Use InstanceSigs to allow this)
+    * In the instance declaration for `Functor (Pair a)'
+    |
+360 |   fmap :: (b -> c) -> Pair a b -> Pair a c
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+cabal-3.6.2.0.exe: Failed to build hw03-0.1.0.0 (which is required by
+test:hw03-test from hw03-0.1.0.0).
 -}
 ------------------------------------------------------------------------------------------------
 
