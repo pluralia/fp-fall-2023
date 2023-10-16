@@ -11,8 +11,7 @@ import Test.Hspec
   )
 
 spec :: Spec
-spec = do
-{- Не уверен, что это вообще нужно тестировать, потому что используются функции стандартной библиотеки    
+spec = do 
     describe "Eq instance for ChurchNumber" $ do
       it "Equality of two Zero values" $ do
         Zero == Zero `shouldBe` True
@@ -65,7 +64,6 @@ spec = do
 
       it "Not in range Succ" $ do
         inRange (Zero, Succ Zero) (Succ (Succ Zero)) `shouldBe` False
--}
 
     describe "InOrder instance for Tree" $ do
       it "In-Order traversal of a single-node tree" $ do
