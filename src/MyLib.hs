@@ -37,26 +37,27 @@ traceFoldl f acc (x : xs) =
 -- Подумайте, какую функцию сверки когда лучше использовать
 
 or' :: [Bool] -> Bool
-or' = foldr (\x b -> x || b) False
+or' = foldr (||) False
+-- or' = foldr (\x b -> x || b) False
 
 length' :: [a] -> Int
 length' = L.foldl' (\b _ -> b + 1) 0
 
 maximum' :: [Int] -> Maybe Int
-maximum' = L.foldl' (\b x -> if (all ((>) x) b) then (Just x) else b) Nothing
+maximum' = L.foldl' (\b x -> if all (x >) b then Just x else b) Nothing
 -- комментарии для меня: 
 -- any, exists и all выступают как кванторы и работают на таких штуках, как MayBe, Either и прочие (fmap вроде тоже)
 -- maximum' = L.foldl' (\b x -> if (b == Nothing || (any ((>) x) b)) then (Just x) else b) Nothing
 
 reverse' :: [a] -> [a]
-reverse' = L.foldl' (\b x -> x : b) []
+reverse' = L.foldl' (flip (:)) []
 -- b - результат на префиксе
 
 filter' :: (a -> Bool) -> [a] -> [a]
 filter' f = foldr (\x b -> if f x then x : b else b) []
 
 map' :: (a -> b) -> [a] -> [b]
-map' f = foldr (\x b -> (f x) : b) []
+map' f = foldr (\x b -> f x : b) []
 
 head' :: [a] -> Maybe a
 head' = foldr (\x _ -> Just x) Nothing
@@ -77,9 +78,9 @@ take'' left = snd . takeHelper
     where
         takeHelper :: [a] -> (Int, [a])
         takeHelper xs = foldr (\x b -> 
-            if (fst b) <= 0 
-                then (0, x : (snd b)) 
-                else ((fst b) - 1, [])) ((length' xs) - left, []) xs
+            if fst b <= 0 
+                then (0, x : snd b) 
+                else (fst b - 1, [])) (length' xs - left, []) xs
 -- какой-то ужас: для кортежа работают ф-ции (fst, snd)
 ------------------------------------------------------------------------------------------------
 
@@ -89,7 +90,7 @@ take'' left = snd . takeHelper
 --
 quicksort :: [Int] -> [Int]
 quicksort [] = []
-quicksort (x:xs) = (quicksort $ filter' (<= x) xs) ++ [x] ++ (quicksort $ filter' (> x) xs)
+quicksort (x:xs) = quicksort (filter' (<= x) xs) ++ [x] ++ quicksort (filter' (> x) xs)
 
 -- | Функция, которая вставляет в уже отсортированный список элементов
 --   новый элемент на такую позицию, что все элементы левее будут меньше или
@@ -97,7 +98,7 @@ quicksort (x:xs) = (quicksort $ filter' (<= x) xs) ++ [x] ++ (quicksort $ filter
 --   (1 балл)
 --
 insert :: Ord a => [a] -> a -> [a]
-insert arr v = (filter' (<= v) arr) ++ [v] ++ (filter' (> v) arr)
+insert arr v = filter' (<= v) arr ++ [v] ++ filter' (> v) arr
 -- Ord - любые сравниваемые объекты
 
 -- | Сортировка вставками (0,5 балла)
@@ -115,7 +116,7 @@ insertionSort = L.foldl' insert []
 myZipWith :: (a -> b -> c) -> [a] -> [b] -> [c]
 myZipWith f []     y      = []
 myZipWith f x      []     = []
-myZipWith f (x:xs) (y:ys) = (f x y) : (myZipWith f xs ys)
+myZipWith f (x:xs) (y:ys) = f x y : myZipWith f xs ys
 
 -- | В Haskell можно создавать бесконечные списки.
 --
@@ -168,11 +169,11 @@ bfs node = bfsHelper [node]
   where
     bfsHelper :: [Tree a] -> [a]
     bfsHelper [] = []
-    bfsHelper c = (map (\(Node val _) -> val) c) ++ (bfsHelper (foldr (\(Node _ ch) b -> ch ++ b) [] c))
+    bfsHelper c = map (\(Node val _) -> val) c ++ bfsHelper (foldr (\(Node _ ch) b -> ch ++ b) [] c)
 
 -- | Принимает дерево, а возвращает список значений в его нодах в порядке обхода в глубину (1 балл)
 --
 dfs :: Tree a -> [a]
-dfs (Node v c) = v : (foldr (\x b -> (dfs x) ++ b) [] c)
+dfs (Node v c) = v : foldr (\x b -> dfs x ++ b) [] c
 
 ------------------------------------------------------------------------------------------------
