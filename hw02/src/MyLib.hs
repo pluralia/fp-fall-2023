@@ -45,23 +45,32 @@ length' = foldr (\_ n -> 1 + n) 0
 
 -- я не придумала как можно эту функцию реализовать с левой сверткой, с правой интуитивно понятнее
 maximum' :: [Int] -> Maybe Int
-maximum' xs = foldr maxMaybe Nothing mapped
+maximum' xs = foldr maxMaybe Nothing . map Just $ xs
   where
-    mapped = map Just xs
+    maxMaybe Nothing y = y
+    maxMaybe x Nothing = x
+    maxMaybe (Just x) (Just y) = Just (max x y)
+
+maximum1' :: [Int] -> Maybe Int
+maximum1' xs = foldr maxMaybe Nothing . map Just $ xs
+  where
+    maxMaybe Nothing y = y
     maxMaybe x Nothing = x
     maxMaybe (Just x) (Just y) = Just (max x y)
 
 -- левая свертка логичнее всего подходит к этой функции, так как обрабатывает элементы слева направо
 reverse' :: [a] -> [a]
-reverse' = foldl place_first []
-  where
-    place_first xs x = x : xs
+--reverse' = foldl place_first []
+--  where
+--    place_first xs x = x : xs
+reverse' = foldl (\xs x -> x : xs) []
 
 -- какую свертку использовать неважно
 filter' :: (a -> Bool) -> [a] -> [a]
-filter' p = foldr (choose p) []
-  where
-    choose p x xs = if p x then x : xs else xs
+--filter' p = foldr (choose p) []
+-- where
+--    choose p x xs = if p x then x : xs else xs
+filter' p = foldr (\x xs -> if p x then x : xs else xs) []
 
 -- какую свертку использовать неважно
 map' :: (a -> b) -> [a] -> [b]
@@ -71,30 +80,44 @@ map' f = foldr helpMap []
 
 -- правая свертка, так как мы получаем начало списка
 head' :: [a] -> Maybe a
-head' = foldr helpHead Nothing
-  where
-    helpHead x y = Just x
+--head' = foldr helpHead Nothing
+--  where
+--    helpHead x y = Just x
+head' = foldr (\x _ -> Just x) Nothing
 
 -- левая свертка, так как нам нужен последний элемент списка
 last' :: [a] -> Maybe a
-last' = foldl helpLast Nothing
-  where 
-    helpLast x y = Just y
+--last' = foldl helpLast Nothing
+--  where 
+--    helpLast x y = Just y
+last' = foldl (\_ y -> Just y) Nothing
 
 -- используйте L.foldl'
 take' :: Int -> [a] -> [a]
-take' n xs = snd (L.foldl' help_take (0, []) xs)
+--take' n xs = snd (L.foldl' help_take (0, []) xs)
+--  where
+--    help_take (i, acc) x
+--      | i < n     = (i + 1, acc ++ [x])
+--      | otherwise = (i, acc)
+
+take' n xs = snd $ L.foldl' help_take (0, []) (zip [1..] xs)
   where
-    help_take (i, acc) x
-      | i < n     = (i + 1, acc ++ [x])
+    help_take (i, acc) (j, x)
+      | j <= n    = (j, acc ++ [x])
       | otherwise = (i, acc)
 
 -- используйте foldr
 take'' :: Int -> [a] -> [a]
-take'' n xs = foldr help_take' (const []) xs 0
+--take'' n xs = foldr help_take' (const []) xs 0
+--  where
+--    help_take' x f i
+--      | i < n     = x : f (i + 1)
+--      | otherwise = []
+take'' n xs = foldr help_take' (const []) (zip [1..] xs) 0
   where
-    help_take' x f i
-      | i < n     = x : f (i + 1)
+    help_take' :: (Int, a) -> (Int -> [a]) -> Int -> [a]
+    help_take' (j, x) f i
+      | j <= n    = x : f (i + 1)
       | otherwise = []
 ------------------------------------------------------------------------------------------------
 
@@ -121,18 +144,24 @@ quicksort = foldr partition []
 insert :: [Int] -> Int -> [Int]
 insert xs n = foldr insertInOrder [n] xs
   where
-    insertInOrder x acc
-      | x <= n && head acc == n = x : acc
-      | x <= n = x : acc
-      | head acc == n = n : x : tail acc
-      | otherwise = n : x : acc
+--    insertInOrder x acc
+--      | x <= n && head acc == n = x : acc
+--      | x <= n = x : acc
+--      | head acc == n = n : x : tail acc
+--      | otherwise = n : x : acc
+      insertInOrder x [] = [x]
+      insertInOrder x acc@(_ : ys)
+        | x <= n = x : acc
+        | otherwise = n : x : ys
 
 -- | Сортировка вставками (0,5 балла)
 --   В реализации можно использовать функцию insert, если вы её реализовали
 --
 
 insertionSort :: Ord a => [a] -> [a]
-insertionSort = foldr insert []
+--insertionSort = foldr insert []
+insertionSort [] = []
+insertionSort (x:xs) = insert x (insertionSort xs)
   where
     insert x [] = [x]
     insert x acc@(y:ys)
@@ -149,6 +178,14 @@ myZipWith :: (a -> b -> c) -> [a] -> [b] -> [c]
 myZipWith f xs ys = foldr helpMyZipWith [] (zip xs ys)
   where
     helpMyZipWith (a, b) acc = f a b : acc
+
+myZipWith1 :: (a -> b -> c) -> [a] -> [b] -> [c]
+myZipWith1 f xs ys = map helpMyZipWith (zip xs ys)
+  where
+    helpMyZipWith (a, b) = f a b
+
+myZipWith2 :: (a -> b -> c) -> [a] -> [b] -> [c]
+myZipWith2 f xs ys = map (\(a, b) -> f a b) (zip xs ys)
 
 -- | В Haskell можно создавать бесконечные списки.
 --
@@ -174,8 +211,8 @@ fibs =  0 : 1 : myZipWith (+) fibs (tail fibs)
 -- | Считает сумму всех элементов списка, которые находятся на позиции, 
 --     __индекс__ которой является числом Фибоначчи. (1 балл)
 --
-fibSum :: [Int] -> Int
-fibSum xs = result
+fibSum1 :: [Int] -> Int
+fibSum1 xs = result
   where
     indexedElements = zip [0..] xs
     fibIndices = take (length xs) fibs
@@ -183,6 +220,16 @@ fibSum xs = result
     processElement acc (i, x)
       | i `elem` fibIndices = acc + x
       | otherwise = acc
+
+fibSum :: [Int] -> Int
+fibSum xs = foldl processElement 0 . zip [0..] $ xs
+  where
+    processElement acc (i, x)
+      | i `elem` fibIndices = acc + x
+      | otherwise = acc
+    fibIndices = take (length xs) fibs
+
+
 ------------------------------------------------------------------------------------------------
 
 -- 6. Деревья (2,25 балла = 0,25 + 1 + 1)

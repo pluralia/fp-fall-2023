@@ -13,12 +13,24 @@ spec = do
     it "returns False if all values in the list are False" $ do
       or' [False, False, False] `shouldBe` False
 
+    it "returns True for a long list with one True" $ do
+      or' (replicate 100 False ++ [True]) `shouldBe` True
+
+    it "returns False for a long list with all Falses" $ do
+      or' (replicate 100 False) `shouldBe` False
+
   describe "length'" $ do
     it "returns 0 for the empty list" $ do
       length' [] `shouldBe` 0
 
     it "returns length for the non-empty list" $ do
       length' ([1..10] :: [Int])  `shouldBe` 10
+
+    it "returns length for a long list" $ do
+      length' ([1..100] :: [Int])  `shouldBe` 100
+
+    it "returns length for a list with unordered elements" $ do
+      length' ([5, 2, 8, 3, 9, 1] :: [Int]) `shouldBe` 6
 
   describe "maximum'" $ do
     it "returns Nothing for the empty list" $ do
@@ -27,12 +39,24 @@ spec = do
     it "returns Just max for the non-empty list" $ do
       maximum' ([1..10] :: [Int]) `shouldBe` Just 10
 
+    it "returns Just max for a longer list" $ do
+      maximum' ([1..100] :: [Int]) `shouldBe` Just 100
+
+    it "returns Just max for a list with unordered elements" $ do
+      maximum' ([5, 2, 8, 3, 9, 1] :: [Int]) `shouldBe` Just 9
+
   describe "reverse'" $ do
     it "returns empty list when the input is empty list" $ do
       reverse' ([] :: [Int]) `shouldBe` ([] :: [Int])
 
     it "returns reversed list for non-empty list" $ do
       reverse' ([1..5] :: [Int]) `shouldBe` ([5,4,3,2,1]:: [Int])
+
+    it "returns reversed list for a longer list" $ do
+      reverse' ([1..100] :: [Int]) `shouldBe` ([100,99..1] :: [Int])
+
+    it "returns reversed list for a list with unordered elements" $ do
+      reverse' ([5, 2, 8, 3, 9, 1] :: [Int]) `shouldBe` ([1,9,3,8,2,5] :: [Int])
 
   describe "filter'" $ do
     it "returns empty list when the input is empty list" $ do
@@ -44,6 +68,12 @@ spec = do
     it "returns a list with only elements >=3 for non-empty list" $ do
       filter' (>=3) ([1..10] :: [Int]) `shouldBe` ([3..10] :: [Int])
 
+    it "returns a list with only even elements for a longer list" $ do
+      filter' even ([1..100] :: [Int]) `shouldBe` ([2,4..100] :: [Int])
+
+    it "returns a list with only elements >=3 for a list with unordered elements" $ do
+      filter' (>=3) ([5, 2, 8, 3, 9, 1] :: [Int]) `shouldBe` ([5,8,3,9] :: [Int])
+
   describe "map'" $ do
     it "returns empty list when the input is empty list" $ do
       map' (+5) ([] :: [Int]) `shouldBe` ([] :: [Int])
@@ -51,12 +81,24 @@ spec = do
     it "returns a list with each element +5 for a non-empty list" $ do
       map' (+5) ([1..10] :: [Int]) `shouldBe` ([6..15] :: [Int])
 
+    it "returns a list with each element +5 for a longer list" $ do
+      map' (+5) ([1..100] :: [Int]) `shouldBe` ([6..105] :: [Int])
+
+    it "returns a list with each element +5 for a list with unordered elements" $ do
+      map' (+5) ([5, 2, 8, 3, 9, 1] :: [Int]) `shouldBe` ([10,7,13,8,14,6] :: [Int])
+
   describe "head'" $ do
     it "returns Nothing when the input is empty list" $ do
       head' ([] :: [Int]) `shouldBe` Nothing
 
     it "returns Just first element for non-empty list" $ do
       head' ([1..10] :: [Int]) `shouldBe` Just 1
+    
+    it "returns Just first element for a longer list" $ do
+      head' ([2..100] :: [Int]) `shouldBe` Just 2
+
+    it "returns Just first element for a list with unordered elements" $ do
+      head' ([5, 2, 8, 3, 9, 1] :: [Int]) `shouldBe` Just 5
 
   describe "last'" $ do
     it "returns Nothing when the input is empty list" $ do
@@ -64,6 +106,12 @@ spec = do
 
     it "returns Just last element for non-empty list" $ do
       last' ([1..10] :: [Int]) `shouldBe` Just 10
+
+    it "returns Just last element for a longer list" $ do
+      last' ([1..100] :: [Int]) `shouldBe` Just 100
+
+    it "returns Just last element for a list with unordered elements" $ do
+      last' ([5, 2, 8, 3, 9, 1] :: [Int]) `shouldBe` Just 1
 
   describe "take'" $ do
     it "returns the first n elements of a list" $ do
@@ -75,6 +123,12 @@ spec = do
     it "returns the whole list when n is greater than the length of the list" $ do
       take' 10 ([1..5] :: [Int]) `shouldBe` ([1..5] :: [Int])
 
+    it "returns the first n elements of a longer list" $ do
+      take' 50 ([1..100] :: [Int]) `shouldBe` ([1..50] :: [Int])
+
+    it "returns the first n elements of a list with unordered elements" $ do
+      take' 3 ([5, 2, 8, 3, 9, 1] :: [Int]) `shouldBe` ([5, 2, 8] :: [Int])
+
   describe "take''" $ do
     it "returns the first n elements of a list" $ do
       take'' 3 ([1..5] :: [Int]) `shouldBe` ([1..3] :: [Int])
@@ -84,6 +138,12 @@ spec = do
 
     it "returns the whole list when n is greater than the length of the list" $ do
       take'' 10 ([1..5] :: [Int]) `shouldBe` ([1..5] :: [Int])
+
+    it "returns the first n elements of a longer list" $ do
+      take'' 50 ([1..100] :: [Int]) `shouldBe` ([1..50] :: [Int])
+
+    it "returns the first n elements of a list with unordered elements" $ do
+      take'' 3 ([5, 2, 8, 3, 9, 1] :: [Int]) `shouldBe` ([5, 2, 8] :: [Int])
 -- 3 задание
   describe "quicksort" $ do
     it "returns empty list when the input is empty list" $ do
