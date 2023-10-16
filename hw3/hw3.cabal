@@ -28,17 +28,19 @@ library
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.17.2.0
+    build-depends:    base ^>=4.16.4.0
+                ,     containers
     hs-source-dirs:   src
     default-language: Haskell2010
 
-test-suite hw2-test
+test-suite hw03-test
     default-language: Haskell2010
     ghc-options:      -Wall
     type:             exitcode-stdio-1.0
     hs-source-dirs:   test
     main-is:          MyLibTest.hs
+    build-depends:    base ^>=4.16.4.0
+                 ,    containers  
+                 ,    hspec
+                 ,    hw3
     other-modules:    TestSpec
-    build-depends:    base ^>=4.17.2.0
-               ,      hspec
-               ,      hw2
