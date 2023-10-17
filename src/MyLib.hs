@@ -3,7 +3,6 @@ module MyLib where
 
 -- импортируем foldl', чтобы можно было вызывать как L.foldl'
 import qualified Data.List as L (foldl')
-import Data.Maybe (isNothing)
 
 ------------------------------------------------------------------------------------------------
 
@@ -26,6 +25,7 @@ traceFoldr f acc (x : xs) =
 -- | Напишите traceFoldl, аналогичную traceFoldr,
 --   которая с помощью traceShow печатает значение аккумулятора на каждом шаге
 
+traceFoldl :: Show b => (b -> a -> b) -> b -> [a] -> b
 traceFoldl _ acc []       = acc
 traceFoldl f acc (x : xs) = 
     let res = f acc x
@@ -41,23 +41,22 @@ or' = foldr (||) False
 -- or' = foldr (\x b -> x || b) False
 
 length' :: [a] -> Int
-length' = L.foldl' (\b _ -> b + 1) 0
+length' = L.foldl' (\acc _ -> acc + 1) 0
 
 maximum' :: [Int] -> Maybe Int
-maximum' = L.foldl' (\b x -> if all (x >) b then Just x else b) Nothing
+maximum' = L.foldl' (\acc x -> if all (x >) acc then Just x else acc) Nothing
 -- комментарии для меня: 
 -- any, exists и all выступают как кванторы и работают на таких штуках, как MayBe, Either и прочие (fmap вроде тоже)
 -- maximum' = L.foldl' (\b x -> if (b == Nothing || (any ((>) x) b)) then (Just x) else b) Nothing
 
 reverse' :: [a] -> [a]
 reverse' = L.foldl' (flip (:)) []
--- b - результат на префиксе
 
 filter' :: (a -> Bool) -> [a] -> [a]
-filter' f = foldr (\x b -> if f x then x : b else b) []
+filter' f = foldr (\x acc -> if f x then x : acc else acc) []
 
 map' :: (a -> b) -> [a] -> [b]
-map' f = foldr (\x b -> f x : b) []
+map' f = foldr (\x acc -> f x : acc) []
 
 head' :: [a] -> Maybe a
 head' = foldr (\x _ -> Just x) Nothing
@@ -67,21 +66,19 @@ last' = L.foldl' (\_ x -> Just x) Nothing
 
 -- используйте L.foldl'
 take' :: Int -> [a] -> [a]
-take' left = reverse . L.foldl' (\b x -> if length' b < left then x : b else b) []
--- если ф-ция получила все нужные аргументы, тогда через $, если point-free - то через точку
--- асимптотика O(n^2)
--- можно сделать за линию, но с использованием хэлпера
+take' cnt = reverse . L.foldl' (\acc x -> if length' acc < cnt then x : acc else acc) []
+-- асимптотика O(n^2) : потому что при каждой итерации считается длина
 
 -- используйте foldr
 take'' :: Int -> [a] -> [a]
-take'' left = snd . takeHelper
+take'' cnt xs = snd $ foldr takeHelper (length' xs - cnt, []) xs
     where
-        takeHelper :: [a] -> (Int, [a])
-        takeHelper xs = foldr (\x b -> 
-            if fst b <= 0 
-                then (0, x : snd b) 
-                else (fst b - 1, [])) (length' xs - left, []) xs
--- какой-то ужас: для кортежа работают ф-ции (fst, snd)
+        takeHelper :: a -> (Int, [a]) -> (Int, [a])
+        takeHelper x acc = 
+            if fst acc <= 0 
+                then (0, x : snd acc) 
+                else (fst acc - 1, [])
+
 ------------------------------------------------------------------------------------------------
 
 -- 3. Сортировки (2,5 балла = 1 + 1 + 0,5)
@@ -114,8 +111,8 @@ insertionSort = L.foldl' insert []
 -- | аналогична zip, но применяет к элементам пары функцию (0,5 балла)
 --
 myZipWith :: (a -> b -> c) -> [a] -> [b] -> [c]
-myZipWith f []     y      = []
-myZipWith f x      []     = []
+myZipWith _ []     _      = []
+myZipWith _ _      []     = []
 myZipWith f (x:xs) (y:ys) = f x y : myZipWith f xs ys
 
 -- | В Haskell можно создавать бесконечные списки.
@@ -147,7 +144,7 @@ fibs = 0 : fibs1
 --     __индекс__ которой является числом Фибоначчи. (1 балл)
 --
 fibSum :: [Int] -> Int
-fibSum arr = foldr (\x b -> if len <= x then 0 else (arr !! x) + b) 0 fibs
+fibSum arr = foldr (\x acc -> if len <= x then 0 else (arr !! x) + acc) 0 fibs
     where len = length' arr
 
 ------------------------------------------------------------------------------------------------
@@ -169,11 +166,11 @@ bfs node = bfsHelper [node]
   where
     bfsHelper :: [Tree a] -> [a]
     bfsHelper [] = []
-    bfsHelper c = map (\(Node val _) -> val) c ++ bfsHelper (foldr (\(Node _ ch) b -> ch ++ b) [] c)
+    bfsHelper c  = map (\(Node v _) -> v) c ++ bfsHelper (foldr (\(Node _ ch) acc -> ch ++ acc) [] c)
 
 -- | Принимает дерево, а возвращает список значений в его нодах в порядке обхода в глубину (1 балл)
 --
 dfs :: Tree a -> [a]
-dfs (Node v c) = v : foldr (\x b -> dfs x ++ b) [] c
+dfs (Node v c) = v : foldr (\x acc -> dfs x ++ acc) [] c
 
 ------------------------------------------------------------------------------------------------

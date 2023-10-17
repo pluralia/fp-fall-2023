@@ -16,15 +16,15 @@ spec = do
         it "return True if True in list" $ do
             or' [False, False, False] `shouldBe` False
             
-        it "return True if True in list" $ do
+        it "return True if True in list" $ do 
             or' [] `shouldBe` False
     
     describe "length'" $ do
         it "return length of list" $ do
-            length' [1, 2, 3] `shouldBe` 3
+            length' ([1, 2, 3] :: [Int]) `shouldBe` 3
         
         it "return length of list" $ do
-            length' [1] `shouldBe` 1
+            length' ([1] :: [Int]) `shouldBe` 1
         
         it "return length of list" $ do
             length' [] `shouldBe` 0
@@ -44,58 +44,58 @@ spec = do
     
     describe "reverse'" $ do
         it "return reversed list" $ do
-            reverse' [1, 2, 3] `shouldBe` [3, 2, 1]
+            reverse' ([1, 2, 3] :: [Int]) `shouldBe` ([3, 2, 1] :: [Int])
 
         it "return reversed list" $ do
-            reverse' [1] `shouldBe` [1]
+            reverse' ([1] :: [Int]) `shouldBe` ([1] :: [Int])
         
         it "return reversed list" $ do
-            reverse' ([] :: [Int]) `shouldBe` []
+            reverse' ([] :: [Int]) `shouldBe` ([] :: [Int])
     
     describe "filter'" $ do
         it "return filtered (on function) list" $ do
-            filter' (>3) [1, 5, 3, 2] `shouldBe` [5]
+            filter' (>3) ([1, 5, 3, 2] :: [Int]) `shouldBe` [5]
         
         it "return filtered (on function) list" $ do
-            filter' (<5) [1, 5, 3, 2] `shouldBe` [1, 3, 2]
+            filter' (<5) ([1, 5, 3, 2] :: [Int]) `shouldBe` [1, 3, 2]
         
         it "return filtered (on function) list" $ do
-            filter' (<0) [1, 5, 3, 2] `shouldBe` []
+            filter' (<0) ([1, 5, 3, 2] :: [Int]) `shouldBe` []
     
     describe "map'" $ do
         it  "function in every element from list" $ do
-            map' (* 2) [1, 2, 3] `shouldBe` [2, 4, 6]
+            map' (* 2) ([1, 2, 3] :: [Int]) `shouldBe` [2, 4, 6]
         
         it  "function in every element from list" $ do
-            map' (* 2) [] `shouldBe` []
+            map' (* 2) [] `shouldBe` ([] :: [Int])
         
     describe "head'" $ do
         it "return the head of list (or Nothing)" $ do
-            head' [1, 2, 3] `shouldBe` Just 1
+            head' ([1, 2, 3] :: [Int]) `shouldBe` Just 1
 
         it "return the head of list (or Nothing)" $ do
             head' ([] :: [Int]) `shouldBe` Nothing
 
     describe "last'" $ do
         it "return the last element of list (or Nothing)"  $ do
-            last' [1, 2, 3] `shouldBe` Just 3
+            last' ([1, 2, 3] :: [Int]) `shouldBe` Just 3
          
         it "return the last element of list (or Nothing)"  $ do
             last' ([] :: [Int]) `shouldBe` Nothing
     
     describe "take'" $ do
         it "take first n elements from list" $ do
-            take' 3 [1, 2, 3, 4] `shouldBe` [1, 2, 3]
+            take' 3 ([1, 2, 3, 4] :: [Int]) `shouldBe` [1, 2, 3]
         
         it "take first n elements from list" $ do
-            take' 5 [1, 2] `shouldBe` [1, 2]
+            take' 5 ([1, 2] :: [Int]) `shouldBe` [1, 2]
         
     describe "take''" $ do
         it "take first n elements from list" $ do
-            take'' 3 [1, 2, 3, 4] `shouldBe` [1, 2, 3]
+            take'' 3 ([1, 2, 3, 4] :: [Int]) `shouldBe` [1, 2, 3]
         
         it "take first n elements from list" $ do
-            take'' 5 [1, 2] `shouldBe` [1, 2]
+            take'' 5 ([1, 2] :: [Int]) `shouldBe` [1, 2]
     
 -- Number 3
     describe "quicksort" $ do
@@ -107,30 +107,80 @@ spec = do
 
     describe "insert" $ do
         it "add element by sorted array" $ do
-            insert [1, 2, 4, 5] 3 `shouldBe` [1, 2, 3, 4, 5]
+            insert ([1, 2, 4, 5] :: [Int]) 3 `shouldBe` [1, 2, 3, 4, 5]
+        
+        it "add element by sorted array" $ do
+            insert ([1] :: [Int]) 3 `shouldBe` [1, 3]
+        
+        it "add element by sorted array" $ do
+            insert ([1, 2, 4, 5] :: [Int]) 6 `shouldBe` [1, 2, 4, 5, 6]
+        
+        it "add element by sorted array" $ do
+            insert ([2, 4, 5] :: [Int]) 1 `shouldBe` [1, 2, 4, 5]
 
     describe "insertionSort" $ do
         it "sorted array" $ do
-            insertionSort [1, 3, 2, 4, 3, 5] `shouldBe` [1, 2, 3, 3, 4, 5]
+            insertionSort ([1, 3, 2, 4, 3, 5] :: [Int]) `shouldBe` [1, 2, 3, 3, 4, 5]
+        
+        it "sorted array" $ do
+            insertionSort ([3, 2, 1] :: [Int]) `shouldBe` [1, 2, 3]
+        
+        it "sorted array" $ do
+            insertionSort ([] :: [Int]) `shouldBe` []
 
 -- Number 4
     describe "myZipWith" $ do
         it "zip function" $ do
-            myZipWith (+) [1, 3] [2, 4] `shouldBe` [3, 7]
+            myZipWith (+) [1, 3] [2, 4] `shouldBe` ([3, 7] :: [Int])
+
+        it "zip function" $ do
+            myZipWith (*) [1, 3, 0] [2, 4, 9, 10] `shouldBe` ([2, 12, 0] :: [Int])
+        
+        it "zip function" $ do
+            myZipWith (-) [1, 3, 0] [2, 4] `shouldBe` ([-1, -1] :: [Int])
+        
     
     describe "fibs" $ do
         it "test inf lib function" $ do
             take 5 fibs `shouldBe` [0, 1, 1, 2, 3]
+
+        it "test inf lib function" $ do
+            take 1 fibs `shouldBe` [0]
+
+        it "test inf lib function" $ do
+            take 8 fibs `shouldBe` [0, 1, 1, 2, 3, 5, 8, 13]
     
     describe "fibSum" $ do
         it "sum fibs[:ind]" $ do
             fibSum [1, 2, 3, 4, 5] `shouldBe` 12
+        
+        it "sum fibs[:ind]" $ do
+            fibSum [1, 2, 3, 4, 5, 6, 7, 8, 10] `shouldBe` 28
+        
+        it "sum fibs[:ind]" $ do
+            fibSum [] `shouldBe` 0
 
 -- Number 5
+    let myTree1 = (Node 2 [Node 3 [Node 5 []], Node 1 []])
+    let myTree2 = (Node 2 [Node 3 [Node 5 []], Node 1 [], Node 4 [], Node 0 [Node 6 [], Node 7 []]])
+    let myTree3 = (Node 2 [Node 3 [Node 5 []], Node 1 [], Node 4 [], Node 6 [], Node 7 [Node 8 [], Node 9 []]])
+
     describe "bfs" $ do
         it "bfs" $ do
-            bfs (Node 2 [Node 3 [Node 5 []], Node 1 []]) `shouldBe` [2, 3, 1, 5]
+            bfs myTree1 `shouldBe` ([2, 3, 1, 5] :: [Int])
+
+        it "bfs" $ do
+            bfs myTree2 `shouldBe` ([2, 3, 1, 4, 0, 5, 6, 7] :: [Int])
+
+        it "bfs" $ do
+            bfs myTree3 `shouldBe` ([2, 3, 1, 4, 6, 7, 5, 8, 9] :: [Int])
 
     describe "dfs" $ do
         it "dfs" $ do
-            dfs (Node 2 [Node 3 [Node 5 []], Node 1 []]) `shouldBe` [2, 3, 5, 1]
+            dfs myTree1 `shouldBe` ([2, 3, 5, 1] :: [Int])
+
+        it "dfs" $ do
+            dfs myTree2 `shouldBe` ([2, 3, 5, 1, 4, 0, 6, 7] :: [Int])
+
+        it "dfs" $ do
+            dfs myTree3 `shouldBe` ([2, 3, 5, 1, 4, 6, 7, 8, 9] :: [Int])
