@@ -347,15 +347,15 @@ instance Functor List where
 
 -- 6.b Реализуйте инстанс Functor для дерева из задания 2 (0,5 балла)
 
-{-
+
 instance Functor Tree where
-  fmap :: (a -> b) -> Tree a -> Tree b
+ -- fmap :: (a -> b) -> Tree a -> Tree b
   fmap f (Node val children) = Node (f val) (map (fmap f) children)
 
 ---------------------------------------
 
 -- 6.c(*) Реализуйте инстанс Functor для пары (1 балл)
--}
+
 data Pair a b = Pair a b
   deriving (Show, Eq)
 
