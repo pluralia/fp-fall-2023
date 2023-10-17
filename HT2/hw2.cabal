@@ -37,8 +37,10 @@ test-suite hw2-test
     hs-source-dirs:   test
     main-is:          MyLibTest.hs
     build-depends:    base ^>=4.17.2.0,
-                      hspec
+                      hspec,
+                      hw2
+
     ghc-options:      -Wall
-    other-modules:    TestsSpec
+    other-modules:    TestSpec
 
 
