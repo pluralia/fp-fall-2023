@@ -2,7 +2,9 @@ module MyLib where
 
 {-# LANGUAGE FlexibleInstances #-}
 
+
 import Data.Ix
+import Data.Bifunctor
 ------------------------------------------------------------------------------------------------
 
 -- 1. Числа Черча и `Ix` (1 балл)
@@ -334,10 +336,10 @@ daysBeforeWeekend day = (fromEnum Saturday - fromEnum day) `mod` 7
 -- 6.a Реализуйте инстанс Functor для списка (0,25 балла)
 
 data List a = Nil | Cons a (List a)
-  deriving (Show)
+  deriving (Show, Eq)
 
 instance Functor List where
-  fmap :: (a -> b) -> List a -> List b
+--fmap :: (a -> b) -> List a -> List b
   fmap _ Nil         = Nil
   fmap f (Cons x xs) = Cons (f x) (fmap f xs)
 
@@ -353,47 +355,19 @@ instance Functor Tree where
 ---------------------------------------
 
 -- 6.c(*) Реализуйте инстанс Functor для пары (1 балл)
-
+-}
 data Pair a b = Pair a b
-  deriving (Show)
+  deriving (Show, Eq)
+
 
 instance Functor (Pair a) where
-  fmap :: (b -> c) -> Pair a b -> Pair a c
+--fmap :: (b -> c) -> Pair a b -> Pair a c
   fmap f (Pair a b) = Pair a (f b)
 
 -- С какими трудностями вы столкнулись?
 -- Большие трудности возникают с тем, что cabal test ругается на изначальный код из домашки
 -- и возникают ошибки компиляции со всем кодом из 6 и 7 заданий, но при :r все компилируется.
 
-src\MyLib.hs:340:11: error:
-    * Illegal type signature in instance declaration:
-        fmap :: (a -> b) -> List a -> List b
-      (Use InstanceSigs to allow this)
-    * In the instance declaration for `Functor List'
-    |
-340 |   fmap :: (a -> b) -> List a -> List b
-    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-src\MyLib.hs:349:11: error:
-    * Illegal type signature in instance declaration:
-        fmap :: (a -> b) -> Tree a -> Tree b
-      (Use InstanceSigs to allow this)
-    * In the instance declaration for `Functor Tree'
-    |
-349 |   fmap :: (a -> b) -> Tree a -> Tree b
-    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-src\MyLib.hs:360:11: error:
-    * Illegal type signature in instance declaration:
-        fmap :: (b -> c) -> Pair a b -> Pair a c
-      (Use InstanceSigs to allow this)
-    * In the instance declaration for `Functor (Pair a)'
-    |
-360 |   fmap :: (b -> c) -> Pair a b -> Pair a c
-    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-cabal-3.6.2.0.exe: Failed to build hw03-0.1.0.0 (which is required by
-test:hw03-test from hw03-0.1.0.0).
--}
 ------------------------------------------------------------------------------------------------
 
 -- 7. Класс типов `Bifunctor` (0,5 балла)
@@ -402,22 +376,22 @@ test:hw03-test from hw03-0.1.0.0).
 -- https://hackage.haskell.org/package/base-4.19.0.0/docs/Data-Bifunctor.html#t:Bifunctor
 
 -- Реализуйте инстанс Functor для Either и пары
+-- Наверное, все таки имелось ввиду Bifunctor
 
-{-
--- Инстанс Functor для Either
-instance Functor (Either e) where
-  fmap :: (a -> b) -> Either e a -> Either e b
-  fmap f (Left x) = Left x
-  fmap f (Right y) = Right (f y)
+-- Определение кастомного типа Either'
+data Either' a b = Left' a | Right' b
+  deriving (Show, Eq)
 
+-- Инстанс Bifunctor для Either
+instance Bifunctor Either' where
+--bimap :: (a -> c) -> (b -> d) -> Either' a b -> Either' c d
+  bimap f _ (Left' a)  = Left' (f a)
+  bimap _ g (Right' b) = Right' (g b)
 
--- Инстанс Functor для пары (,)
-instance Functor ((,) a) where
-  fmap :: (b -> c) -> (a, b) -> (a, c)
-  fmap f (x, y) = (x, f y)
-
-Ошибки компиляции из-за дублей функтора пар
--}
+-- Инстанс Bifunctor для пары (Tuple)
+instance Bifunctor Pair where
+--bimap :: (a -> c) -> (b -> d) -> Pair a b -> Pair c d
+  bimap f g (Pair a b) = Pair (f a) (g b)
 
 ------------------------------------------------------------------------------------------------
 
