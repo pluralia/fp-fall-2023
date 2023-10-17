@@ -7,7 +7,7 @@ Haskell course homework
 - homework
     - after each lecture
     - write tests! no tests -- your grade goes down
-    - use `hlint` and `-Wall``
+    - use `hlint` and `-Wall`
     - deadline: Thursday 23:59
     - 1 time per semester you can pass homework after the deadline (no more than 1 week later) and get a full grade
 - exam
@@ -18,5 +18,5 @@ Haskell course homework
 
 1. Fork this repo -- each branch contains the homework for the corresponding lecture
 2. As you complete the assignment, open the PR in this repo.
-   - The PR should be named: <HW###>, <LastName FirstName>.
+   - The PR should be named: <HW###>, <LastName_FirstName>.
 3. I review your PR and leave my comments: accepted or requires fixes
