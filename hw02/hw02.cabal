@@ -48,6 +48,8 @@ library
     -- Modules exported by the library.
     exposed-modules:  MyLib
 
+    other-modules:    
+
     -- Modules included in this library but not exported.
     -- other-modules:
 

@@ -12,7 +12,6 @@ import qualified Data.List as L (foldl')
 -- В остальном она работет так же, как и id. 
 -- Поэтому её можно воткнуть в любое место в программе.
 import Debug.Trace (traceShow)
-import Control.Monad (when)
 
 -- Пример
 traceFoldr :: Show b => (a -> b -> b) -> b -> [a] -> b
@@ -45,14 +44,14 @@ length' = foldr (\_ n -> 1 + n) 0
 
 -- я не придумала как можно эту функцию реализовать с левой сверткой, с правой интуитивно понятнее
 maximum' :: [Int] -> Maybe Int
-maximum' xs = foldr maxMaybe Nothing . map Just $ xs
+maximum' = foldr (maxMaybe . Just) Nothing
   where
     maxMaybe Nothing y = y
     maxMaybe x Nothing = x
     maxMaybe (Just x) (Just y) = Just (max x y)
 
 maximum1' :: [Int] -> Maybe Int
-maximum1' xs = foldr maxMaybe Nothing . map Just $ xs
+maximum1' = foldl maxMaybe Nothing . map Just
   where
     maxMaybe Nothing y = y
     maxMaybe x Nothing = x
@@ -161,12 +160,12 @@ insert xs n = foldr insertInOrder [n] xs
 insertionSort :: Ord a => [a] -> [a]
 --insertionSort = foldr insert []
 insertionSort [] = []
-insertionSort (x:xs) = insert x (insertionSort xs)
+insertionSort (x:xs) = insert' x (insertionSort xs)
   where
-    insert x [] = [x]
-    insert x acc@(y:ys)
-      | x <= y = x : acc
-      | otherwise = y : insert x ys
+    insert' x2 [] = [x2]
+    insert' x2 acc@(y:ys)
+      | x2 <= y = x2 : acc
+      | otherwise = y : insert' x2 ys
 
 ------------------------------------------------------------------------------------------------
 
