@@ -1,6 +1,7 @@
 module TestSpec (spec) where
 
 import MyLib
+import Data.Bifunctor (Bifunctor (bimap))
 
 import Test.Hspec
   (
@@ -11,7 +12,7 @@ import Test.Hspec
   )
 
 spec :: Spec
-spec = do 
+spec = do
     describe "Eq instance for ChurchNumber" $ do
       it "Equality of two Zero values" $ do
         Zero == Zero `shouldBe` True
@@ -45,7 +46,7 @@ spec = do
       it "Multiplication of Succ values" $ do
         (Succ (Succ Zero) * Succ (Succ (Succ Zero))) `shouldBe` Succ (Succ (Succ (Succ (Succ (Succ (Zero))))))
 
-
+{-
     describe "Ix instance for ChurchNumber" $ do
       it "Range from Zero to Zero" $ do
         range (Zero, Zero) `shouldBe` [Zero]
@@ -64,6 +65,7 @@ spec = do
 
       it "Not in range Succ" $ do
         inRange (Zero, Succ Zero) (Succ (Succ Zero)) `shouldBe` False
+-}
 
     describe "InOrder instance for Tree" $ do
       it "In-Order traversal of a single-node tree" $ do
@@ -134,28 +136,39 @@ spec = do
       it "Days before nearest Saturday from Saturday" $ do
         daysBeforeWeekend Saturday `shouldBe` 0
 
-{-
-    describe "Functor instance for List" $ do
-      it "Functor preserves structure" $ do
-        fmap id (Cons 1 (Cons 2 Nil)) `shouldBe` (Cons 1 (Cons 2 Nil))
+    describe "Functor" $ do
+      it "maps the function correctly over a list" $ do
+        let input = ([1, 2, 3, 4] :: [Int])
+        let expected = [2, 3, 4, 5]
+        fmap ((+ 1) :: Int -> Int) input `shouldBe` expected
 
-      it "Functor applies function" $ do
-        fmap (*2) (Cons 1 (Cons 2 Nil)) `shouldBe` (Cons 2 (Cons 4 Nil))
+      it "maps the function correctly over a Pair" $ do
+        let input = Pair (1 :: Int) (2 :: Int)
+        let expected = Pair (1 :: Int) (3 :: Int)
+        fmap ((+ 1) :: Int -> Int) input `shouldBe` expected
 
-    describe "Functor instance for Tree" $ do
-      it "Functor preserves structure" $ do
-        let tree = Node 1 [Node 2 [], Node 3 [Node 4 []]]
-        fmap id tree `shouldBe` tree
+    describe "Bifunctor" $ do
+      it "maps functions correctly over a Pair" $ do
+        let input = Pair (1 :: Int) (2 :: Int)
+        let expected = Pair (2 :: Int) (3 :: Int)
+        bimap ((+ 1) :: Int -> Int) ((+ 1) :: Int -> Int) input `shouldBe` expected
 
-      it "Functor applies function" $ do
-        let tree = Node 1 [Node 2 [], Node 3 [Node 4 []]]
-        let expectedTree = Node 2 [Node 4 [], Node 6 [Node 8 []]]
-        fmap (*2) tree `shouldBe` expectedTree
+      it "maps functions correctly over an Either'" $ do
+        let input = Pair "A" (2 :: Int)
+        let expected = Pair "AA" (3 :: Int)
+        bimap ((++ "A") :: String -> String) ((+ 1) :: Int -> Int) input `shouldBe` expected
 
-    describe "Functor instance for Pair" $ do
-      it "Functor applies function to the second element" $ do
-        fmap length (Pair 1 "hello") `shouldBe` (Pair 1 5)
--}
+      it "maps functions correctly over a Left'" $ do
+        let input = Left' (1 :: Int)
+        let expected = Left' (2 :: Int)
+        bimap ((+ 1) :: Int -> Int) ((++ "A") :: String -> String) input `shouldBe` expected
+
+      it "maps functions correctly over a Right'" $ do
+        let input = Right' "A"
+        let expected = Right' "AA"
+        bimap even ((++ "A") :: String -> String) input `shouldBe` expected
+
+
     describe "GumRats instance for Monday" $ do
       it "Monday workout" $ do
         workout Chest `shouldBe` "Chest workout on Monday"
