@@ -179,12 +179,12 @@ myZipWith f xs ys = foldr helpMyZipWith [] (zip xs ys)
     helpMyZipWith (a, b) acc = f a b : acc
 
 myZipWith1 :: (a -> b -> c) -> [a] -> [b] -> [c]
-myZipWith1 f xs ys = map helpMyZipWith (zip xs ys)
+myZipWith1 f = zipWith (curry helpMyZipWith)
   where
     helpMyZipWith (a, b) = f a b
 
 myZipWith2 :: (a -> b -> c) -> [a] -> [b] -> [c]
-myZipWith2 f xs ys = map (\(a, b) -> f a b) (zip xs ys)
+myZipWith2 f = zipWith (\ a b -> f a b)
 
 -- | В Haskell можно создавать бесконечные списки.
 --

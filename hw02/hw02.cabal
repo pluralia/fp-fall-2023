@@ -85,5 +85,5 @@ test-suite hw02-test
                       hspec
     ghc-options:      -Wall 
     
-    other-modules:    TestSpec
+    other-modules:    TestSpec, MyLib
     
