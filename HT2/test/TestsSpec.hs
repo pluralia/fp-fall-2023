@@ -1,4 +1,4 @@
-module TestSpec (spec) where
+module TestsSpec (spec) where
 
 import MyLib
 
@@ -27,7 +27,7 @@ spec = do
       length' ['a'] `shouldBe` (1 :: Int)
 
     it "Many items" $ do
-      length' [1,3..10] `shouldBe` (5 :: Int)
+      length' [1, 3..10] `shouldBe` (5 :: Int)
 
 
   describe "test `maximum'" $ do
@@ -46,23 +46,33 @@ spec = do
       reverse' [] `shouldBe` ([] :: [Int])
   
     it "Many items" $ do
-      reverse' [1,3..10] `shouldBe` ([9,7,5,3,1] :: [Int])
+      reverse' [1, 3..10] `shouldBe` ([9,7,5,3,1] :: [Int])
 
 
-  describe "test `filterl'" $ do
+  describe "test `filter'" $ do
     it "it >5" $ do
-      filter' (>5) [1,3..10] `shouldMatchList` ([9, 7] :: [Int])
+      filter' (>5) [1, 3..10] `shouldMatchList` ([7, 9] :: [Int])
 
     it "odd" $ do
-      filter' odd [1,3..10] `shouldMatchList` ([9,7,5,3,1] :: [[Int]])
+      filter' odd [1, 3..10] `shouldMatchList` ([1,3,5,7,9] :: [Int])
 
     it "even" $ do
-      filter' even [1,3..10] `shouldMatchList` ([] :: [Int])
+      filter' even [1, 3..10] `shouldMatchList` ([] :: [Int])
+    
+    {-
+    it "inf" $ do
+      take 3 . filter' even $ [1..] `shouldMatchList` ([2,4,6] :: [Int])
+    -}
 
 
   describe "test `map'" $ do
     it "it *2" $ do
-      map' (*5) [1,3..10] `shouldBe` ([5,15,25,35,45] :: [Int])
+      map' (*5) [1, 3..10] `shouldBe` ([5,15,25,35,45] :: [Int])
+  
+    {-
+    it "inf" $ do
+      take 3 . map' (*5) $ [1..] `shouldMatchList` ([5,10,15] :: [Int])
+    -}
 
 
   describe "test head'" $ do
@@ -73,7 +83,7 @@ spec = do
       head' [12] `shouldBe` (Just 12 :: Maybe Int)
 
     it "many items" $ do
-      head' [1,3..10] `shouldBe` (Just 1 :: Maybe Int)
+      head' [1, 3..10] `shouldBe` (Just 1 :: Maybe Int)
 
 
   describe "test last'" $ do
@@ -84,12 +94,12 @@ spec = do
       last' [12] `shouldBe` (Just 12 :: Maybe Int)
 
     it "many items" $ do
-      last' [1,3..10] `shouldBe` (Just 9 :: Maybe Int)
+      last' [1, 3..10] `shouldBe` (Just 9 :: Maybe Int)
 
 
   describe "test take'" $ do
     it "n > items" $ do
-      take' 3 [[1,2,3],[1,4..10]] `shouldBe` ([[1,2,3],[1,4,7,10]] :: [Int])
+      take' 3 [[1,2,3],[1,4..10]] `shouldBe` ([[1,2,3],[1,4,7,10]] :: [[Int]])
 
     it "many items" $ do
       take' 3 [1,2,3,4,5] `shouldBe` ([1,2,3] :: [Int])
@@ -97,7 +107,7 @@ spec = do
 
   describe "test take''" $ do
     it "n > items" $ do
-      take'' 3 [[1,2,3],[1,4..10]] `shouldBe` ([[1,2,3],[1,4,7,10]] :: [Int])
+      take'' 3 [[1,2,3],[1,4..10]] `shouldBe` ([[1,2,3],[1,4,7,10]] :: [[Int]])
 
     it "many items" $ do
       take'' 3 [1,2,3,4,5] `shouldBe` ([3,4,5] :: [Int])
@@ -109,26 +119,35 @@ spec = do
 
   describe "test insert" $ do
     it "case 1" $ do
-      insert [1,5..100] 15 `shouldBe` ([1,5,9,13,15,17,21,25,29,33,37,41,45,49,53,57,61,65,69,73,77,81,85,89,93,97] :: [Int])
+      insert [1, 5..100] 15 `shouldBe` ([1,5,9,13,15,17,21,25,29,33,37,41,45,49,53,57,61,65,69,73,77,81,85,89,93,97] :: [Int])
 
     it "case 2" $ do
       insert [] 12 `shouldBe` ([12] :: [Int])
 
     it "case 3" $ do
-      insert [1,5..50] 13 `shouldBe` ([1,5,9,13,13,17,21,25,29,33,37,41,45,49] :: [Int])
+      insert [1, 5..50] 13 `shouldBe` ([1,5,9,13,13,17,21,25,29,33,37,41,45,49] :: [Int])
     
   -- describe 'test insertionSort' $ do ...
 
 
   describe "test myZipWith" $ do
     it "case 1" $ do
-      myZipWith (+) [1..10] [1,3..20] `shouldBe` ([2,5,8,11,14,17,20,23,26,29] :: [Int])
+      myZipWith (+) [1..10] [1, 3..20] `shouldBe` ([2,5,8,11,14,17,20,23,26,29] :: [Int])
 
     it "case 2" $ do
       myZipWith (\x y -> x * y) [1, 2, 3] [] `shouldBe` ([] :: [Int])
     
     it "case 3" $ do
       myZipWith (\x y -> x * y) [1, 2, 3] [3, 4, 5] `shouldBe` ([3, 8, 15] :: [Int])
+
+{-
+Warning: Avoid lambda
+Found:
+  \ x y -> x * y
+Perhaps:
+  (*)
+если честно, не понимаю, чем ему лямбда здесь не нравится
+-}
 
 
   describe "test fibs" $ do
@@ -148,11 +167,15 @@ spec = do
                       [Node 'i' [], Node 's' []], 
                      Node 'f' 
                       [Node 't' [], Node 'a' [], Node 's' [Node 't' [], Node 'y'[]]]]
-        bfs tree `shouldBe` (["coffeeistasty"] :: [Char])
+        bfs tree `shouldBe` ("coffeeistasty" :: [Char])
 
       it "case 2" $ do
         let tree = Node 0 [Node 1 [Node 2 [Node 3 []]], Node 4 [Node 5 []]]
         bfs tree `shouldBe` ([0, 1, 4, 2, 5, 3] :: [Int])
+
+      it "case 3" $ do
+        let tree = Node 1 [Node 2 [Node 3 [], Node 4 []], Node 5 [Node 6 [], Node 7 []]]
+        bfs tree `shouldBe` ([1, 2, 5, 3, 4, 6, 7] :: [Int])
 
 
   describe "test dfs" $ do
@@ -163,3 +186,12 @@ spec = do
       it "case 2" $ do
         let tree = Node 'A' [Node 'B' [Node 'C' [], Node 'D' []], Node 'E' [Node 'F' []]]
         dfs tree `shouldBe` ("ABCDEF" :: [Char])
+      
+      it "case 4" $ do
+        let tree = Node 'c' 
+                    [Node 'o' 
+                      [Node 'e' [], Node 'e' []], 
+                    Node 'f' [Node 'i' [], Node 's' []], 
+                    Node 'f' 
+                      [Node 't' [], Node 'a' [], Node 's' [Node 't' [], Node 'y'[]]]]
+        dfs tree `shouldBe` ("coeefisftasty" :: [Char])
