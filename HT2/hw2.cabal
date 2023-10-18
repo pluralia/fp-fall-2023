@@ -39,8 +39,7 @@ test-suite hw2-test
     build-depends:    base ^>=4.17.2.0,
                       hspec,
                       hw2
-
     ghc-options:      -Wall
-    other-modules:    TestSpec
+    other-modules:    TestsSpec
 
 
