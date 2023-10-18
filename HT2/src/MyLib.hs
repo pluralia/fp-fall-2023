@@ -38,6 +38,15 @@ traceFoldl f acc (x : xs) =
 or' :: [Bool] -> Bool
 or' = foldr (||) False
 
+{-
+Warning: Use or
+Found:
+  foldr (||) False
+Perhaps:
+  or
+по условию задания реализуем свою функцию, поэтому не принимаю
+-}
+
 length' :: [a] -> Int
 length' = L.foldl'(\count _ -> count + 1) 0
 
@@ -49,10 +58,19 @@ reverse' :: [a] -> [a]
 reverse' = L.foldl' (flip(:)) []
 
 filter' :: (a -> Bool) -> [a] -> [a]
-filter' condition = L.foldl'(\acc x -> if condition x then x:acc else acc)[]
+filter' condition = foldr(\acc x -> if condition acc then acc : x else x) []
 
 map' :: (a -> b) -> [a] -> [b]
 map' f = foldr (\x acc -> f x:acc) []
+
+{-
+Warning: Use map
+Found:
+  foldr (\ x acc -> f x : acc) []
+Perhaps:
+  map (\ x -> f x)
+по условию задания реализуем свою функцию, поэтому не принимаю
+-}
 
 head' :: [a] -> Maybe a
 head' = foldr (\x _ -> Just x) Nothing
@@ -67,7 +85,7 @@ take' n = L.foldl'(\acc x -> if length' acc < n then acc ++ [x] else acc) []
 
 -- используйте foldr
 take'' :: Int -> [a] -> [a]
-take'' n = foldr (\x acc -> if length' acc < n then x:acc else acc) []
+take'' n = foldr (\x acc -> if length' acc < n then x : acc else acc) []
 
 ------------------------------------------------------------------------------------------------
 
@@ -85,7 +103,7 @@ quicksort (x : xs) = quicksort [a | a <- xs, a <= x] ++ [x] ++ quicksort [a | a 
 --   равны нового элемента, а все элементы справа будут строго больше
 --   (1 балл)
 --
-insert :: [Int] -> Int -> [Int]
+insert :: Ord a => [a] -> a -> [a]
 insert [] a = [a]
 insert (x:xs) a | a < x = a:x:xs
                 | otherwise = x:insert xs a
@@ -93,10 +111,10 @@ insert (x:xs) a | a < x = a:x:xs
 -- | Сортировка вставками (0,5 балла)
 --   В реализации можно использовать функцию insert, если вы её реализовали
 
--- вроде должно работать, но не работает, поэтому закомментила
--- insertionSort :: Ord a => [a] -> [a]
--- insertionSort [] = []
---insertionSort (x:xs) = insert(insertionSort xs) x
+insertionSort :: Ord a => [a] -> [a]
+insertionSort [] = []
+insertionSort (x:xs) = insert(insertionSort xs) x
+
 
 ------------------------------------------------------------------------------------------------
 
@@ -133,8 +151,8 @@ fibs = 0 : 1 : myZipWith (+) fibs (tail fibs)
 -- | Считает сумму всех элементов списка, которые находятся на позиции, 
 --     __индекс__ которой является числом Фибоначчи. (1 балл)
 -- я понимаю, что нужно сделать, но не понимаю как мне это написать с использованием списка fibs
--- fibSum :: [Int] -> Int
--- fibSum = undefined
+fibSum :: [Int] -> Int
+fibSum xs = sum[x | (x, i) <- zip xs [0..], i `elem` fibs] 
 
 ------------------------------------------------------------------------------------------------
 
