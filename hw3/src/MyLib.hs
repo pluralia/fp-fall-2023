@@ -8,7 +8,7 @@ import Data.Ix
 import Data.List as L
 import Data.Set as S
 
-default (Int, Double)
+-- default (Int, Double)
 
 ------------------------------------------------------------------------------------------------
 
@@ -63,11 +63,11 @@ instance Num ChurchNumber where
 
   fromInteger :: Integer -> ChurchNumber
   fromInteger = helper Zero
-   where
-    helper :: ChurchNumber -> Integer -> ChurchNumber
-    helper acc n
-      | n <= 0 = acc
-      | otherwise = helper (Succ acc) (n - 1)
+    where
+      helper :: ChurchNumber -> Integer -> ChurchNumber
+      helper acc n
+        | n <= 0 = acc
+        | otherwise = helper (Succ acc) (n - 1)
 
   abs :: ChurchNumber -> ChurchNumber -- Заглушка для warning
   abs = id
@@ -78,12 +78,14 @@ instance Num ChurchNumber where
 instance Ix ChurchNumber where
   range :: (ChurchNumber, ChurchNumber) -> [ChurchNumber]
   range = helper []
-   where
-    helper :: [ChurchNumber] -> (ChurchNumber, ChurchNumber) -> [ChurchNumber]
-    helper acc (l, r)
-      | l > r = acc
-      | l == r = r : acc
-      | l < r = helper (r : acc) (l, chPrev r)
+    where
+      helper :: [ChurchNumber] -> (ChurchNumber, ChurchNumber) -> [ChurchNumber]
+      helper acc (l, r)
+        | l > r = acc
+        | l == r = r : acc
+        | l < r = helper (r : acc) (l, chPrev r)
+
+  -- calal пишет Pattern match(es) are non-exhaustive. Я вроде все учел
 
   inRange :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Bool
   inRange (l, r) x
@@ -92,13 +94,13 @@ instance Ix ChurchNumber where
 
   index :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
   index = helper 0
-   where
-    helper :: Int -> (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
-    helper ind (l, r) x
-      | x < l = -1
-      | x > r = -1
-      | x == l = ind
-      | otherwise = helper (ind + 1) (l + Succ Zero, r) x
+    where
+      helper :: Int -> (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
+      helper ind (l, r) x
+        | x < l = -1
+        | x > r = -1
+        | x == l = ind
+        | otherwise = helper (ind + 1) (l + Succ Zero, r) x
 
 cn :: Integer -> ChurchNumber -- Чтобы было удобно дебажить
 cn = fromInteger -- тк по дефолту fromInteger выдает Int
@@ -108,8 +110,8 @@ cn = fromInteger -- тк по дефолту fromInteger выдает Int
 -- 2. Дерево (2 балла)
 
 data Tree a = Node
-  { value :: a
-  , children :: [Tree a]
+  { value :: a,
+    children :: [Tree a]
   }
   deriving (Show)
 
@@ -122,6 +124,7 @@ data Tree a = Node
 -- поэтому обернем наш тип `Tree` в newtype, чтобы у нас было 3 разных типа,
 -- и уже для них реализуем `Show`
 
+--Orphan instance: instance [overlapping] Show String. Я не в курсе как это исправить
 instance {-# OVERLAPPING #-} Show String where
   -- Стандартный Show пишет полную чушь:
   -- ghci> show ["1", "2"]
@@ -135,10 +138,10 @@ newtype PreOrder a = Pre (Tree a)
 instance (Show a) => Show (PreOrder a) where
   show :: (Show a) => PreOrder a -> String
   show (Pre tree) = show (helper [tree])
-   where
-    helper :: [Tree a] -> [a]
-    helper [] = []
-    helper (node : nodes) = value node : helper (children node) ++ helper nodes
+    where
+      helper :: [Tree a] -> [a]
+      helper [] = []
+      helper (node : nodes) = value node : helper (children node) ++ helper nodes
 
 -- | in-order обход дерева
 newtype InOrder a = In (Tree a)
@@ -146,12 +149,12 @@ newtype InOrder a = In (Tree a)
 instance (Show a) => Show (InOrder a) where
   show :: (Show a) => InOrder a -> String
   show (In tree) = show (helper [tree])
-   where
-    helper :: [Tree a] -> [a]
-    helper [] = []
-    helper (node : nodes)
-      | L.null (children node) = value node : helper nodes
-      | otherwise = (helper . L.singleton . head) (children node) ++ [value node] ++ (helper . tail) (children node) ++ helper nodes
+    where
+      helper :: [Tree a] -> [a]
+      helper [] = []
+      helper (node : nodes)
+        | L.null (children node) = value node : helper nodes
+        | otherwise = (helper . L.singleton . head) (children node) ++ [value node] ++ (helper . tail) (children node) ++ helper nodes
 
 -- | post-order обход дерева
 newtype PostOrder a = Post (Tree a)
@@ -159,10 +162,10 @@ newtype PostOrder a = Post (Tree a)
 instance (Show a) => Show (PostOrder a) where
   show :: (Show a) => PostOrder a -> String
   show (Post tree) = show (helper [tree])
-   where
-    helper :: [Tree a] -> [a]
-    helper [] = []
-    helper (node : nodes) = helper (children node) ++ [value node] ++ helper nodes
+    where
+      helper :: [Tree a] -> [a]
+      helper [] = []
+      helper (node : nodes) = helper (children node) ++ [value node] ++ helper nodes
 
 ---------------------------------------
 
@@ -185,9 +188,9 @@ instance (Ord a) => Eq (Tree a) where
 
 -- | Зададим тип данных RGB, но так как его поля должны быть от 0 до 255, назовем конструктор Unsafe...
 data RGB = UnsafeMkRGB
-  { red :: Int
-  , green :: Int
-  , blue :: Int
+  { red :: Int,
+    green :: Int,
+    blue :: Int
   }
   deriving (Show, Eq)
 
@@ -199,20 +202,22 @@ mkRGB r g b
 
 -- | Аналогично поступим, задавая тип данных CMYK
 data CMYK = UnsafeMkCMYK
-  { cyan :: Int
-  , magenta :: Int
-  , yellow :: Int
-  , black :: Int
+  { cyan :: Int,
+    magenta :: Int,
+    yellow :: Int,
+    black :: Int
   }
   deriving (Show, Eq)
 
 mkCMYK :: Int -> Int -> Int -> Int -> Maybe CMYK
-mkCMYK cyan magenta yellow black
-  | inRange (0, 100) `all` [cyan, magenta, yellow, black] = Just $ UnsafeMkCMYK cyan magenta yellow black
+mkCMYK c m y k
+  | inRange (0, 100) `all` [c, m, y, k] = Just $ UnsafeMkCMYK c m y k
   | otherwise = Nothing
 
+-- Мне в тестах нужна
 unpack :: Maybe a -> a
 unpack (Just x) = x
+unpack Nothing = error "Input ins nothing" -- я понимаю что так делать не надо
 
 ---------------------------------------
 
@@ -231,14 +236,15 @@ instance ToCMYK [Int] where
 instance ToCMYK RGB where
   toCMYK :: RGB -> Maybe CMYK
   toCMYK x =
-    let r' = fromIntegral (red x) / 255
-        g' = fromIntegral (green x) / 255
-        b' = fromIntegral (blue x) / 255
+    -- А можно как-то без явного объявления типов. Просто без них вылезают всякие warning
+    let r' = (fromIntegral (red x) / 255.0) :: Double
+        g' = (fromIntegral (green x) / 255.0) :: Double
+        b' = (fromIntegral (blue x) / 255.0) :: Double
         k' = 1 - maximum [r', g', b']
-        c = if k == 1 then 0 else round $ (1 - r' - k') / (1 - k') * 100
-        m = if k == 1 then 0 else round $ (1 - g' - k') / (1 - k') * 100
-        y = if k == 1 then 0 else round $ (1 - b' - k') / (1 - k') * 100
-        k = round $ k' * 100
+        c = if k == 1 then 0 else (round $ (1.0 - r' - k') / (1.0 - k') * 100.0) :: Int
+        m = if k == 1 then 0 else (round $ (1.0 - g' - k') / (1.0 - k') * 100.0) :: Int
+        y = if k == 1 then 0 else (round $ (1.0 - b' - k') / (1.0 - k') * 100.0) :: Int
+        k = (round $ k' * 100.0) :: Int
      in mkCMYK c m y k
 
 ---------------------------------------
@@ -246,34 +252,34 @@ instance ToCMYK RGB where
 -- 3.b Классы типов -- это функции (1 балл)
 
 -- | задайте класс типов ToCMYK используя data (аналогично Eq' из практики)
-data DToCMYK a = DMkCMYK
+newtype DToCMYK a = DMkCMYK
   { toCMYK' :: a -> Maybe CMYK
   }
 
 dToCMYKfromList :: DToCMYK [Int]
 dToCMYKfromList = DMkCMYK toCMYKfromList
- where
-  toCMYKfromList :: [Int] -> Maybe CMYK
-  toCMYKfromList [c, m, y, k]
-    | inRange (0, 100) `all` [c, m, y, k] = Just $ UnsafeMkCMYK c m y k
-    | otherwise = Nothing
-  toCMYKfromList _ = Nothing
+  where
+    toCMYKfromList :: [Int] -> Maybe CMYK
+    toCMYKfromList [c, m, y, k]
+      | inRange (0, 100) `all` [c, m, y, k] = Just $ UnsafeMkCMYK c m y k
+      | otherwise = Nothing
+    toCMYKfromList _ = Nothing
 
 -- | реализуйте класс типов DToCMYK для [Int] и для RGB в виде функций (аналогично dEqBool из практики)
 dToCMYKfromRGB :: DToCMYK RGB
 dToCMYKfromRGB = DMkCMYK toCMYKfromRGB
- where
-  toCMYKfromRGB :: RGB -> Maybe CMYK
-  toCMYKfromRGB x =
-    let r' = fromIntegral (red x) / 255
-        g' = fromIntegral (green x) / 255
-        b' = fromIntegral (blue x) / 255
-        k' = 1 - maximum [r', g', b']
-        c = if k == 1 then 0 else round $ (1 - r' - k') / (1 - k') * 100
-        m = if k == 1 then 0 else round $ (1 - g' - k') / (1 - k') * 100
-        y = if k == 1 then 0 else round $ (1 - b' - k') / (1 - k') * 100
-        k = round $ k' * 100
-     in mkCMYK c m y k
+  where
+    toCMYKfromRGB :: RGB -> Maybe CMYK
+    toCMYKfromRGB x =
+      let r' = (fromIntegral (red x) / 255.0) :: Double
+          g' = (fromIntegral (green x) / 255.0) :: Double
+          b' = (fromIntegral (blue x) / 255.0) :: Double
+          k' = 1 - maximum [r', g', b']
+          c = if k == 1 then 0 else (round $ (1.0 - r' - k') / (1.0 - k') * 100.0) :: Int
+          m = if k == 1 then 0 else (round $ (1.0 - g' - k') / (1.0 - k') * 100.0) :: Int
+          y = if k == 1 then 0 else (round $ (1.0 - b' - k') / (1.0 - k') * 100.0) :: Int
+          k = round $ k' * 100
+       in mkCMYK c m y k
 
 ---------------------------------------
 
@@ -320,7 +326,7 @@ data Day = Monday | Tuesday | Wednesday | Thursday | Friday | Saturday | Sunday
 
 instance Enum Day where
   toEnum :: Int -> Day
-  toEnum n = case n `mod` 7 of
+  toEnum n = case mod n 7 of
     0 -> Monday
     1 -> Tuesday
     2 -> Wednesday
@@ -328,6 +334,7 @@ instance Enum Day where
     4 -> Friday
     5 -> Saturday
     6 -> Sunday
+    -- Pattern match(es) are non-exhaustive. Ну да...
 
   fromEnum :: Day -> Int
   fromEnum day = case day of

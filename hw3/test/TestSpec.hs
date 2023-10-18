@@ -115,7 +115,7 @@ spec = do
       toCMYK [0 :: Int, 0 :: Int, 0 :: Int, 0 :: Int, 0 :: Int] `shouldBe` Nothing
       toCMYK [0 :: Int, 0 :: Int, 0 :: Int, -1 :: Int] `shouldBe` Nothing
       (toCMYK . unpack) (mkRGB 0 0 0) `shouldBe` Just (UnsafeMkCMYK 0 0 0 100)
-      -- ... but got: Nothing ??????????
+      -- ... but got: Nothing ?????????? Не понимаю в чем дело
       -- ghci> (toCMYK . unpack) (mkRGB 0 0 0) == Just (UnsafeMkCMYK 0 0 0 100)
       -- True
       (toCMYK . unpack) (mkRGB 100 43 123) `shouldBe` Just (UnsafeMkCMYK 19 65 0 52)
@@ -141,4 +141,5 @@ spec = do
       bimap (+ 1) (+ 1) (Pair (1 :: Int) (2 :: Int)) `shouldBe` Pair (2 :: Int) (3 :: Int)
       bimap (++ "A") (+ 1) (Pair "A" (2 :: Int)) `shouldBe` Pair "AA" (3 :: Int)
       bimap (+ 1) (++ "A") (Left' (1 :: Int)) `shouldBe` Left' (2 :: Int)
+      -- я понимаю, что even не определен для строки, но я не понимаю почему от беспокоится, ведь я не применяю эту функцию к строке
       bimap even (++ "A") (Right' "A") `shouldBe` Right' "AA"
