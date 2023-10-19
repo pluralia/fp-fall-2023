@@ -4,8 +4,6 @@ import Data.Ix (inRange)
 
 -- 1. Числа Черча и `Ix` (1 балл)
 --    Напишите инстансы `Eq`, `Ord`, `Num` и `Ix` для чисел Черча
-data ChurchNumber = Zero | Succ ChurchNumber
-  deriving (Show, Eq)
 
 -- Вы можете найти класс `Ix` по ссылке:
 -- https://hackage.haskell.org/package/base-4.19.0.0/docs/Data-Ix.html
