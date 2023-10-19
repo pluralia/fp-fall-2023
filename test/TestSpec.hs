@@ -108,6 +108,64 @@ spec = do
         let tree = Post (Node 1 [Node 2 [], Node 3 [Node 4 [], Node 5 []]])
         show tree `shouldBe` "24531"
 
+  describe "ToCMYK for [Int] format" $ do
+    it "All zeros input" $ do
+      let input  = [0 :: Int, 0 :: Int, 0 :: Int, 0 :: Int]
+      let output = Just (UnsafeMkCMYK {cyan = 0, magenta = 0, yellow = 0, black = 0})
+      toCMYK input `shouldBe` output
+
+    it "All 100 input" $ do
+      let input  = [100 :: Int, 100 :: Int, 100 :: Int, 100 :: Int]
+      let output = Just (UnsafeMkCMYK {cyan = 100, magenta = 100, yellow = 100, black = 100})
+      toCMYK input `shouldBe` output
+
+    it "Wrong input with out of range number" $ do
+      let input  = [200 :: Int, 100 :: Int, 100 :: Int, 100 :: Int]
+      let output = Nothing
+      toCMYK input `shouldBe` output
+
+  describe "ToCMYK for RGB format" $ do
+    it "All zeros input" $ do
+      let input  = (UnsafeMkRGB 0 0 0)
+      let output = Just (UnsafeMkCMYK {cyan = 0, magenta = 0, yellow = 0, black = 100})
+      toCMYK input `shouldBe` output
+
+    it "All 100 input" $ do
+      let input  = (UnsafeMkRGB 100 100 100)
+      let output = Just (UnsafeMkCMYK {cyan = 0, magenta = 0, yellow = 0, black = 61})
+      toCMYK input `shouldBe` output
+
+    it "Wrong input with out of range number" $ do
+      let input  = (UnsafeMkRGB 200 25 1)
+      let output = Nothing
+      toCMYK input `shouldBe` output
+    
+  describe "dToSMYK for [Int]" $ do
+    it "All zeros input" $ do
+      let output = Just (UnsafeMkCMYK {cyan = 0, magenta = 0, yellow = 0, black = 100})
+      toCMYK' dToCMYKList [0, 0, 0] `shouldBe` output
+
+    it "All 100 input" $ do
+      let output = Just (UnsafeMkCMYK {cyan = 0, magenta = 0, yellow = 0, black = 61})
+      toCMYK' dToCMYKList [100, 100, 100] `shouldBe` output
+
+    it "Wrong input with out of range number" $ do
+      let output = Nothing
+      toCMYK' dToCMYKList [200, 100, 100] `shouldBe` output 
+
+  describe "dToCMYK for RGB format" $ do
+    it "All zeros input" $ do
+      let output = Just (UnsafeMkCMYK {cyan = 0, magenta = 0, yellow = 0, black = 100})
+      toCMYK' dToCMYKRGB (UnsafeMkRGB 0 0 0) `shouldBe` output
+
+    it "All 100 input" $ do
+      let output = Just (UnsafeMkCMYK {cyan = 0, magenta = 0, yellow = 0, black = 61})
+      toCMYK' dToCMYKRGB (UnsafeMkRGB 100 100 100) `shouldBe` output
+
+    it "Wrong input with out of range number" $ do
+      let output = Nothing
+      toCMYK' dToCMYKRGB (UnsafeMkRGB 5000 100 100) `shouldBe` output
+
   describe "nextDay" $ do
     it "Monday -> Tuesday" $ do
         nextDay Monday `shouldBe` Tuesday
