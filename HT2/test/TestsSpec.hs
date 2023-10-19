@@ -1,3 +1,5 @@
+-- у меня всего 4 hint - 2 здесь и 2 в библиотеке
+-- здесь - 2 штуки Warning: Avoid lambda для myZipWith, но я не вижу причин для замены, к тому же тесты не компилятся без этого
 module TestsSpec (spec) where
 
 import MyLib
@@ -26,6 +28,7 @@ spec = do
     it "1 item" $ do
       length' ['a'] `shouldBe` (1 :: Int)
 
+    -- здесь cabal test поругался на warning: [-Wtype-defaults] но я не вижу для этого причин
     it "Many items" $ do
       length' [1, 3..10] `shouldBe` (5 :: Int)
 
@@ -59,20 +62,20 @@ spec = do
     it "even" $ do
       filter' even [1, 3..10] `shouldMatchList` ([] :: [Int])
     
-    {-
+    
     it "inf" $ do
-      take 3 . filter' even $ [1..] `shouldMatchList` ([2,4,6] :: [Int])
-    -}
+      take 3 (filter' even [1..]) `shouldMatchList` ([2,4,6] :: [Int])
+    
 
 
   describe "test `map'" $ do
-    it "it *2" $ do
+    it "it *5" $ do
       map' (*5) [1, 3..10] `shouldBe` ([5,15,25,35,45] :: [Int])
   
-    {-
+    
     it "inf" $ do
-      take 3 . map' (*5) $ [1..] `shouldMatchList` ([5,10,15] :: [Int])
-    -}
+      take 3 (map' (*5) [1..]) `shouldMatchList` ([5,10,15] :: [Int])
+    
 
 
   describe "test head'" $ do
@@ -135,10 +138,10 @@ spec = do
       myZipWith (+) [1..10] [1, 3..20] `shouldBe` ([2,5,8,11,14,17,20,23,26,29] :: [Int])
 
     it "case 2" $ do
-      myZipWith (\x y -> x * y) [1, 2, 3] [] `shouldBe` ([] :: [Int])
+      myZipWith (\ x y -> x * y) [1, 2, 3] [] `shouldBe` ([] :: [Int])
     
     it "case 3" $ do
-      myZipWith (\x y -> x * y) [1, 2, 3] [3, 4, 5] `shouldBe` ([3, 8, 15] :: [Int])
+      myZipWith (\ x y -> x * y) [1, 2, 3] [3, 4, 5] `shouldBe` ([3, 8, 15] :: [Int])
 
 {-
 Warning: Avoid lambda
@@ -177,6 +180,18 @@ Perhaps:
         let tree = Node 1 [Node 2 [Node 3 [], Node 4 []], Node 5 [Node 6 [], Node 7 []]]
         bfs tree `shouldBe` ([1, 2, 5, 3, 4, 6, 7] :: [Int])
 
+      it "case 4" $ do
+        let tree = Node 'c' 
+                    [Node 'o' 
+                      [Node 'e' 
+                        [Node 'e' []], 
+                       Node 'e' []], 
+                     Node 'f' 
+                      [Node 'i' [], Node 's' [], Node 's' []], 
+                     Node 'f' 
+                      [Node 't' [Node 't' [], Node 'y'[]], Node 'a' [], Node 's' []]]
+        bfs tree `shouldBe` ("coffeeisstasety" :: [Char])
+
 
   describe "test dfs" $ do
       it "case 1" $ do
@@ -187,7 +202,7 @@ Perhaps:
         let tree = Node 'A' [Node 'B' [Node 'C' [], Node 'D' []], Node 'E' [Node 'F' []]]
         dfs tree `shouldBe` ("ABCDEF" :: [Char])
       
-      it "case 4" $ do
+      it "case 3" $ do
         let tree = Node 'c' 
                     [Node 'o' 
                       [Node 'e' [], Node 'e' []], 
@@ -195,3 +210,15 @@ Perhaps:
                     Node 'f' 
                       [Node 't' [], Node 'a' [], Node 's' [Node 't' [], Node 'y'[]]]]
         dfs tree `shouldBe` ("coeefisftasty" :: [Char])
+      
+      it "case 4" $ do
+        let tree = Node 'c' 
+                    [Node 'o' 
+                      [Node 'e' 
+                        [Node 'e' []], 
+                       Node 'e' []], 
+                     Node 'f' 
+                      [Node 'i' [], Node 's' [], Node 's' []], 
+                     Node 'f' 
+                      [Node 't' [Node 't' [], Node 'y'[]], Node 'a' [], Node 's' []]]
+        bfs tree `shouldBe` ("coffeeisstasety" :: [Char])
