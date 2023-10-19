@@ -238,12 +238,30 @@ mkCMYK cyan magenta yellow black
 class ToCMYK a where
     toCMYK :: a -> Maybe CMYK
 
--- instance ToCMYK [Int] where
---     toCMYK [cyan, magenta, yellow, black] 
---         | inRange (0, 100) [cyan, magenta, yellow, black] = Just $ UnsafeMkCMYK cyan magenta yellow black
---         | otherwise                                       = Nothing
-
--- не понял, что значит сделать инстанс класса ToCMYK для RGB :c
+instance ToCMYK [Int] where
+  toCMYK :: [Int] -> Maybe CMYK
+  toCMYK [cyan, magenta, yellow, black]
+    | inRange (0, 100) `all` [cyan, magenta, yellow, black] = Just $ UnsafeMkCMYK cyan magenta yellow black
+    | otherwise = Nothing
+  toCMYK _ = Nothing
+  
+instance ToCMYK RGB where
+  toCMYK :: RGB -> Maybe CMYK
+  toCMYK (UnsafeMkRGB red green blue) 
+    | inRange (0, 100) `all` [red, green, blue] = Just $ UnsafeMkCMYK cyan magenta yellow black
+    | otherwise = Nothing
+    where
+      r = fromIntegral red / 255.0
+      g = fromIntegral green / 255.0
+      b = fromIntegral blue / 255.0
+      k = 1 - maximum [r, g, b]
+      c = (1 - r - k) / (1 - k)
+      m = (1 - g - k) / (1 - k)
+      y = (1 - b - k) / (1 - k)
+      cyan = round (c * 100)
+      magenta = round (m * 100)
+      yellow = round (y * 100)
+      black = round (k * 100)
 
 ---------------------------------------
 
@@ -255,15 +273,55 @@ data DToCMYK a = MkDToCMYK { toCMYK' :: a -> Maybe CMYK }
 
 -- | реализуйте класс типов DToCMYK для [Int] и для RGB в виде функций (аналогично dEqBool из практики)
 
+dToCMYKList :: DToCMYK [Int]
+dToCMYKList = MkDToCMYK toCMYKList
+  where
+    toCMYKList [red, green, blue]
+        | checkRange [red, green, blue] = Just $ UnsafeMkCMYK cyan magenta yellow black
+        | otherwise = Nothing
+        where
+          r = fromIntegral red / 255.0
+          g = fromIntegral green / 255.0
+          b = fromIntegral blue / 255.0
+          k = 1 - maximum [r, g, b]
+          c = (1 - r - k) / (1 - k)
+          m = (1 - g - k) / (1 - k)
+          y = (1 - b - k) / (1 - k)
+          cyan = round (c * 100)
+          magenta = round (m * 100)
+          yellow = round (y * 100)
+          black = round (k * 100)
 
 
--- все еще не понимаю, что нужно сделать с rgb инстансом
+checkRange :: [Int] -> Bool
+checkRange = all (\x -> x >= 0 && x <= 255)
+
+
+dToCMYKRGB :: DToCMYK RGB
+dToCMYKRGB = MkDToCMYK toCMYKRGB
+  where
+    toCMYKRGB (UnsafeMkRGB red green blue)
+        | checkRange [red, green, blue] = Just $ UnsafeMkCMYK cyan magenta yellow black
+        | otherwise = Nothing
+        where
+          r = fromIntegral red / 255.0
+          g = fromIntegral green / 255.0
+          b = fromIntegral blue / 255.0
+          k = 1 - maximum [r, g, b]
+          c = (1 - r - k) / (1 - k)
+          m = (1 - g - k) / (1 - k)
+          y = (1 - b - k) / (1 - k)
+          cyan = round (c * 100)
+          magenta = round (m * 100)
+          yellow = round (y * 100)
+          black = round (k * 100)
 
 ---------------------------------------
 
 -- 3.c Используйте инстансы (0,25 балла)
 --     Приведите пример использования инстансов [Int] и RGB реализованных в 3a и 3b (должно получится 4 примера)
 
+-- Лежат в TestSpec.hs
 
 
 ------------------------------------------------------------------------------------------------
