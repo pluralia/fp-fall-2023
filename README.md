@@ -7,6 +7,7 @@ Haskell course homework
 - homework
     - after each lecture | **10 points max**
     - deadline: Thursday 23:59 | **0 points per task after the deadline**
+    - name your branch `hw<x>` and your project directory `hw<x>`, where ```x `elem` [1..12]```
     - 1 week to fix my comments | **all comments fixed -> full grade**.
     - write tests | **no tests -> your grade goes down**
     - project can be built and tests work | **build/tests fail to my review -> -2 points**
