@@ -18,10 +18,10 @@ spec = do
         Zero == Zero `shouldBe` True
 
       it "Equality of two Succ values" $ do
-        (Succ (Succ Zero)) == (Succ (Succ Zero)) `shouldBe` True
+        Succ (Succ Zero) == Succ (Succ Zero) `shouldBe` True
 
       it "Inequality of Zero and Succ" $ do
-        Zero == (Succ Zero) `shouldBe` False
+        Zero == Succ Zero `shouldBe` False
 
     describe "Ord instance for ChurchNumber" $ do
       it "Comparison of two Zero values" $ do
@@ -38,13 +38,13 @@ spec = do
 
     describe "Num instance for ChurchNumber" $ do
       it "Addition of Zero and Succ" $ do
-        (Zero + Succ (Succ Zero)) `shouldBe` (Succ (Succ Zero))
+        Zero + Succ (Succ Zero) `shouldBe` Succ (Succ Zero)
 
       it "Subtraction of Succ and Zero" $ do
-        (Succ (Succ (Succ Zero)) - Zero) `shouldBe` (Succ (Succ (Succ Zero)))
+        Succ (Succ (Succ Zero)) - Zero `shouldBe` Succ (Succ (Succ Zero))
 
       it "Multiplication of Succ values" $ do
-        (Succ (Succ Zero) * Succ (Succ (Succ Zero))) `shouldBe` Succ (Succ (Succ (Succ (Succ (Succ (Zero))))))
+        Succ (Succ Zero) * Succ (Succ (Succ Zero)) `shouldBe` Succ (Succ (Succ (Succ (Succ (Succ Zero)))))
 
 {-
     describe "Ix instance for ChurchNumber" $ do
@@ -69,30 +69,42 @@ spec = do
 
     describe "InOrder instance for Tree" $ do
       it "In-Order traversal of a single-node tree" $ do
-        let tree = In (Node 42 [])
+        let tree = In (Node (42 :: Int) [])
         show tree `shouldBe` "42"
 
       it "In-Order traversal of a tree with multiple nodes" $ do
-        let tree = In (Node 1 [Node 2 [], Node 3 [Node 4 [], Node 5 []]])
-        show tree `shouldBe` "2453514535"
+        let tree = In (Node (1 :: Int) [Node (2 :: Int) [], Node (3 :: Int) [Node (4 :: Int) [], Node (5 :: Int) []]])
+        show tree `shouldBe` "12345"
+
+      it "In-Order traversal of a tree with three nodes" $ do
+        let tree = In (Node (5 :: Int) [Node (3 :: Int) [Node (2 :: Int) [], Node (4 :: Int) []], Node (7 :: Int) []])
+        show tree `shouldBe` "53247"
 
     describe "PreOrder instance for Tree" $ do
       it "Pre-Order traversal of a single-node tree" $ do
-        let tree = Pre (Node 42 [])
+        let tree = Pre (Node (42 :: Int) [])
         show tree `shouldBe` "42"
 
       it "Pre-Order traversal of a tree with multiple nodes" $ do
-        let tree = Pre (Node 1 [Node 2 [], Node 3 [Node 4 [], Node 5 []]])
-        show tree `shouldBe` "12345"
+        let tree = Pre (Node (1 :: Int) [Node (2 :: Int) [], Node (3 :: Int) [Node (7 :: Int) [], Node (9 :: Int) []]])
+        show tree `shouldBe` "12379"
+
+      it "Pre-Order traversal of a tree with three nodes" $ do
+        let tree = Pre (Node (8 :: Int) [Node (3 :: Int) [Node (1 :: Int) [], Node (6 :: Int) []], Node (9 :: Int) []])
+        show tree `shouldBe` "83169"
 
     describe "PostOrder instance for Tree" $ do
       it "Post-Order traversal of a single-node tree" $ do
-        let tree = Post (Node 42 [])
+        let tree = Post (Node (42 :: Int) [])
         show tree `shouldBe` "42"
 
       it "Post-Order traversal of a tree with multiple nodes" $ do
-        let tree = Post (Node 1 [Node 2 [], Node 3 [Node 4 [], Node 5 []]])
+        let tree = Post (Node (1 :: Int) [Node (2 :: Int) [], Node (3 :: Int) [Node (4 :: Int) [], Node (5 :: Int) []]])
         show tree `shouldBe` "24531"
+
+      it "Post-Order traversal of a tree with three nodes" $ do
+        let tree = Post (Node (7 :: Int) [Node (3 :: Int) [Node (2 :: Int) [], Node (5 :: Int) []], Node (9 :: Int) []])
+        show tree `shouldBe` "25397"
 
     describe "ToCMYK instance for RGB" $ do
       it "Convert RGB (255, 0, 0) to CMYK" $ do
@@ -162,29 +174,38 @@ spec = do
         let input = Left' (1 :: Int)
         let expected = Left' (2 :: Int)
         bimap ((+ 1) :: Int -> Int) ((++ "A") :: String -> String) input `shouldBe` expected
-
-      it "maps functions correctly over a Right'" $ do
-        let input = Right' "A"
-        let expected = Right' "AA"
+      
+      it "bimap example" $ do
+        let input = (2 :: Int, "Hello")
+        let expected = (True, "HelloA")
         bimap even ((++ "A") :: String -> String) input `shouldBe` expected
-
 
     describe "GumRats instance for Monday" $ do
       it "Monday workout" $ do
-        workout Chest `shouldBe` "Chest workout on Monday"
+        workout Monday `shouldBe` "Chest workout on Monday"
+      it "Monday workout plan" $ do
+        workoutPlan Monday `shouldBe` "1. Bench press\n2. Incline dumbbell press\n3. Dumbbell flyes"
 
     describe "GumRats instance for Tuesday" $ do
       it "Tuesday workout" $ do
-        workout Back `shouldBe` "Back workout on Tuesday"
+        workout Tuesday `shouldBe` "Back workout on Tuesday"
+      it "Tuesday workout plan" $ do
+        workoutPlan Tuesday `shouldBe` "1. Deadlift\n2. Pull-ups\n3. Barbell rows"
 
     describe "GumRats instance for Wednesday" $ do
       it "Wednesday workout" $ do
-        workout Shoulders `shouldBe` "Shoulder workout on Wednesday"
+        workout Wednesday `shouldBe` "Shoulder workout on Wednesday"
+      it "Wednesday workout plan" $ do
+        workoutPlan Wednesday `shouldBe` "1. Military press\n2. Lateral raises\n3. Front raises"
 
     describe "GumRats instance for Thursday" $ do
       it "Thursday workout" $ do
-        workout Arms `shouldBe` "Arm workout on Thursday"
+        workout Thursday `shouldBe` "Arm workout on Thursday"
+      it "Thursday workout plan" $ do
+        workoutPlan Thursday `shouldBe` "1. Bicep curls\n2. Tricep dips\n3. Hammer curls"
 
     describe "GumRats instance for Friday" $ do
       it "Friday workout" $ do
-        workout Legs `shouldBe` "Leg workout on Friday"
+        workout Friday `shouldBe` "Leg workout on Friday"
+      it "Friday workout plan" $ do
+        workoutPlan Friday `shouldBe` "1. Squats\n2. Lunges\n3. Leg press"
