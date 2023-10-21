@@ -1,13 +1,29 @@
-{- cabal:
-build-depends: base, containers, text, vector
--}
-
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+module MyLib
+  (
+    padZero
+  , encode
+  , evenodd
+  , average
+  , gcContent
+  , isReversePalindrom
+  , meltingTemp
+  , identity
+  , fromListL
+  , fromListR
+  , nubOrd
+  , buildQuery
+  , AminoAcid(..)
+  , toSymbol
+  , aminoToStr
+  , translate) where
+
 import           Data.Char       (ord)
-import           Data.Foldable   (foldl', foldr, toList)
+import           Data.Foldable   (foldl', toList)
 import qualified Data.Map.Strict as M
+import qualified Data.Set        as S
 import qualified Data.Text       as T
 import qualified Data.Vector     as V
 
@@ -31,7 +47,9 @@ import qualified Data.Vector     as V
 -- Готовую функцию из пакета text использовать нельзя
 
 padZero :: T.Text -> Int -> T.Text
-padZero str width = undefined
+padZero str width = T.replicate zerosCount "0" <> str
+    where
+        zerosCount = max 0 (width - T.length str)
 
 ------------------------------------------------------------------------------------------------
 
@@ -40,7 +58,8 @@ padZero str width = undefined
 -- Может пригодиться документация пакета vector: https://hackage.haskell.org/package/vector-0.13.1.0/docs/Data-Vector.html
 
 cypher :: V.Vector Char
-cypher = ['X', 'W', 'P'] -- произвольно дополнить до 26 символов
+cypher = [ 'X', 'W', 'P', 'A', 'T', 'R', 'Q', 'I', 'U', 'C', 'B', 'D', 'F', 'H'
+         , 'G', 'E', 'J', 'K', 'L', 'N', 'M', 'O', 'S', 'V', 'Y', 'Z']
 
 -- >>> index 'A'
 -- 0
@@ -51,7 +70,7 @@ index c = ord c - ord 'A'
 
 -- Считаем что приходят только заглавные английские буквы
 encode :: T.Text -> T.Text
-encode str = undefined
+encode = T.map (\c -> cypher V.! index c)
 
 ------------------------------------------------------------------------------------------------
 
@@ -61,7 +80,11 @@ encode str = undefined
 -- должен сохраняться.
 
 evenodd :: [a] -> ([a], [a])
-evenodd xs = undefined
+evenodd = foldr splitList ([], []) . zip [0..]
+    where
+        splitList :: (Int, a) -> ([a], [a]) -> ([a], [a])
+        splitList (idx, x) (leftList, rightList) | even idx  = (x : leftList, rightList)
+                                                 | otherwise = (leftList, x : rightList)
 
 ------------------------------------------------------------------------------------------------
 
@@ -70,7 +93,11 @@ evenodd xs = undefined
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average vec = undefined
+average vec | V.length vec > 0 = V.foldl' (+) 0 vec / fromIntegral vecLength
+            | otherwise        = error "Empty input string"
+    where
+        vecLength :: Int
+        vecLength = V.length vec
 
 ------------------------------------------------------------------------------------------------
 
@@ -79,8 +106,22 @@ average vec = undefined
 --
 -- Посчитать долю G/C в последовательности с помощью свёртки за один проход.
 
+isSame :: Char -> Char -> Int
+isSame c1 c2 | c1 == c2  = 1
+             | otherwise = 0
+
+isGC :: Char -> Int
+isGC x = isSame 'G' x + isSame 'C' x
+
 gcContent :: T.Text -> Double
-gcContent str = undefined
+gcContent text | T.length text > 0 = fromIntegral gcCount / fromIntegral textLength
+               | otherwise         = error "Empty input string"
+    where
+        gcCount :: Int
+        gcCount = T.foldl' (\b x -> b + isGC x) 0 text
+
+        textLength :: Int
+        textLength = T.length text
 
 ------------------------------------------------------------------------------------------------
 
@@ -97,7 +138,13 @@ gcContent str = undefined
 -- https://hackage.haskell.org/package/text-2.1/docs/Data-Text.html
 
 isReversePalindrom :: T.Text -> Bool
-isReversePalindrom str = undefined
+isReversePalindrom str = str == T.reverse complementSeq
+    where
+        complementMatrix :: M.Map Char Char
+        complementMatrix = M.fromList [('A', 'T'), ('T', 'A'), ('C', 'G'), ('G', 'C')]
+
+        complementSeq :: T.Text
+        complementSeq = T.map (complementMatrix M.!) str
 
 ------------------------------------------------------------------------------------------------
 
@@ -109,7 +156,11 @@ isReversePalindrom str = undefined
 -- Посчитать используя свёртку за один проход по последовательности.
 
 meltingTemp :: T.Text -> Int
-meltingTemp str = undefined
+meltingTemp = T.foldl' (\b x -> b + nuclMeltingTemp x) 0
+    where
+        nuclMeltingTemp :: Char -> Int
+        nuclMeltingTemp nucl = 2 * isGC nucl + 2  -- 4 * (isGC nucl) + 2 * (1 - isGC nucl)
+
 
 ------------------------------------------------------------------------------------------------
 
@@ -123,8 +174,15 @@ meltingTemp str = undefined
 -- Посчитать identity двух последовательностей за один проход. Если на вход поданы последовательности
 -- разной длины, выдать ошибку 
 
+countSame :: T.Text -> T.Text -> Int
+countSame str1 = sum . map (uncurry isSame) . T.zip str1
+
 identity :: T.Text -> T.Text -> Double
-identity str1 str2 = undefined
+identity s1 s2 | s1Length == T.length s2 && s1Length > 0 = fromIntegral (countSame s1 s2) / fromIntegral s1Length
+               | otherwise                               = error "Invalid identity call"
+    where
+        s1Length :: Int
+        s1Length = T.length s1
 
 ------------------------------------------------------------------------------------------------
 
@@ -134,10 +192,10 @@ identity str1 str2 = undefined
 -- чем будет отличаться поведение этих вариантов.
 
 fromListL :: Ord k => [(k, v)] -> M.Map k v
-fromListL lst = undefined
+fromListL = foldl' (flip . uncurry $ M.insert) M.empty
 
 fromListR :: Ord k => [(k, v)] -> M.Map k v
-fromListR lst = undefined
+fromListR = foldr (uncurry M.insert) M.empty
 
 ------------------------------------------------------------------------------------------------
 
@@ -151,7 +209,7 @@ fromListR lst = undefined
 -- Решение должно использовать свёртку по входному списку в один проход. Использовать fromList нельзя.
 
 nubOrd :: Ord a => [a] -> [a]
-nubOrd xs = undefined
+nubOrd = toList . foldl' (flip S.insert) S.empty
 
 ------------------------------------------------------------------------------------------------
 
@@ -162,7 +220,7 @@ nubOrd xs = undefined
 -- Соберите строку "a=1&b=2&c=hello" из `Map Text Text` используя `foldlWithKey'` или `foldrWithKey`.
 
 buildQuery :: M.Map T.Text T.Text -> T.Text
-buildQuery parameters = undefined
+buildQuery = T.intercalate (T.singleton '&') . M.foldlWithKey' (\acc k v -> k <> T.singleton '=' <> v : acc) []
 
 ------------------------------------------------------------------------------------------------
 
@@ -177,7 +235,10 @@ buildQuery parameters = undefined
 --
 -- Выведите для этого типа инстансы Eq, Show и Ord автоматически.
 
--- data AminoAcid = Ala | ...
+data AminoAcid = Ala | Cys | Asp | Glu | Phe | Gly | His | Ile | Lys | Leu | Met
+               | Asn | Pyl | Pro | Gln | Arg | Ser | Thr | Sec | Val | Trp | Tyr
+               | Ter
+               deriving (Eq, Show, Ord)
 
 ------------------------------------------
 
@@ -187,7 +248,33 @@ buildQuery parameters = undefined
 -- класса для типа AminoAcid, преобразующий аминокислоты в однобуквенный код (A, C, D, ... — см. таблицу в предыдущем пункте).
 -- Стоп-кодон превращается в символ "*".
 
--- class ToSymbol a where ...
+class ToSymbol a where
+    toSymbol :: a -> Char
+
+instance ToSymbol AminoAcid where
+    toSymbol Ala = 'A'
+    toSymbol Cys = 'C'
+    toSymbol Asp = 'D'
+    toSymbol Glu = 'E'
+    toSymbol Phe = 'F'
+    toSymbol Gly = 'G'
+    toSymbol His = 'H'
+    toSymbol Ile = 'I'
+    toSymbol Lys = 'K'
+    toSymbol Leu = 'L'
+    toSymbol Met = 'M'
+    toSymbol Asn = 'N'
+    toSymbol Pyl = 'O'
+    toSymbol Pro = 'P'
+    toSymbol Gln = 'Q'
+    toSymbol Arg = 'R'
+    toSymbol Ser = 'S'
+    toSymbol Thr = 'T'
+    toSymbol Sec = 'U'
+    toSymbol Val = 'V'
+    toSymbol Trp = 'W'
+    toSymbol Tyr = 'Y'
+    toSymbol Ter = '*'
 
 ------------------------------------------
 
@@ -195,8 +282,8 @@ buildQuery parameters = undefined
 --
 -- Определите функцию, превращающую список аминокислот в строку из однобуквенного кода.
 
--- aminoToStr :: [AminoAcid] -> T.Text
--- aminoToStr = undefined
+aminoToStr :: [AminoAcid] -> T.Text
+aminoToStr = T.pack . map toSymbol
 
 ------------------------------------------
 
@@ -211,5 +298,33 @@ buildQuery parameters = undefined
 --
 -- Если длина строки не кратна 3, вернуть ошибку.
 
--- translate :: T.Text -> [AminoAcid]
--- translate = undefined
+codonTable :: M.Map T.Text AminoAcid
+codonTable = M.fromList $ concatMap (\(aa, codons) -> map (\c -> (T.pack c, aa)) codons) codonList
+    where
+        codonList :: [(AminoAcid, [String])]
+        codonList = [
+            (Phe, ["TTT", "TTC"])
+            , (Leu, ["TTA", "TTG", "CTT", "CTC", "CTA", "CTG"])
+            , (Ile, ["ATT", "ATC", "ATA"])
+            , (Met, ["ATG"])
+            , (Val, ["GTT", "GTC", "GTA", "GTG"])
+            , (Ser, ["TCT", "TCC", "TCA", "TCG", "AGT", "AGC"])
+            , (Pro, ["CCT", "CCC", "CCA", "CCG"])
+            , (Thr, ["ACT", "ACC", "ACA", "ACG"])
+            , (Ala, ["GCT", "GCC", "GCA", "GCG"])
+            , (Tyr, ["TAT", "TAC"])
+            , (Ter, ["TAA", "TAG", "TGA"])
+            , (His, ["CAT", "CAC"])
+            , (Gln, ["CAA", "CAG"])
+            , (Asn, ["AAT", "AAC"])
+            , (Lys, ["AAA", "AAG"])
+            , (Asp, ["GAT", "GAC"])
+            , (Glu, ["GAA", "GAG"])
+            , (Cys, ["TGT", "TGC"])
+            , (Trp, ["TGG"])
+            , (Arg, ["CGT", "CGC", "CGA", "CGG", "AGA", "AGG"])
+            , (Gly, ["GGT", "GGC", "GGA", "GGG"])]
+
+translate :: T.Text -> [AminoAcid]
+translate str | T.length str `mod` 3 == 0 = map (codonTable M.!) . T.chunksOf 3 $ str
+              | otherwise                 = error "Incorrect DNA"
