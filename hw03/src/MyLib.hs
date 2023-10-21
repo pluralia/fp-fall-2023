@@ -1,7 +1,7 @@
-module MyLib where
-
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
 
+module MyLib where
 
 import Data.Ix
 import Data.Bifunctor
@@ -13,25 +13,25 @@ data ChurchNumber = Zero | Succ ChurchNumber
 --  deriving (Show, Eq)
 
 instance Eq ChurchNumber where
--- (==) :: ChurchNumber -> ChurchNumber -> Bool
+    (==) :: ChurchNumber -> ChurchNumber -> Bool
     Zero     == Zero     = True
     (Succ m) == (Succ n) = m == n
     _        == _        = False
 
 instance Ord ChurchNumber where
--- compare :: ChurchNumber -> ChurchNumber -> Ordering
+  compare :: ChurchNumber -> ChurchNumber -> Ordering
   compare Zero     Zero     = EQ
   compare Zero     (Succ _) = LT
   compare (Succ _) Zero     = GT
   compare (Succ x) (Succ y) = compare x y
 
 instance Num ChurchNumber where
--- fromInteger :: Integer -> ChurchNumber
--- (+) :: ChurchNumber -> ChurchNumber -> ChurchNumber
--- (-) :: ChurchNumber -> ChurchNumber -> ChurchNumber
--- (*) :: ChurchNumber -> ChurchNumber -> ChurchNumber
--- abs :: ChurchNumber -> ChurchNumber
--- signum :: ChurchNumber -> ChurchNumber
+    fromInteger :: Integer -> ChurchNumber
+    (+) :: ChurchNumber -> ChurchNumber -> ChurchNumber
+    (-) :: ChurchNumber -> ChurchNumber -> ChurchNumber
+    (*) :: ChurchNumber -> ChurchNumber -> ChurchNumber
+    abs :: ChurchNumber -> ChurchNumber
+    signum :: ChurchNumber -> ChurchNumber
     fromInteger n
         | n < 0     = error "Church numbers must be non-negative"
         | n == 0    = Zero
@@ -75,11 +75,6 @@ instance Ix ChurchNumber where
     
     inRange (m, n) i = i >= m && i <= n
 
-{-
-Тут была куча ошибок при компиляции и при запуске cabal test.
-Поэтому пришлось реализовать инстансы Enum и Show. 
-cabal test также ругается на тесты для Ix, я не понял в чем дело, но при запуске из консоли все работает
--}
 -- Вы можете найти класс `Ix` по ссылке:
 -- https://hackage.haskell.org/package/base-4.19.0.0/docs/Data-Ix.html
 -- Обратите внимание на необходимость импорта: `import Data.Ix`
@@ -102,16 +97,16 @@ data Tree a = Node
 -- поэтому обернем наш тип `Tree` в newtype, чтобы у нас было 3 разных типа,
 -- и уже для них реализуем `Show`
 
--- Определяем новый тип InOrder для in-order обхода
 newtype InOrder a = In (Tree a)
 
 instance Show a => Show (InOrder a) where
     show (In tree) = inOrderShow tree
       where
         inOrderShow (Node val [])       = show val
-        inOrderShow (Node val subtrees) = inOrderSubtrees subtrees ++ show val ++ inOrderSubtrees (drop 1 subtrees)
+        inOrderShow (Node val subtrees) = show val ++ inOrderSubtrees subtrees
         inOrderSubtrees []              = ""
         inOrderSubtrees (t:ts)          = inOrderShow t ++ inOrderSubtrees ts
+
 
 -- Определяем новый тип PreOrder для pre-order обхода
 newtype PreOrder a = Pre (Tree a)
@@ -177,24 +172,19 @@ mkCMYK cyan magenta yellow black
   | otherwise                                             = Nothing 
 
 ---------------------------------------
-{-# LANGUAGE FlexibleInstances #-}
 -- 3.a Напишите инстансы класса ToCMYK для [Int] и для RGB (0,75 балла)
 
 class ToCMYK a where
     toCMYK :: a -> Maybe CMYK
 
-{-
+
 -- Инстанс ToCMYK для [Int]
 instance ToCMYK [Int] where
     toCMYK [cyan, magenta, yellow, black]
         | inRange (0, 100) `all` [cyan, magenta, yellow, black] = Just $ UnsafeMkCMYK (fromIntegral cyan) (fromIntegral magenta) (fromIntegral yellow) (fromIntegral black)
         | otherwise                                             = Nothing
-Какой-то прикол с компиляцией для этой функции при запуске cabal test, хотя при :r ошибок не возникает и тесты в консоли работают
-ghci> toCMYK [0, 100, 256, 0]
-Nothing
-ghci> toCMYK [100, 0, 100, 0]
-Just (UnsafeMkCMYK {cyan = 100, magenta = 0, yellow = 100, black = 0})
--}
+
+
 
 -- Инстанс ToCMYK для [RGB]
 instance ToCMYK RGB where
@@ -213,7 +203,7 @@ instance ToCMYK RGB where
 
 -- | задайте класс типов ToCMYK используя data (аналогично Eq' из практики)
 --
-data DToCMYK a = MkDToCMYK { toCMYK' :: a -> Maybe CMYK }
+newtype DToCMYK a = MkDToCMYK { toCMYK' :: a -> Maybe CMYK }
 
 {-
 Found:
@@ -339,7 +329,7 @@ data List a = Nil | Cons a (List a)
   deriving (Show, Eq)
 
 instance Functor List where
---fmap :: (a -> b) -> List a -> List b
+  fmap :: (a -> b) -> List a -> List b
   fmap _ Nil         = Nil
   fmap f (Cons x xs) = Cons (f x) (fmap f xs)
 
@@ -349,7 +339,7 @@ instance Functor List where
 
 
 instance Functor Tree where
- -- fmap :: (a -> b) -> Tree a -> Tree b
+  fmap :: (a -> b) -> Tree a -> Tree b
   fmap f (Node val children) = Node (f val) (map (fmap f) children)
 
 ---------------------------------------
@@ -361,7 +351,7 @@ data Pair a b = Pair a b
 
 
 instance Functor (Pair a) where
---fmap :: (b -> c) -> Pair a b -> Pair a c
+  fmap :: (b -> c) -> Pair a b -> Pair a c
   fmap f (Pair a b) = Pair a (f b)
 
 -- С какими трудностями вы столкнулись?
@@ -384,13 +374,13 @@ data Either' a b = Left' a | Right' b
 
 -- Инстанс Bifunctor для Either
 instance Bifunctor Either' where
---bimap :: (a -> c) -> (b -> d) -> Either' a b -> Either' c d
+  bimap :: (a -> c) -> (b -> d) -> Either' a b -> Either' c d
   bimap f _ (Left' a)  = Left' (f a)
   bimap _ g (Right' b) = Right' (g b)
 
 -- Инстанс Bifunctor для пары (Tuple)
 instance Bifunctor Pair where
---bimap :: (a -> c) -> (b -> d) -> Pair a b -> Pair c d
+  bimap :: (a -> c) -> (b -> d) -> Pair a b -> Pair c d
   bimap f g (Pair a b) = Pair (f a) (g b)
 
 ------------------------------------------------------------------------------------------------
@@ -399,26 +389,20 @@ instance Bifunctor Pair where
 
 class GumRats a where
     workout :: a -> String
+    workoutPlan :: a -> String
+    
+instance GumRats Day where
+    workout Monday    = "Chest workout on Monday"
+    workout Tuesday   = "Back workout on Tuesday"
+    workout Wednesday = "Shoulder workout on Wednesday"
+    workout Thursday  = "Arm workout on Thursday"
+    workout Friday    = "Leg workout on Friday"
+    workout _         = "Rest on the weekend"
 
-data Monday = Chest
-data Tuesday = Back
-data Wednesday = Shoulders
-data Thursday = Arms
-data Friday = Legs
-
-instance GumRats Monday where
-    workout _ = "Chest workout on Monday"
-
-instance GumRats Tuesday where
-    workout _ = "Back workout on Tuesday"
-
-instance GumRats Wednesday where
-    workout _ = "Shoulder workout on Wednesday"
-
-instance GumRats Thursday where
-    workout _ = "Arm workout on Thursday"
-
-instance GumRats Friday where
-    workout _ = "Leg workout on Friday"
-
+    workoutPlan Monday    = "1. Bench press\n2. Incline dumbbell press\n3. Dumbbell flyes"
+    workoutPlan Tuesday   = "1. Deadlift\n2. Pull-ups\n3. Barbell rows"
+    workoutPlan Wednesday = "1. Military press\n2. Lateral raises\n3. Front raises"
+    workoutPlan Thursday  = "1. Bicep curls\n2. Tricep dips\n3. Hammer curls"
+    workoutPlan Friday    = "1. Squats\n2. Lunges\n3. Leg press"
+    workoutPlan _         = "Rest on the weekend"
 ------------------------------------------------------------------------------------------------
