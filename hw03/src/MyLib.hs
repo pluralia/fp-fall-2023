@@ -66,6 +66,9 @@ instance Enum ChurchNumber where
     fromEnum (Succ n) = 1 + fromEnum n
 
 instance Ix ChurchNumber where
+    range :: (ChurchNumber, ChurchNumber) -> [ChurchNumber]
+    index :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
+    inRange :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Bool
     range (m, n) = [m..n]
     
     index (m, n) i
@@ -256,11 +259,26 @@ dToCMYKRGB = MkDToCMYK toCMYKRGB
 {-
 pointful a b c d = a b (c d)
 pointful a b c d = a b $ c d -- заменяем скобки на $
-pointful a b c   = a b $ c -- можем удалить последний элемент
-pointful a b c   = (a b) . c -- теперь используем оператор композиции как в примере из лекции
-pointful a b c   = (.) (a b) c -- далее можем использовать его как функцию, которая принимает два аргумента (a b) и с
-pointful a b     = (.) (a b) -- удаляем последний элемент
--- я бы на этом остановился, потому что код стал максимально нечитаемым
+Последнюю строку можно переписать используя композицию
+pointful a b c d = (a b . c) d
+Теперь можно использовать $ 
+pointful a b c d = a b . c $ d 
+Вот теперь удаляем d (eta-reduction)
+pointful a b c d = a b . c
+Теперь используем оператор композиции как в примере из лекции
+pointful a b c   = (.) (a b) c
+Можем убрать с (eta-reduction)
+pointful a b c   = (.) (a b) 
+Заменяем скобки на $
+pointful a b c   = (.) $ a b
+Снова используем композицию
+pointful a b c   = (.) . a $ b 
+Можем убрать b (eta-reduction)
+pointful a b c   = (.) . a 
+Используем (.) как оператор
+pointful a b c   = (.) (.) a
+Можем убрать a (eta-reduction)
+pointful a b c   = (.) (.)
 -}
 ------------------------------------------------------------------------------------------------
 
