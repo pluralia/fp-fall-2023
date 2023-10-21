@@ -1,6 +1,7 @@
 module TestSpec (spec) where
 
 import MyLib
+import Data.Ix (inRange, index, range)
 import Data.Bifunctor (Bifunctor (bimap))
 
 import Test.Hspec
@@ -46,7 +47,7 @@ spec = do
       it "Multiplication of Succ values" $ do
         Succ (Succ Zero) * Succ (Succ (Succ Zero)) `shouldBe` Succ (Succ (Succ (Succ (Succ (Succ Zero)))))
 
-{-
+
     describe "Ix instance for ChurchNumber" $ do
       it "Range from Zero to Zero" $ do
         range (Zero, Zero) `shouldBe` [Zero]
@@ -65,7 +66,7 @@ spec = do
 
       it "Not in range Succ" $ do
         inRange (Zero, Succ Zero) (Succ (Succ Zero)) `shouldBe` False
--}
+
 
     describe "InOrder instance for Tree" $ do
       it "In-Order traversal of a single-node tree" $ do
