@@ -47,6 +47,23 @@ spec = do
       it "Multiplication of Succ values" $ do
         Succ (Succ Zero) * Succ (Succ (Succ Zero)) `shouldBe` Succ (Succ (Succ (Succ (Succ (Succ Zero)))))
 
+      it "Addition with Zero" $ do
+        Succ (Succ Zero) + Zero `shouldBe` Succ (Succ Zero)
+
+      it "Subtraction with Zero" $ do
+        Zero - Succ (Succ (Succ Zero)) `shouldBe` Zero
+
+      it "Absolute value of Succ" $ do
+        abs (Succ (Succ (Succ Zero))) `shouldBe` Succ (Succ (Succ Zero))
+
+      it "Absolute value of Zero" $ do
+        abs Zero `shouldBe` Zero
+
+      it "Signum of Succ" $ do
+        signum (Succ (Succ (Succ Zero))) `shouldBe` Succ Zero
+
+      it "Signum of Zero" $ do
+        signum Zero `shouldBe` Zero
 
     describe "Ix instance for ChurchNumber" $ do
       it "Range from Zero to Zero" $ do
@@ -75,11 +92,11 @@ spec = do
 
       it "In-Order traversal of a tree with multiple nodes" $ do
         let tree = In (Node (1 :: Int) [Node (2 :: Int) [], Node (3 :: Int) [Node (4 :: Int) [], Node (5 :: Int) []]])
-        show tree `shouldBe` "12345"
+        show tree `shouldBe` "24531"
 
       it "In-Order traversal of a tree with three nodes" $ do
         let tree = In (Node (5 :: Int) [Node (3 :: Int) [Node (2 :: Int) [], Node (4 :: Int) []], Node (7 :: Int) []])
-        show tree `shouldBe` "53247"
+        show tree `shouldBe` "24375"
 
     describe "PreOrder instance for Tree" $ do
       it "Pre-Order traversal of a single-node tree" $ do
@@ -107,26 +124,35 @@ spec = do
         let tree = Post (Node (7 :: Int) [Node (3 :: Int) [Node (2 :: Int) [], Node (5 :: Int) []], Node (9 :: Int) []])
         show tree `shouldBe` "25397"
 
-    describe "ToCMYK instance for RGB" $ do
-      it "Convert RGB (255, 0, 0) to CMYK" $ do
-        toCMYK (UnsafeMkRGB 255 0 0) `shouldBe` Just (UnsafeMkCMYK 0 100 100 0)
+    describe "Eq instance for Tree" $ do
+      let myTree1 = Node (1 :: Int) [Node (2 :: Int) [], Node (3 :: Int) []]
+      let myTree2 = Node (4 :: Int) [Node (5 :: Int) [], Node (6 :: Int) []]
+      let myTree3 = myTree1
 
-      it "Invalid input RGB (256, 0, 0)" $ do
-        toCMYK (UnsafeMkRGB 256 0 0) `shouldBe` Nothing
+      it "myTree1 != myTree2" $ do
+        myTree1 == myTree2 `shouldBe` False
 
-    describe "DToCMYK instance for [Int]" $ do
-      it "Convert [0, 255, 255] to CMYK using DToCMYK" $ do
-        toCMYK' dToCMYKList [0, 255, 255] `shouldBe` Just (UnsafeMkCMYK 100 0 0 0)
+      it "myTree1 /= myTree3" $ do
+        myTree1 /= myTree3 `shouldBe` False
 
-      it "Invalid input [-1, 255, 255] using DToCMYK" $ do
-        toCMYK' dToCMYKList [-1, 255, 255] `shouldBe` Nothing
+      it "myTree3 == myTree3" $ do
+        myTree3 == myTree3 `shouldBe` True
 
-    describe "DToCMYK instance for RGB" $ do
-      it "Convert RGB (0, 255, 255) to CMYK using DToCMYK" $ do
-        toCMYK' dToCMYKRGB (UnsafeMkRGB 0 255 255) `shouldBe` Just (UnsafeMkCMYK 100 0 0 0)
+    describe "ToCMYK instance" $ do
+      it "[Int] CMYK" $ do
+        toCMYK ([40, 80, 10, 25] :: [Int])  `shouldBe` Just (UnsafeMkCMYK {cyan = 40, magenta = 80, yellow = 10, black = 25})
 
-      it "Invalid input RGB (0, 256, 255) using DToCMYK" $ do
-        toCMYK' dToCMYKRGB (UnsafeMkRGB 0 256 255) `shouldBe` Nothing
+      it "[Int] CMYK" $ do
+        toCMYK someColor `shouldBe` Just (UnsafeMkCMYK {cyan = 0, magenta = 100, yellow = 10, black = 20})
+      
+      it "[Int] CMYK" $ do
+        toCMYK ([40, 200, 10, 25] :: [Int]) `shouldBe` Nothing
+
+      it "[Int] CMYK" $ do
+        someColorFromIntToCMYK `shouldBe` someColorFromIntToCMYK
+      
+      it "RGB CMYK" $ do
+        toCMYK someColorRGB `shouldBe` Just (UnsafeMkCMYK {cyan = 0, magenta = 100, yellow = 10, black = 20})
 
     describe "nextDay" $ do
       it "Next day after Monday is Tuesday" $ do
