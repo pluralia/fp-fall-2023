@@ -103,12 +103,10 @@ data Tree a = Node
 newtype InOrder a = In (Tree a)
 
 instance Show a => Show (InOrder a) where
-    show (In tree) = inOrderShow tree
-      where
-        inOrderShow (Node val [])       = show val
-        inOrderShow (Node val subtrees) = show val ++ inOrderSubtrees subtrees
-        inOrderSubtrees []              = ""
-        inOrderSubtrees (t:ts)          = inOrderShow t ++ inOrderSubtrees ts
+  show (In tree) = inOrderShow tree
+    where
+      inOrderShow (Node val childNodes) =  -- Переименовали 'children' в 'childNodes'
+        concatMap inOrderShow childNodes ++ show val
 
 
 -- Определяем новый тип PreOrder для pre-order обхода
@@ -156,8 +154,8 @@ data RGB = UnsafeMkRGB
 -- | ...и зададим новый конструктор, который будет проверять значения полей при инициализации
 --
 mkRGB :: Int -> Int -> Int -> Maybe RGB
-mkRGB red green blue
-  | inRange (0, 255) `all` [red, green, blue] = Just $ UnsafeMkRGB red green blue
+mkRGB r g b
+  | inRange (0, 255) `all` [r, g, b] = Just $ UnsafeMkRGB r g b
   | otherwise                                 = Nothing 
 
 -- | Аналогично поступим, задавая тип данных CMYK
@@ -170,8 +168,8 @@ data CMYK = UnsafeMkCMYK
   } deriving (Show, Eq)
 
 mkCMYK :: Int -> Int -> Int -> Int -> Maybe CMYK
-mkCMYK cyan magenta yellow black
-  | inRange (0, 100) `all` [cyan, magenta, yellow, black] = Just $ UnsafeMkCMYK cyan magenta yellow black
+mkCMYK c m y b
+  | inRange (0, 100) `all` [c, m, y, b] = Just $ UnsafeMkCMYK c m y b
   | otherwise                                             = Nothing 
 
 ---------------------------------------
@@ -183,22 +181,23 @@ class ToCMYK a where
 
 -- Инстанс ToCMYK для [Int]
 instance ToCMYK [Int] where
-    toCMYK [cyan, magenta, yellow, black]
-        | inRange (0, 100) `all` [cyan, magenta, yellow, black] = Just $ UnsafeMkCMYK (fromIntegral cyan) (fromIntegral magenta) (fromIntegral yellow) (fromIntegral black)
-        | otherwise                                             = Nothing
-
+    toCMYK [c, m, y, b]
+        | inRange (0, 100) `all` [c, m, y, b] = Just $ UnsafeMkCMYK (fromIntegral c) (fromIntegral m) (fromIntegral y) (fromIntegral b)
+        | otherwise = Nothing
+    toCMYK _ = Nothing  -- Добавили несопоставленный паттерн
 
 
 -- Инстанс ToCMYK для [RGB]
 instance ToCMYK RGB where
-    toCMYK (UnsafeMkRGB r g b)
-      | inRange (0, 255) `all` [r, g, b] = mkCMYK c m y k
-      | otherwise = Nothing
-      where
-        c = 100 - (r * 100) `div` 255
-        m = 100 - (g * 100) `div` 255
-        y = 100 - (b * 100) `div` 255
-        k = minimum [c, m, y]
+  toCMYK (UnsafeMkRGB {red=r, green=g, blue=b}) = mkCMYK c m y (round (k * 100 :: Double)) 
+    where
+      r' = fromIntegral r / 255
+      g' = fromIntegral g / 255
+      b' = fromIntegral b / 255
+      k = 1 - maximum [r', g', b']
+      c = if k == 1 then 0 else round (((1 - r' - k) / (1 - k) * 100))
+      m = if k == 1 then 0 else round (((1 - g' - k) / (1 - k) * 100))
+      y = if k == 1 then 0 else round (((1 - b' - k) / (1 - k) * 100))
 
 ---------------------------------------
 
@@ -231,7 +230,7 @@ dToCMYKList = MkDToCMYK toCMYKList
             m = 100 - (g * 100 `div` 255)
             y = 100 - (b * 100 `div` 255)
             k = minimum [c, m, y]
-
+    toCMYKList _ = Nothing  -- Добавили несопоставленный паттерн
 -- Реализуем класс типов DToCMYK для RGB
 dToCMYKRGB :: DToCMYK RGB
 dToCMYKRGB = MkDToCMYK toCMYKRGB
@@ -249,8 +248,30 @@ dToCMYKRGB = MkDToCMYK toCMYKRGB
 -- 3.c Используйте инстансы (0,25 балла)
 --     Приведите пример использования инстансов [Int] и RGB реализованных в 3a и 3b (должно получится 4 примера)
 
--- На эти примеры очень ругается компилятор, но суть использования инстансов они точно отражают
--- завернул эти примеры в тесты
+-- Определение цвета "someColor" с использованием списка [Int]
+someColor :: [Int]
+someColor = [0, 100, 10, 20]
+
+-- Пример 1: Преобразование цвета "someColor" из списка [Int] в CMYK с использованием инстанса
+someColorFromIntToCMYK :: Maybe CMYK
+someColorFromIntToCMYK = toCMYK someColor
+
+-- Пример 2: Преобразование цвета "someColor" из списка [Int] в CMYK с использованием класса типов
+someColorFromIntToCMYK' :: Maybe CMYK
+someColorFromIntToCMYK' = toCMYK' dToCMYKList someColor
+
+-- Определение цвета "someColor" с использованием RGB
+someColorRGB :: RGB
+someColorRGB = UnsafeMkRGB 204 0 184
+
+-- Пример 3: Преобразование цвета "someColor" из RGB в CMYK с использованием инстанса
+someColorFromRGBToCMYK :: Maybe CMYK
+someColorFromRGBToCMYK = toCMYK someColorRGB
+
+-- Пример 4: Преобразование цвета "someColor" из RGB в CMYK с использованием класса типов
+someColorFromRGBToCMYK' :: Maybe CMYK
+someColorFromRGBToCMYK' = toCMYK' dToCMYKRGB someColorRGB
+
 ------------------------------------------------------------------------------------------------
 
 -- 4. Сделайте функцию `pointful` бесточечной, объясняя каждый шаг по примеру из практики
@@ -358,7 +379,7 @@ instance Functor List where
 
 instance Functor Tree where
   fmap :: (a -> b) -> Tree a -> Tree b
-  fmap f (Node val children) = Node (f val) (map (fmap f) children)
+  fmap f (Node val childNode) = Node (f val) (map (fmap f) childNode)
 
 ---------------------------------------
 
