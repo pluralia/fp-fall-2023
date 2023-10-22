@@ -3,7 +3,7 @@ module MyLib where
 
 import           Data.Ix (Ix, inRange, index, range)
 import qualified Data.List as L (intercalate)
-import           Data.Bifunctor 
+-- import           Data.Bifunctor 
 
 ------------------------------------------------------------------------------------------------
 
@@ -201,9 +201,7 @@ instance ToCMYK RGB where
 -- 3.b Классы типов -- это функции (1 балл)
 
 -- | задайте класс типов ToCMYK используя data (аналогично Eq' из практики)
-
--- здесь hlint ругается, просит поменять data на newtype, но это противоречит условию задания
-data DToCMYK a = MkCMYK { toCMYK' :: a -> Maybe CMYK }
+newtype DToCMYK a = MkCMYK { toCMYK' :: a -> Maybe CMYK }
 
 -- | реализуйте класс типов DToCMYK для [Int] и для RGB в виде функций (аналогично dEqBool из практики)
 
@@ -389,20 +387,27 @@ instance Functor (Pair a) where
 
 -- Реализуйте инстанс Functor для Either и пары
 
-instance Bifunctor Pair where
-  first :: (a -> c) -> Pair a b -> Pair c b
-  first f (Pair x y) = Pair (f x) y
-
-  second :: (b -> c) -> Pair a b -> Pair a c
-  second f (Pair x y) = Pair x (f y)
+class MyBifunctor p where
+   first'  :: (a -> c) -> p a b -> p c b
+   second' :: (b -> c) -> p a b -> p a c
 
 
--- instance Bifunctor Either where
---   first :: (a -> c) -> Either a b -> Either c b
---   first f (Left x _) = Left (f x)
+instance MyBifunctor Pair where
+  first' :: (a -> c) -> Pair a b -> Pair c b
+  first' f (Pair x y) = Pair (f x) y
 
---   second :: (b -> c) -> Either a b -> Either a c
---   second f (Right _ y) = Right (f y)
+  second' :: (b -> c) -> Pair a b -> Pair a c
+  second' f (Pair x y) = Pair x (f y)
+
+
+instance MyBifunctor Either where
+  first' :: (a -> c) -> Either a b -> Either c b
+  first' _ (Right _) = error "for ' first' ' must be used (Left _). If you want (Right _) => used ' second' '"
+  first' f (Left x)  = Left (f x)
+
+  second' :: (b -> c) -> Either a b -> Either a c
+  second' _ (Left _)  = error "for ' second' ' must be used (Right _). If you want (Left _) => used ' first' '"
+  second' f (Right y) = Right (f y)
 
 -- Duplicate instance declarations:
 --       instance Bifunctor Either -- Defined at src\MyLib.hs:398:10

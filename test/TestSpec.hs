@@ -4,7 +4,6 @@ module TestSpec where
 import Test.Hspec
 import MyLib
 import Data.Ix (inRange, index, range)
-import Data.Bifunctor 
 
 spec :: Spec
 spec = do
@@ -66,9 +65,9 @@ spec = do
             inRange (one, five) eight `shouldBe` False
         
 -- | Number 2
-    let myTree1 = Node 2 [Node 3 [Node 5 []], Node 1 []]
-    let myTree2 = Node 2 [Node 3 [Node 5 []], Node 1 [], Node 4 [], Node 0 [Node 6 [], Node 7 []]]
-    let myTree3 = Node 2 [Node 3 [Node 5 []], Node 1 [], Node 4 [], Node 6 [], Node 7 [Node 8 [], Node 9 []]]
+    let myTree1 = Node 2 [Node 3 [Node 5 []], Node 1 []] :: Tree Int
+    let myTree2 = Node 2 [Node 3 [Node 5 []], Node 1 [], Node 4 [], Node 0 [Node 6 [], Node 7 []]] :: Tree Int
+    let myTree3 = Node 2 [Node 3 [Node 5 []], Node 1 [], Node 4 [], Node 6 [], Node 7 [Node 8 [], Node 9 []]] :: Tree Int
 
     describe "instances for Tree" $ do
         it "In-order" $ do
@@ -184,15 +183,25 @@ spec = do
             fmap (==2) (Pair (1 :: Int) (10 :: Int)) `shouldBe` Pair (1 :: Int) False
 
 -- | Number 7
-    describe "BiFunctor" $ do
+    describe "MyBifunctor for Pair" $ do
         it "Pair" $ do
-            first (*2) (Pair (1 :: Int) (2 :: Int)) `shouldBe` Pair (2 :: Int) (2 :: Int)
+            first' (*2) (Pair (1 :: Int) (2 :: Int)) `shouldBe` Pair (2 :: Int) (2 :: Int)
         it "Pair" $ do
-            second (+5) (Pair (10 :: Int) (20 :: Int)) `shouldBe` Pair (10 :: Int) (25 :: Int)
+            second' (+5) (Pair (10 :: Int) (20 :: Int)) `shouldBe` Pair (10 :: Int) (25 :: Int)
         it "Pair" $ do
-            first (++ "!") (Pair "You" "Me") `shouldBe` Pair "You!" "Me"
+            first' (++ "!") (Pair "You" "Me") `shouldBe` Pair "You!" "Me"
         it "Pair" $ do
-            second (++ "?") (Pair "You" "Me") `shouldBe` Pair "You" "Me?"
+            second' (++ "?") (Pair "You" "Me") `shouldBe` Pair "You" "Me?"
+        
+    describe "MyBifunctor for Either" $ do
+        it "Either" $ do
+            first' (*2) (Left 21) `shouldBe` (Left 42 :: Either Int Int)
+        it "Either" $ do
+            second' (+5) (Right 20) `shouldBe` (Right 25 :: Either Int Int)
+        it "Either" $ do
+            first' (++ "!") (Left "Wonderful day") `shouldBe` (Left "Wonderful day!" :: Either String String)
+        it "Either" $ do
+            second' (++ ".") (Right "The task is end") `shouldBe` (Right "The task is end." :: Either String String)
             
 -- | Number 8
     describe "my function: Smiler" $ do
