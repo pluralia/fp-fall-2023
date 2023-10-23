@@ -1,0 +1,34 @@
+cabal-version:      2.4
+name:               hw4
+version:            0.1.0.0
+synopsis:           hw4
+homepage:
+license:            MIT
+license-file:       LICENSE
+author:             Ivan
+maintainer:         shchukin.global@gmail.com
+extra-source-files: CHANGELOG.md
+
+library
+    exposed-modules:  MyLib
+    ghc-options:      -Wall
+    build-depends:    base ^>=4.16.4.0
+                 ,    containers
+                 ,    text
+                 ,    vector
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+test-suite hw4-test
+    default-language: Haskell2010
+    ghc-options:      -Wall
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          MyLibTest.hs
+    build-depends:    base ^>=4.16.4.0
+                 ,    hw4
+                 ,    hspec
+                 ,    containers
+                 ,    text
+                 ,    vector
+    other-modules:    TestSpec
