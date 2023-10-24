@@ -1,7 +1,7 @@
-module MyLib where
-
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs      #-}
+
+module MyLib where
 
 import Data.Ix
 import Data.Bifunctor
@@ -11,131 +11,95 @@ import Data.Bifunctor
 -- 1. Числа Черча и `Ix` (1 балл)
 --    Напишите инстансы `Eq`, `Ord`, `Num` и `Ix` для чисел Черча
 data ChurchNumber = Zero | Succ ChurchNumber
---  deriving (Show, Eq)
+  deriving (Show)
 
 instance Eq ChurchNumber where
+  (==) :: ChurchNumber -> ChurchNumber -> Bool
   Zero == Zero = True
   Zero == _    = False
   _ == Zero    = False 
   (Succ m) == (Succ n) = n == m
 
--- Функция преобразования числа Чёрча в число обычное
-chToInt :: ChurchNumber -> Integer
-chToInt Zero     = 0
-chToInt (Succ n) = 1 + chToInt n
-
 instance Ord ChurchNumber where
-  compare n1 n2 = compare (chToInt n1) (chToInt n2)
-
-
--- Сначала все функции из hw1 для вычисления чисел Чёрча
-
--- | The successor of a Church numeral
-chSucc :: ChurchNumber -> ChurchNumber
-chSucc = Succ
-
--- | Addition of two Church numerals
-chAdd :: ChurchNumber -> ChurchNumber -> ChurchNumber
-chAdd (Succ m) n = chAdd m (chSucc n)
-chAdd Zero n = n
-
--- | Multiplication of two Church numerals
-chMult :: ChurchNumber -> ChurchNumber -> ChurchNumber
-chMult (Succ m) n = chAdd n (chMult m n)
-chMult Zero n = Zero
-
--- | Raising to the power of a Church numeral
-chPow :: ChurchNumber -> ChurchNumber -> ChurchNumber
-chPow Zero n = chSucc Zero
-chPow (Succ m) n = chMult n (chPow m n)
-
-
--- | Previous of a Church numeral
-chPrev :: ChurchNumber -> ChurchNumber
-chPrev (Succ (Succ n)) = Succ n
-chPrev _ = Zero
-
--- Функция для вычитания одного числа Чёрча из другого
--- я прочитал, что в хаскеле можно с помощью @ как бы связывать имена и написал так функцию
--- но можно и без строчки chSubtract a@(Succ m) b@(Succ n), тогда:
--- chSubtract (Succ m) (Succ n)
--- | (Succ m) == (Succ n) = Zero
--- | otherwise = chSubtract m (Succ n)
-chSubtract :: ChurchNumber -> ChurchNumber -> ChurchNumber
-chSubtract a@(Succ m) b@(Succ n)
-  | a == b = Zero
-  | otherwise = chSubtract m b
-
-
--- Функция для создания числа Чёрча из Integer
-chFromInteger :: Integer -> ChurchNumber
-chFromInteger n
-  | n == 0    = Zero
-  | n > 0     = Succ (chFromInteger (n - 1))
-  | otherwise = error "Na-ah, u can`t have negative rusult, buddy"
-
--- Теперь, собственно, сам инстанс (брал функции из hoogl`а)
+  (<=) :: ChurchNumber -> ChurchNumber -> Bool
+  (<=) Zero Zero         = True
+  (<=) _ Zero            = False
+  (<=) Zero _            = True
+  (<=) (Succ a) (Succ b) = a <= b
 
 instance Num ChurchNumber where
+    (+)         :: ChurchNumber -> ChurchNumber -> ChurchNumber
+    (-)         :: ChurchNumber -> ChurchNumber -> ChurchNumber
+    (*)         :: ChurchNumber -> ChurchNumber -> ChurchNumber
+    abs         :: ChurchNumber -> ChurchNumber
+    signum      :: ChurchNumber -> ChurchNumber
+    fromInteger :: Integer      -> ChurchNumber
+    negate      :: ChurchNumber -> ChurchNumber
+
     -- Сложение двух чисел Чёрча
-    (+) = chAdd
+    (+) a Zero     = a
+    (+) a (Succ b) = Succ (a + b)
+
+    -- Вычитание одного числа Чёрча из другого
+    (-) Zero _            = error "ChurchNumber is not allowed to be negative"
+    (-) a Zero            = a
+    (-) (Succ a) (Succ b) = a - b
 
     -- Умножение двух чисел Чёрча
-    (*) = chMult
+    (*) _ Zero        = Zero
+    (*) Zero _        = Zero
+    (*) a (Succ Zero) = a
+    (*) a (Succ b)    = a + (a * b)
 
     -- Модуль числа Чёрча
     abs = id
 
-    -- Знак числа Чёрча (всегда положителен)
-    signum _ = Succ Zero
+    -- Знак числа Чёрча
+    signum Zero = Zero
+    signum _    = Succ Zero
 
     -- Операция перевода числа в число Чёрча
     fromInteger n
      | n < 0     = error "Na-ah, u can`t have negative rusult, buddy"
-     | otherwise = chFromInteger n
+     | n == 0    = Zero
+     | otherwise = Succ (fromInteger (n - 1))
 
     -- Негирование числа Чёрча (они все положительные, так что это всегда ноль)
     negate _ = Zero
 
-    -- Вычитание одного числа Чёрча из другого
-    (-) a b
-      | a >= b    = chSubtract a b
-      | otherwise = error "Na-ah, u can`t have negative rusult, buddy"
 
 -- Вы можете найти класс `Ix` по ссылке:
 -- https://hackage.haskell.org/package/base-4.19.0.0/docs/Data-Ix.html
 -- Обратите внимание на необходимость импорта: `import Data.Ix`
 
-instance Enum ChurchNumber where
-    toEnum 0 = Zero
-    toEnum n
-        | n > 0 = Succ (toEnum (n - 1))
-        | otherwise = error "toEnum: negative argument"
-    
-    fromEnum Zero = 0
-    fromEnum (Succ n) = 1 + fromEnum n
-
 instance Ix ChurchNumber where
-    range (m, n) = map chFromInteger [intM..intN]
-        where
-            intM = chToInt m
-            intN = chToInt n
+    range   :: (ChurchNumber, ChurchNumber) -> [ChurchNumber]
+    index   :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
+    inRange :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Bool
 
-    index (m, n) i
-        | i < m || i > n = error "Woopsi, wrong number"
-        | i == m = 0
-        | otherwise = 1 + index (m, n) (pred i)
+    range (l, r)
+      | l > r     = error "Left must be less then right"
+      | l == r    = [r]
+      | otherwise = r : range (l, r - Succ Zero)
 
-    inRange (m, n) i = i >= m && i <= n
+    index = recursiveIndex 0
+      where
+        recursiveIndex :: Int -> (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
+        recursiveIndex acc (l, r) el
+          | l > r                      = error "Left must be less then right"
+          | el > r || el < l           = error "El must be between l and r"
+          | el == l                    = acc
+          | otherwise                  = recursiveIndex (acc + 1) (l, r - Succ Zero) el      
+
+    inRange (l, r) el 
+      | l > r                = error "Left must be less then right"
+      | otherwise            = l <= el && el <= r
 
 ------------------------------------------------------------------------------------------------
 
 -- 2. Дерево (2 балла)
 
-data Tree a = Node
-  { value :: a
-  , children :: [Tree a]
-  }
+data Tree a = Node {value :: a, children :: [Tree a]}
 
 ---------------------------------------
 
@@ -147,7 +111,7 @@ data Tree a = Node
 -- и уже для них реализуем `Show`
 
 -- | in-order обход дерева
---
+
 newtype InOrder a = In (Tree a)
 
 instance Show a => Show (InOrder a) where
@@ -224,7 +188,7 @@ data CMYK = UnsafeMkCMYK
   , magenta :: Int
   , yellow  :: Int
   , black   :: Int
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 mkCMYK :: Int -> Int -> Int -> Int -> Maybe CMYK
 mkCMYK cyan magenta yellow black
@@ -323,29 +287,26 @@ dToCMYKRGB = MkDToCMYK toCMYKRGB
 
 -- Лежат в TestSpec.hs
 
-
 ------------------------------------------------------------------------------------------------
 
 -- 4. Сделайте функцию `pointful` бесточечной, объясняя каждый шаг по примеру из практики
 --    (1,5 балла)
 
--- pointful a b c d = a b (c d)
--- pointful a b c d = a b $ c d       -- заменяем скобки на $
--- pointful a b c   = a b $ c         -- удаляем d
--- pointful a b c   = (a b) . c       -- используем оператор композиции
--- pointful a b c   = (.) (a b) c     -- используем его как функцию, которая принимает два аргумента (a b) и с
--- pointful a b     = (.) (a b)       -- удаляем с
--- pointful a b     = (.) a $ b       -- заменяем скобки на $
--- pointful a b     = ((.) a) . b     -- оператор композиции
--- pointful a b     = (.) ((.) a) b   -- используем его как функцию 
--- pointful a       = (.) ((.) a)     -- удаляем b
--- pointful a       = (.) (.) $ a     -- заменяем скобки на $
--- pointful a       = ((.) (.)) . a   -- используем оператор композиции
--- pointful a       = (.) ((.) (.)) a -- используем его как функцию, которая принимает два аргумента ((.) (.)) и а
--- pointful         = (.) ((.) (.))   -- удаляем а
+-- pointful a b c d  = a b (c d)
+-- pointful a b c d  = a b $ c d       -- заменяем скобки на $
+-- pointful a b c d  = (a b . c) d     -- используем оператор композиции
+-- pointful a b c d  = (a b) . c $ d   -- заменяем скобки на $
+-- pointful a b c    = (a b) . c       -- удаляем d
+-- pointful a b      = (.) (a b) с     -- используем оператор композиции как функцию, которая принимает два аргумента (a b) и с
+-- pointful a b      = (.) (a b)       -- удаляем с
+-- pointful a b      = (.) $ a b       -- заменяем скобки на $
+-- pointful a b      = (.) . a $ b     -- используем оператор композиции
+-- pointful a        = (.) . a         -- удаляем b
+-- pointful a        = (.) (.) a       -- используем оператор композиции
+-- pointful a        = (.) (.)         -- удаляем а
 
 
--- Финал: pointful = (.) ((.) (.))
+-- Финал: pointful = (.) (.)
 
 ------------------------------------------------------------------------------------------------
 
