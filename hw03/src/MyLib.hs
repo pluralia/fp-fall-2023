@@ -195,9 +195,9 @@ instance ToCMYK RGB where
       g' = fromIntegral g / 255
       b' = fromIntegral b / 255
       k = 1 - maximum [r', g', b']
-      c = if k == 1 then 0 else round (((1 - r' - k) / (1 - k) * 100))
-      m = if k == 1 then 0 else round (((1 - g' - k) / (1 - k) * 100))
-      y = if k == 1 then 0 else round (((1 - b' - k) / (1 - k) * 100))
+      c = if k == 1 then 0 else round ((1 - r' - k) / (1 - k) * 100)
+      m = if k == 1 then 0 else round ((1 - g' - k) / (1 - k) * 100)
+      y = if k == 1 then 0 else round ((1 - b' - k) / (1 - k) * 100)
 
 ---------------------------------------
 
