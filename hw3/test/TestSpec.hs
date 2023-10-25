@@ -1,6 +1,7 @@
 module TestSpec (spec) where
 
 import MyLib
+import Data.Ix
 
 import Data.Bifunctor (Bifunctor (bimap))
 import Test.Hspec (
@@ -15,89 +16,101 @@ default (Int, Double)
 spec :: Spec
 spec = do
   describe "ChurchNumber" $ do
-    it "returns the correct result" $ do
-      let x = cn 3
-      let y = cn 5
+    let x = cn 3
+    let y = cn 5
+    it "Eq" $ do
       x == Succ (Succ (Succ Zero)) `shouldBe` True
       y == Succ (Succ (Succ (Succ (Succ Zero)))) `shouldBe` True
+      x == y `shouldBe` False
+      x /= y `shouldBe` True
+    it "Num" $ do
       x + y `shouldBe` cn 8
       cn 11513 + cn 8795755 `shouldBe` cn 8807268
       x - y `shouldBe` cn 0
       x * y `shouldBe` cn 15
       cn 65 * cn 43 `shouldBe` cn 2795
-      x == y `shouldBe` False
+      abs (cn 5) `shouldBe` cn 5
+      signum (cn 5) `shouldBe` cn 1
+      signum (cn 0) `shouldBe` cn 0
+    it "Ord" $ do
       x < y `shouldBe` True
       x > y `shouldBe` False
       x <= y `shouldBe` True
       x >= y `shouldBe` False
-  -- Variable not in scope. Почему? Я не понимаю...
-  -- range (cn 1, cn 3) `shouldBe` [cn 1, cn 2, cn 3]
-  -- inRange (cn 1, cn 3) (cn 2) `shouldBe` True
-  -- inRange (cn 1, cn 3) (cn 4) `shouldBe` False
-  -- index (cn 1, cn 3) (cn 2) `shouldBe` 1
-  -- index (cn 1, cn 100000) (cn 10000) `shouldBe` 9999
-  -- index (cn 1, cn 1000) (cn 40000) `shouldBe` -1
+    it "Ix" $ do
+      range (cn 1, cn 3) `shouldBe` [cn 1, cn 2, cn 3]
+      range (cn 1, cn 1) `shouldBe` [cn 1]
+      inRange (cn 1, cn 3) (cn 2) `shouldBe` True
+      inRange (cn 1, cn 3) (cn 4) `shouldBe` False
+      inRange (cn 1, cn 100000) (cn 10000) `shouldBe` True
+      index (cn 1, cn 3) (cn 2) `shouldBe` 1
+      index (cn 1, cn 100000) (cn 10000) `shouldBe` 9999
+      index (cn 1, cn 1000) (cn 40000) `shouldBe` -1
 
   describe "Tree" $ do
-    it "returns the correct result" $ do
-      let tree1 = Node "F" [Node "B" [Node "A" [], Node "D" [Node "C" [], Node "E" []]], Node "G" [Node "I" [Node "H" []]]]
-      -- something like this
-      --      F
-      --   /    \
-      --  B      G
-      -- / \      \
-      -- A  D      I
-      --   / \      \
-      --   C E       H
-      let tree11 = Node "F" [Node "B" [Node "A" [], Node "D" [Node "E" [], Node "C" []]], Node "G" [Node "I" [Node "H" []]]]
-      -- something like this
-      --      F
-      --   /    \
-      --  B      G
-      -- / \      \
-      -- A  D      I
-      --   / \      \
-      --   E C       H
-      let tree12 = Node "F" [Node "G" [Node "I" [Node "H" []]], Node "B" [Node "A" [], Node "D" [Node "E" [], Node "C" []]]]
-      -- something like this
-      --      F
-      --   /    \
-      --  G      B
-      -- /      / \
-      -- I     A   D
-      --  \       / \
-      --   H     E   C
-      let tree2 = Node "F" [Node "B" [Node "A" [], Node "D" [Node "C" [], Node "E" []]], Node "G" []]
-      -- something like this
-      --      F
-      --   /    \
-      --  B      G
-      -- / \
-      -- A  D
-      --   / \
-      --   C E
-      let tree3 = Node "B" [Node "A" [], Node "C" []]
-      -- something like this
-      --  B
-      -- / \
-      -- A  C
-      let tree31 = Node "B" [Node "C" [], Node "A" []]
-      -- something like this
-      --  B
-      -- / \
-      -- C  A
-      let tree4 = Node "B" []
-      -- something like this
-      -- B
-      show (Pre tree1) `shouldBe` "[F,B,A,D,C,E,G,I,H]"
-      show (Pre tree3) `shouldBe` "[B,A,C]"
-      show (Pre tree4) `shouldBe` "[B]"
-      show (In tree1) `shouldBe` "[A,B,C,D,E,F,H,I,G]"
-      show (In tree3) `shouldBe` "[A,B,C]"
-      show (In tree4) `shouldBe` "[B]"
-      show (Post tree1) `shouldBe` "[A,C,E,D,B,H,I,G,F]"
-      show (Post tree3) `shouldBe` "[A,C,B]"
-      show (Post tree4) `shouldBe` "[B]"
+    let tree1 = Node "F" [Node "B" [Node "A" [], Node "D" [Node "C" [], Node "E" []]], Node "G" [Node "I" [Node "H" []]]]
+    -- something like this
+    --      F
+    --   /    \
+    --  B      G
+    -- / \      \
+    -- A  D      I
+    --   / \      \
+    --   C E       H
+    let tree11 = Node "F" [Node "B" [Node "A" [], Node "D" [Node "E" [], Node "C" []]], Node "G" [Node "I" [Node "H" []]]]
+    -- something like this
+    --      F
+    --   /    \
+    --  B      G
+    -- / \      \
+    -- A  D      I
+    --   / \      \
+    --   E C       H
+    let tree12 = Node "F" [Node "G" [Node "I" [Node "H" []]], Node "B" [Node "A" [], Node "D" [Node "E" [], Node "C" []]]]
+    -- something like this
+    --      F
+    --   /    \
+    --  G      B
+    -- /      / \
+    -- I     A   D
+    --  \       / \
+    --   H     E   C
+    let tree2 = Node "F" [Node "B" [Node "A" [], Node "D" [Node "C" [], Node "E" []]], Node "G" []]
+    -- something like this
+    --      F
+    --   /    \
+    --  B      G
+    -- / \
+    -- A  D
+    --   / \
+    --   C E
+    let tree3 = Node "B" [Node "A" [], Node "C" []]
+    -- something like this
+    --  B
+    -- / \
+    -- A  C
+    let tree31 = Node "B" [Node "C" [], Node "A" []]
+    -- something like this
+    --  B
+    -- / \
+    -- C  A
+    let tree4 = Node "B" []
+    -- something like this
+    -- B
+    it "Show Pre" $ do
+      -- выглядит очень ужасно. я сдаюсь. этот язык не победить
+      show (Pre tree1) `shouldBe` "[\"F\",\"B\",\"A\",\"D\",\"C\",\"E\",\"G\",\"I\",\"H\"]"
+      show (Pre tree3) `shouldBe` "[\"B\",\"A\",\"C\"]"
+      show (Pre tree4) `shouldBe` "[\"B\"]"
+    it "Show In" $ do
+      show (In tree1) `shouldBe` "[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"H\",\"I\",\"G\"]"
+      show (In tree3) `shouldBe` "[\"A\",\"B\",\"C\"]"
+      show (In tree4) `shouldBe` "[\"B\"]"
+    it "Show Post" $ do
+      show (Post tree1) `shouldBe` "[\"A\",\"C\",\"E\",\"D\",\"B\",\"H\",\"I\",\"G\",\"F\"]"
+      show (Post tree3) `shouldBe` "[\"A\",\"C\",\"B\"]"
+      show (Post tree4) `shouldBe` "[\"B\"]"
+    it "Eq" $ do
       tree1 == tree11 `shouldBe` True
       tree1 == tree12 `shouldBe` True
       tree1 == tree2 `shouldBe` False
@@ -142,4 +155,4 @@ spec = do
       bimap (++ "A") (+ 1) (Pair "A" (2 :: Int)) `shouldBe` Pair "AA" (3 :: Int)
       bimap (+ 1) (++ "A") (Left' (1 :: Int)) `shouldBe` Left' (2 :: Int)
       -- я понимаю, что even не определен для строки, но я не понимаю почему от беспокоится, ведь я не применяю эту функцию к строке
-      bimap even (++ "A") (Right' "A") `shouldBe` Right' "AA"
+      bimap even (++ "A") (Right' "A" :: (Either' Int String)) `shouldBe` Right' "AA"

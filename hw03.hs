@@ -69,6 +69,8 @@ data RGB = UnsafeMkRGB
   , blue  :: Int
   } deriving (Show)
 
+
+
 -- | ...и зададим новый конструктор, который будет проверять значения полей при инициализации
 --
 mkRGB :: Int -> Int -> Int -> Maybe RGB
