@@ -147,9 +147,9 @@ instance Eq a => Eq (Tree a) where
 -- | Зададим тип данных RGB, но так как его поля должны быть от 0 до 255, назовем конструктор Unsafe...
 --
 data RGB = UnsafeMkRGB
-  { red   :: Int
-  , green :: Int
-  , blue  :: Int
+  { red'   :: Int
+  , green' :: Int
+  , blue'  :: Int
   } deriving (Show)
 
 -- | ...и зададим новый конструктор, который будет проверять значения полей при инициализации
@@ -162,10 +162,10 @@ mkRGB red green blue
 -- | Аналогично поступим, задавая тип данных CMYK
 --
 data CMYK = UnsafeMkCMYK
-  { cyan    :: Int
-  , magenta :: Int
-  , yellow  :: Int
-  , black   :: Int
+  { cyan'    :: Int
+  , magenta' :: Int
+  , yellow'  :: Int
+  , black'   :: Int
   } deriving (Show, Eq)
 
 mkCMYK :: Int -> Int -> Int -> Int -> Maybe CMYK
