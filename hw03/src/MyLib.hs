@@ -4,6 +4,7 @@
 
 module MyLib where
 import Data.Ix
+import Data.Bifunctor
 
 ------------------------------------------------------------------------------------------------
 
@@ -52,13 +53,17 @@ instance Num ChurchNumber where
 
 instance Ix ChurchNumber where
     range :: (ChurchNumber, ChurchNumber) -> [ChurchNumber]
-    range (n1, m1) = enumFromToChurch n1 m1
-      where 
-        enumFromToChurch :: ChurchNumber -> ChurchNumber -> [ChurchNumber]
-        enumFromToChurch n2 m2
-          | n2 > m2     = []
-          | n2 == m2    = [m2]
-          | otherwise = n2 : enumFromToChurch (Succ n2) m2
+    range (n1, m1)
+      | n1 > m1     = []
+      | n1 == m1    = [m1]
+      | otherwise = n1 : range (Succ n1, m1)
+    --range (n1, m1) = enumFromToChurch n1 m1
+    --  where 
+    --    enumFromToChurch :: ChurchNumber -> ChurchNumber -> [ChurchNumber]
+    --    enumFromToChurch n2 m2
+    --      | n2 > m2     = []
+    --      | n2 == m2    = [m2]
+    --      | otherwise = n2 : enumFromToChurch (Succ n2) m2
 
     index :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
     index (n1, _) i = fromInteger $ churchToInt  (i - n1)
@@ -101,7 +106,8 @@ newtype InOrder a = In (Tree a)
 instance Show a => Show (InOrder a) where
     show :: Show a => InOrder a -> String
     show (In (Node v [])) = show v
-    show (In (Node v children_inOrder)) = unwords $ map (show . In) children_inOrder ++ [show v]
+    show (In (Node v ts)) = show v ++ " " ++ unwords ( map (show . In) ts)
+
 
 -- | pre-order обход дерева
 --
@@ -234,9 +240,9 @@ dToCMYKRGB = MkToCMYK toCMYKRGB
 --    (1,5 балла)
 
 -- pointful a b c d = a b (c d)
--- pointful a b c d = a . b (c d) -- pointed f g x = f . g x          -- eta-reduction
--- pointful a b c= a . b . c - откидываем последний аргумент
--- pointful a b = a . ((.) b) - откидываем последний аргумент
+-- pointful a b c = \d -> a b (c d) - заменяем d на лямбду фунцию
+-- pointful a b = \c d -> a b (c d) -  то же самое с с
+-- pointful a b = \c -> a b . c - откидываем d
 
 
 ------------------------------------------------------------------------------------------------
@@ -334,6 +340,9 @@ instance Functor Tree where
 data Pair a b = Pair a b
   deriving (Show)
 
+instance Functor (Pair a) where
+  fmap :: (b -> c) -> Pair a b -> Pair a c
+  fmap f (Pair x y) = Pair x (f y)
 -- С какими трудностями вы столкнулись? - Pair принимает 2 аргумента, а Functor 1, но что с этим делать я не придумала
 
 ------------------------------------------------------------------------------------------------
@@ -352,12 +361,17 @@ instance Functor (MyEither a) where
   fmap _ (MyLeft x) = MyLeft x
   fmap f (MyRight y) = MyRight (f y)
 
+instance Bifunctor MyEither where
+  bimap :: (a -> d) -> (b -> e) -> MyEither a b -> MyEither d e
+  bimap f _ (MyLeft x) = MyLeft (f x)
+  bimap _ g (MyRight y) = MyRight (g y)
+
 data MyPair a b = MyPair a b
 
---instance Functor (MyPair a) where
+instance Bifunctor MyPair where
+  bimap :: (a -> d) -> (b -> e) -> MyPair a b -> MyPair d e
+  bimap f g (MyPair x y) = MyPair (f x) (g y)
  
-
-
 ------------------------------------------------------------------------------------------------
 
 -- 8. Задайте свой класс типов, опираясь на интересы, хобби и фазу Луны (0,25 балла)

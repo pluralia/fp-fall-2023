@@ -124,7 +124,10 @@ spec = do
             show (In (Node (1 :: Int) [])) `shouldBe` "1"
 
         it "shows a tree with multiple children correctly" $ do
-            show (In (Node (1 :: Int) [Node (2 :: Int) [], Node (3 :: Int) [], Node (4 :: Int) []])) `shouldBe` "2 3 4 1"
+            show (In (Node (1 :: Int) [Node (2 :: Int) [], Node (3 :: Int) [], Node (4 :: Int) []])) `shouldBe` "1 2 3 4"
+
+        it "shows a complex tree correctly" $ do
+            show (In (Node (1 :: Int) [Node (2 :: Int) [Node (4 :: Int) []], Node (3 :: Int) [Node (5 :: Int) [], Node (6 :: Int) []]])) `shouldBe` "1 2 4 3 5 6"
 
     describe "PreOrder" $ do
         it "shows a single node correctly" $ do
@@ -136,6 +139,9 @@ spec = do
         it "shows a tree with multiple children correctly" $ do
             show (Pre (Node (1 :: Int) [Node (2 :: Int) [], Node (3 :: Int) [], Node (4 :: Int) []])) `shouldBe` "1 2 3 4"
 
+        it "shows a complex tree correctly" $ do
+            show (Pre (Node (1 :: Int) [Node (2 :: Int) [Node (4 :: Int) []], Node (3 :: Int) [Node (5 :: Int) [], Node (6 :: Int) []]])) `shouldBe` "1 2 4 3 5 6"
+
     describe "PostOrder" $ do
         it "shows a single node correctly" $ do
             show (Post (Node (1 :: Int) [])) `shouldBe` "1"
@@ -145,6 +151,9 @@ spec = do
 
         it "shows a tree with multiple children correctly" $ do
             show (Post (Node (1 :: Int) [Node (2 :: Int) [], Node (3 :: Int) [], Node (4 :: Int) []])) `shouldBe` "2 3 4 1"
+
+        it "shows a complex tree correctly" $ do
+            show (Post (Node (1 :: Int) [Node (2 :: Int) [Node (4 :: Int) []], Node (3 :: Int) [Node (5 :: Int) [], Node (6 :: Int) []]])) `shouldBe` "4 2 5 6 3 1"
 
 -- 2 Task b
     describe "Eq Tree" $ do
@@ -156,6 +165,9 @@ spec = do
 
         it "checks inequality of trees correctly" $ do
             Node (1 :: Int) [Node (2 :: Int) []] `shouldNotBe` Node (1 :: Int) [Node (3 :: Int) []]
+
+        it "checks equality of complex trees correctly" $ do
+            Node (1 :: Int) [Node (2 :: Int) [Node (4 :: Int) []], Node (3 :: Int) [Node (5 :: Int) [], Node (6 :: Int) []]] `shouldBe` Node (1 :: Int) [Node (2 :: Int) [Node (4 :: Int) []], Node (3 :: Int) [Node (5 :: Int) [], Node (6 :: Int) []]]
 
 -- 3 Task a
     describe "ToCMYK [Int]" $ do
