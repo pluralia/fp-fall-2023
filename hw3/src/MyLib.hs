@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module MyLib where
 
@@ -21,12 +22,14 @@ data ChurchNumber = Zero | Succ ChurchNumber
 -- Обратите внимание на необходимость импорта: `import Data.Ix`
 
 instance Eq ChurchNumber where
+  (==) :: ChurchNumber -> ChurchNumber -> Bool
   Zero == Zero = True
   Zero == _ = False
   _ == Zero = False
   Succ x == Succ y = x == y
 
 instance Ord ChurchNumber where
+  compare :: ChurchNumber -> ChurchNumber -> Ordering
   compare Zero Zero = EQ
   compare Zero (Succ _) = LT
   compare (Succ _) Zero = GT
@@ -47,14 +50,18 @@ chPrev (Succ x) = x
 chPrev Zero = Zero
 
 instance Num ChurchNumber where
+  (+) :: ChurchNumber -> ChurchNumber -> ChurchNumber
   x + y = chAdd x y
 
+  (-) :: ChurchNumber -> ChurchNumber -> ChurchNumber
   x - Zero = x
   Zero - _ = Zero -- наверное это правильно. у нас ведь нет отрицательных чисел
   x - y = chPrev x - chPrev y
 
+  (*) :: ChurchNumber -> ChurchNumber -> ChurchNumber
   x * y = chMult x y
   
+  fromInteger :: Integer -> ChurchNumber
   fromInteger = helper Zero
     where
       helper :: ChurchNumber -> Integer -> ChurchNumber
@@ -62,12 +69,15 @@ instance Num ChurchNumber where
         | n <= 0 = acc
         | otherwise = helper (Succ acc) (n - 1)
 
+  abs :: ChurchNumber -> ChurchNumber
   abs = id
 
+  signum :: ChurchNumber -> ChurchNumber
   signum Zero = Zero
   signum _ = Succ Zero
 
 instance Ix ChurchNumber where
+  range :: (ChurchNumber, ChurchNumber) -> [ChurchNumber]
   range = helper []
     where
       helper :: [ChurchNumber] -> (ChurchNumber, ChurchNumber) -> [ChurchNumber]
@@ -77,8 +87,10 @@ instance Ix ChurchNumber where
         | otherwise = helper (r : acc) (l, chPrev r)
   -- calal пишет Pattern match(es) are non-exhaustive. Я вроде все учел
 
+  inRange :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Bool
   inRange (l, r) x = (x <= r) && (x >= l)
 
+  index :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
   index = helper 0
     where
       helper :: Int -> (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
@@ -114,6 +126,7 @@ data Tree a = Node
 newtype PreOrder a = Pre (Tree a)
 
 instance (Show a) => Show (PreOrder a) where
+  show :: Show a => PreOrder a -> String
   show (Pre tree) = show (helper [tree])
     where
       helper :: [Tree a] -> [a]
@@ -124,6 +137,7 @@ instance (Show a) => Show (PreOrder a) where
 newtype InOrder a = In (Tree a)
 
 instance (Show a) => Show (InOrder a) where
+  show :: Show a => InOrder a -> String
   show (In tree) = show (helper [tree])
     where
       helper :: [Tree a] -> [a]
@@ -136,6 +150,7 @@ instance (Show a) => Show (InOrder a) where
 newtype PostOrder a = Post (Tree a)
 
 instance (Show a) => Show (PostOrder a) where
+  show :: Show a => PostOrder a -> String
   show (Post tree) = show (helper [tree])
     where
       helper :: [Tree a] -> [a]
@@ -147,6 +162,7 @@ instance (Show a) => Show (PostOrder a) where
 -- 2.b Напишите инстанс `Eq` для дерева (0,5 балла)
 
 instance (Ord a) => Ord (Tree a) where
+  compare :: Ord a => Tree a -> Tree a -> Ordering
   compare x y = compare (value x) (value y)
 
 instance (Ord a) => Eq (Tree a) where
@@ -200,12 +216,14 @@ class ToCMYK a where
   toCMYK :: a -> Maybe CMYK
 
 instance ToCMYK [Int] where
+  toCMYK :: [Int] -> Maybe CMYK
   toCMYK [c, m, y, k]
     | inRange (0, 100) `all` [c, m, y, k] = Just $ UnsafeMkCMYK c m y k
     | otherwise = Nothing
   toCMYK _ = Nothing
 
 instance ToCMYK RGB where
+  toCMYK :: RGB -> Maybe CMYK
   toCMYK x =
     -- А можно как-то без явного объявления типов. Просто без них вылезают всякие warning
     let r' = (fromIntegral (red x) / 255.0) :: Double
@@ -353,6 +371,7 @@ data List a = Nil | Cons a (List a)
   deriving (Show)
 
 instance Functor List where
+  fmap :: (a -> b) -> List a -> List b
   fmap _ Nil = Nil
   fmap f (Cons x xs) = Cons (f x) (fmap f xs)
 
@@ -361,6 +380,7 @@ instance Functor List where
 -- 6.b Реализуйте инстанс Functor для дерева из задания 2 (0,5 балла)
 
 instance Functor Tree where
+  fmap :: (a -> b) -> Tree a -> Tree b
   fmap f (Node v []) = Node (f v) []
   fmap f (Node v cs) = Node (f v) (fmap (fmap f) cs)
 
@@ -372,6 +392,7 @@ data Pair a b = Pair a b
   deriving (Show, Eq)
 
 instance Functor (Pair a) where
+  fmap :: (a2 -> b) -> Pair a1 a2 -> Pair a1 b
   fmap f (Pair x y) = Pair x (f y)
 
 -- С какими трудностями вы столкнулись?
@@ -405,10 +426,12 @@ data Either' a b = Left' a | Right' b
   deriving (Show, Eq)
 
 instance Bifunctor Either' where
+  bimap :: (a -> b) -> (c -> d) -> Either' a c -> Either' b d
   bimap f _ (Left' x) = Left' (f x)
   bimap _ g (Right' y) = Right' (g y)
 
 instance Bifunctor Pair where
+  bimap :: (a -> b) -> (c -> d) -> Pair a c -> Pair b d
   bimap f g (Pair x y) = Pair (f x) (g y)
 
 ------------------------------------------------------------------------------------------------
@@ -424,4 +447,5 @@ class MobaPlayer a where
   play :: a -> String
 
 instance MobaPlayer Moba where
+    play :: Moba -> String
     play _ = "Loser"

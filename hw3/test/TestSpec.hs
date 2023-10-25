@@ -154,5 +154,4 @@ spec = do
       bimap (+ 1) (+ 1) (Pair (1 :: Int) (2 :: Int)) `shouldBe` Pair (2 :: Int) (3 :: Int)
       bimap (++ "A") (+ 1) (Pair "A" (2 :: Int)) `shouldBe` Pair "AA" (3 :: Int)
       bimap (+ 1) (++ "A") (Left' (1 :: Int)) `shouldBe` Left' (2 :: Int)
-      -- я понимаю, что even не определен для строки, но я не понимаю почему от беспокоится, ведь я не применяю эту функцию к строке
       bimap even (++ "A") (Right' "A" :: (Either' Int String)) `shouldBe` Right' "AA"
