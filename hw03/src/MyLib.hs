@@ -15,17 +15,22 @@ data ChurchNumber = Zero | Succ ChurchNumber
   deriving (Show)
 
 instance Eq ChurchNumber where
+    (==) :: ChurchNumber -> ChurchNumber -> Bool
     Zero     == Zero     = True
     (Succ m) == (Succ n) = m == n
     _        == _        = False
 
 instance Ord ChurchNumber where
+  compare :: ChurchNumber -> ChurchNumber -> Ordering
   compare Zero     Zero     = EQ
   compare Zero     (Succ _) = LT
   compare (Succ _) Zero     = GT
   compare (Succ x) (Succ y) = compare x y
 
 instance Num ChurchNumber where
+    fromInteger :: Integer -> ChurchNumber
+    (+), (*), (-) :: ChurchNumber -> ChurchNumber -> ChurchNumber
+    abs, signum :: ChurchNumber -> ChurchNumber
     fromInteger n
         | n < 0     = error "negative!"
         | n == 0    = Zero
@@ -74,10 +79,7 @@ newtype InOrder a = In (Tree a)
 instance Show a => Show (InOrder a) where
     show (In tree) = inOrderShow tree
       where
-        inOrderShow (Node val [])    = show val
-        inOrderShow (Node val sTree) = inOrderSTree sTree ++ show val ++ inOrderSTree (drop 1 sTree)
-        inOrderSTree []              = ""
-        inOrderSTree (t:ts)          = inOrderShow t ++ inOrderSTree ts
+        inOrderShow (Node val ts) = concatMap inOrderShow ts ++ show val
 
 -- | pre-order обход дерева
 --
@@ -128,9 +130,9 @@ data RGB = UnsafeMkRGB
 -- | ...и зададим новый конструктор, который будет проверять значения полей при инициализации
 --
 mkRGB :: Int -> Int -> Int -> Maybe RGB
-mkRGB red green blue
-  | inRange (0, 255) `all` [red, green, blue] = Just $ UnsafeMkRGB (fromIntegral red) (fromIntegral green) (fromIntegral blue)
-  | otherwise                                 = Nothing 
+mkRGB r g b
+  | inRange (0, 255) `all` [r, g, b] = Just $ UnsafeMkRGB (fromIntegral r) (fromIntegral g) (fromIntegral b)
+  | otherwise                        = Nothing 
 
 -- | Аналогично поступим, задавая тип данных CMYK
 --
@@ -142,32 +144,24 @@ data CMYK = UnsafeMkCMYK
   } deriving (Show)
 
 mkCMYK :: Int -> Int -> Int -> Int -> Maybe CMYK
-mkCMYK cyan magenta yellow black
-  | inRange (0, 100) `all` [cyan, magenta, yellow, black] = Just $ UnsafeMkCMYK cyan magenta yellow black
-  | otherwise                                             = Nothing 
+mkCMYK c m y b
+  | inRange (0, 100) `all` [c, m, y, b] = Just $ UnsafeMkCMYK c m y b
+  | otherwise                           = Nothing 
 
 ---------------------------------------
 
 -- 3.a Напишите инстансы класса ToCMYK для [Int] и для RGB (0,75 балла)
 
--- я взяла формулы из https://www.101computing.net/cmyk-to-rgb-conversion-algorithm/
+
 -- они дают float при делении, и я поменяла Ваш конструктор mkRGB чтобы можно было работать с float, (добавила fromIntegral) 
--- но в итоге ошибка при попытке выполнить из терминала что-то вроде
--- toCMYK (UnsafeMkRGB 125 130 160) -> *** Exception: divide by zero
--- и общая ошибка при сборке
--- поэтому тестов тоже нет, так как я не разобралась, что не так
-
--- еще у меня огромное количество ворнингов при сборке и тестировании на это задание с [-Wname-shadowing] и warning: [-Wincomplete-patterns]
--- но мы переменные изначально так задаем для читаемости, поэтому ничего не делала
-
 
 class ToCMYK a where
     toCMYK :: a -> Maybe CMYK
 
 instance ToCMYK [Int] where
-    toCMYK [cyan, magenta, yellow, black]
-        | inRange (0, 100) `all` [cyan, magenta, yellow, black] = Just $ UnsafeMkCMYK (fromIntegral cyan) (fromIntegral magenta) (fromIntegral yellow) (fromIntegral black)
-        | otherwise                                             = Nothing
+    toCMYK [c, m, y, b]
+        | inRange (0, 100) `all` [c, m, y, b] = Just $ UnsafeMkCMYK (fromIntegral c) (fromIntegral m) (fromIntegral y) (fromIntegral b)
+        | otherwise                           = Nothing
 
 instance ToCMYK RGB where
     toCMYK (UnsafeMkRGB r g b)
@@ -178,7 +172,6 @@ instance ToCMYK RGB where
         c = (1 - r `div` 255) `div` (1 - k)
         m = (1 - g `div` 255) `div` (1 - k)
         y = (1 - b `div` 255) `div` (1 - k)
-
 
 ---------------------------------------
 
@@ -228,23 +221,23 @@ dToCMYKRGB = MkDToCMYK toCMYKRGB
 
 -- 3.c Используйте инстансы (0,25 балла)
 --     Приведите пример использования инстансов [Int] и RGB реализованных в 3a и 3b (должно получится 4 примера)
--- с учетом комментария из 3.а - здесь у меня ничего не работает
+-- в тестах
 
 ------------------------------------------------------------------------------------------------
 
 -- 4. Сделайте функцию `pointful` бесточечной, объясняя каждый шаг по примеру из практики
 --    (1,5 балла)
 
-pointful a b c d = a b (c d)
 {-
+pointful a b c d = a b (c d)
 a b (c d) -> a b $ c d - замена скобок на оператор апликации $ 
 a b $ c d -> a b . c $ d - замена оператора апликации $ на оператор композиции, перенос оператора апликации $ на переменную. Можно дропать
 a b . c $ d -> a b . c
 * в практике Вы написали, что f . g x = (.) f (g x) = ((.) f) (g x), тогда
-a b . c -> (.) (a b) (.) c - это по строчке выше
-(.) (a b) . c -> (.) $ a b .  - замена скобок на оператор апликации $ и дроп с
-(.) $ a b . c -> (.) a . - замена оператора апликации $ на оператор композиции, перенос оператора апликации $ на переменную и дроп
-(.) a . -> (.) (.) . - перенос по * и дроп а
+a b . c -> (.) (a b) c - это по строчке выше
+(.) (a b) c -> (.) $ a b  - дроп с и замена скобок на оператор апликации $
+(.) $ a b -> (.) . a $ b - замена оператора апликации $ на оператор композиции, перенос оператора апликации $ на переменную. Можно дропать
+(.) . a -> (.) (.) а -> (.) (.) - перенос по * и дроп а
 -}
 
 ------------------------------------------------------------------------------------------------
