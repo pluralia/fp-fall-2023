@@ -127,6 +127,8 @@ spec = do
       toCMYK [0 :: Int, 0 :: Int, 0 :: Int] `shouldBe` Nothing
       toCMYK [0 :: Int, 0 :: Int, 0 :: Int, 0 :: Int, 0 :: Int] `shouldBe` Nothing
       toCMYK [0 :: Int, 0 :: Int, 0 :: Int, -1 :: Int] `shouldBe` Nothing
+      mkRGB 0 0 0 `shouldBe` Just (UnsafeMkRGB 0 0 0)
+      unpack (mkRGB 0 0 0) `shouldBe` UnsafeMkRGB 0 0 0
       (toCMYK . unpack) (mkRGB 0 0 0) `shouldBe` Just (UnsafeMkCMYK 0 0 0 100)
       -- ... but got: Nothing ?????????? Не понимаю в чем дело
       -- ghci> (toCMYK . unpack) (mkRGB 0 0 0) == Just (UnsafeMkCMYK 0 0 0 100)
