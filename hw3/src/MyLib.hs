@@ -125,9 +125,16 @@ data Tree a = Node
 -- | pre-order обход дерева
 newtype PreOrder a = Pre (Tree a)
 
+instance  {-# OVERLAPPING #-} Show (PreOrder String) where
+  show :: PreOrder String -> String
+  show (Pre tree) = L.intercalate " -> " $ preGo [tree]
+
 instance (Show a) => Show (PreOrder a) where
   show :: Show a => PreOrder a -> String
-  show (Pre tree) = show (helper [tree])
+  show (Pre tree) = L.intercalate " -> " . fmap show $ preGo [tree]
+  
+preGo :: [Tree a] -> [a]
+preGo = helper
     where
       helper :: [Tree a] -> [a]
       helper [] = []
@@ -136,22 +143,37 @@ instance (Show a) => Show (PreOrder a) where
 -- | in-order обход дерева
 newtype InOrder a = In (Tree a)
 
+instance {-# OVERLAPPING #-} Show (InOrder String) where
+  show :: InOrder String -> String
+  show (In tree) = L.intercalate " -> " $ inGo [tree]
+
 instance (Show a) => Show (InOrder a) where
   show :: Show a => InOrder a -> String
-  show (In tree) = show (helper [tree])
-    where
-      helper :: [Tree a] -> [a]
-      helper [] = []
-      helper (node : nodes)
-        | L.null (children node) = value node : helper nodes
-        | otherwise = (helper . L.singleton . head) (children node) ++ [value node] ++ (helper . tail) (children node) ++ helper nodes
+  show (In tree) = L.intercalate " -> " . fmap show $ inGo [tree]
 
+inGo :: [Tree a] -> [a]
+inGo = helper
+  where
+    helper :: [Tree a] -> [a]
+    helper [] = []
+    helper (node : nodes)
+      | L.null (children node) = value node : helper nodes
+      | otherwise = (helper . L.singleton . head) (children node) ++ [value node] ++ (helper . tail) (children node) ++ helper nodes
+
+  
 -- | post-order обход дерева
 newtype PostOrder a = Post (Tree a)
 
+instance {-# OVERLAPPING #-} Show (PostOrder String) where
+  show :: PostOrder String -> String
+  show (Post tree) = L.intercalate " -> " $ postGo [tree]
+
 instance (Show a) => Show (PostOrder a) where
   show :: Show a => PostOrder a -> String
-  show (Post tree) = show (helper [tree])
+  show (Post tree) = L.intercalate " -> " . fmap show $ postGo [tree]
+
+postGo :: [Tree a] -> [a]
+postGo = helper
     where
       helper :: [Tree a] -> [a]
       helper [] = []

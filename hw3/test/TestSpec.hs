@@ -99,17 +99,17 @@ spec = do
     -- B
     it "Show Pre" $ do
       -- выглядит очень ужасно. я сдаюсь. этот язык не победить
-      show (Pre tree1) `shouldBe` "[\"F\",\"B\",\"A\",\"D\",\"C\",\"E\",\"G\",\"I\",\"H\"]"
-      show (Pre tree3) `shouldBe` "[\"B\",\"A\",\"C\"]"
-      show (Pre tree4) `shouldBe` "[\"B\"]"
+      show (Pre tree1) `shouldBe` "F -> B -> A -> D -> C -> E -> G -> I -> H"
+      show (Pre tree3) `shouldBe` "B -> A -> C"
+      show (Pre tree4) `shouldBe` "B"
     it "Show In" $ do
-      show (In tree1) `shouldBe` "[\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"H\",\"I\",\"G\"]"
-      show (In tree3) `shouldBe` "[\"A\",\"B\",\"C\"]"
-      show (In tree4) `shouldBe` "[\"B\"]"
+      show (In tree1) `shouldBe` "A -> B -> C -> D -> E -> F -> H -> I -> G"
+      show (In tree3) `shouldBe` "A -> B -> C"
+      show (In tree4) `shouldBe` "B"
     it "Show Post" $ do
-      show (Post tree1) `shouldBe` "[\"A\",\"C\",\"E\",\"D\",\"B\",\"H\",\"I\",\"G\",\"F\"]"
-      show (Post tree3) `shouldBe` "[\"A\",\"C\",\"B\"]"
-      show (Post tree4) `shouldBe` "[\"B\"]"
+      show (Post tree1) `shouldBe` "A -> C -> E -> D -> B -> H -> I -> G -> F"
+      show (Post tree3) `shouldBe` "A -> C -> B"
+      show (Post tree4) `shouldBe` "B"
     it "Eq" $ do
       tree1 == tree11 `shouldBe` True
       tree1 == tree12 `shouldBe` True
