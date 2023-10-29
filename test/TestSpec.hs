@@ -61,14 +61,16 @@ spec = do
         evaluate (identity (T.pack "") (T.pack ""))             `shouldThrow` anyErrorCall
         
     it "test fromListL" $ do
-        fromListL []                   `shouldBe` (M.empty                         :: M.Map Int String)
-        fromListL [(1, "A"), (2, "B")] `shouldBe` (M.fromList [(1, "A"), (2, "B")] :: M.Map Int String)
-        fromListL [("Word", 0.1)]      `shouldBe` (M.fromList [("Word", 0.1)]      :: M.Map String Double)
+        fromListL []                      `shouldBe` (M.empty                         :: M.Map Int String)
+        fromListL [(1, "A"), (2, "B")]    `shouldBe` (M.fromList [(1, "A"), (2, "B")] :: M.Map Int String)
+        fromListL [("Word", 0.1)]         `shouldBe` (M.fromList [("Word", 0.1)]      :: M.Map String Double)
+        fromListL [("W", 0.1),("W", 0.2)] `shouldBe` (M.fromList [("W", 0.2)]         :: M.Map String Double)
     
     it "test fromListR" $ do
-        fromListR []                   `shouldBe` (M.empty                         :: M.Map Int String)
-        fromListR [(1, "A"), (2, "B")] `shouldBe` (M.fromList [(1, "A"), (2, "B")] :: M.Map Int String)
-        fromListR [("Word", 0.1)]      `shouldBe` (M.fromList [("Word", 0.1)]      :: M.Map String Double)
+        fromListR []                      `shouldBe` (M.empty                         :: M.Map Int String)
+        fromListR [(1, "A"), (2, "B")]    `shouldBe` (M.fromList [(1, "A"), (2, "B")] :: M.Map Int String)
+        fromListR [("Word", 0.1)]         `shouldBe` (M.fromList [("Word", 0.1)]      :: M.Map String Double)
+        fromListR [("W", 0.1),("W", 0.2)] `shouldBe` (M.fromList [("W", 0.1)]         :: M.Map String Double)
 
     it "test nubOrd" $ do
         nubOrd [1, 2, 3, 1]                 `shouldMatchList` ([1, 2, 3]             :: [Int])

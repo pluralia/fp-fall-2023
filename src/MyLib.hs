@@ -47,9 +47,7 @@ import qualified Data.Vector     as V
 -- Готовую функцию из пакета text использовать нельзя
 
 padZero :: T.Text -> Int -> T.Text
-padZero str width = T.replicate zerosCount "0" <> str
-    where
-        zerosCount = max 0 (width - T.length str)
+padZero str width = T.replicate (width - T.length str) "0" <> str
 
 ------------------------------------------------------------------------------------------------
 
@@ -93,11 +91,8 @@ evenodd = foldr splitList ([], []) . zip [0..]
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average vec | V.length vec > 0 = V.foldl' (+) 0 vec / fromIntegral vecLength
+average vec | V.length vec > 0 = V.foldl' (+) 0 vec / fromIntegral (V.length vec)
             | otherwise        = error "Empty input string"
-    where
-        vecLength :: Int
-        vecLength = V.length vec
 
 ------------------------------------------------------------------------------------------------
 
@@ -114,14 +109,11 @@ isGC :: Char -> Int
 isGC x = isSame 'G' x + isSame 'C' x
 
 gcContent :: T.Text -> Double
-gcContent text | T.length text > 0 = fromIntegral gcCount / fromIntegral textLength
+gcContent text | T.length text > 0 = fromIntegral gcCount / fromIntegral (T.length text)
                | otherwise         = error "Empty input string"
     where
         gcCount :: Int
         gcCount = T.foldl' (\b x -> b + isGC x) 0 text
-
-        textLength :: Int
-        textLength = T.length text
 
 ------------------------------------------------------------------------------------------------
 
@@ -178,11 +170,9 @@ countSame :: T.Text -> T.Text -> Int
 countSame str1 = sum . map (uncurry isSame) . T.zip str1
 
 identity :: T.Text -> T.Text -> Double
-identity s1 s2 | s1Length == T.length s2 && s1Length > 0 = fromIntegral (countSame s1 s2) / fromIntegral s1Length
+identity s1 s2 | T.length s1 == T.length s2 && T.length s1 > 0 =
+                   fromIntegral (countSame s1 s2) / fromIntegral (T.length s1)
                | otherwise                               = error "Invalid identity call"
-    where
-        s1Length :: Int
-        s1Length = T.length s1
 
 ------------------------------------------------------------------------------------------------
 
@@ -196,6 +186,11 @@ fromListL = foldl' (flip . uncurry $ M.insert) M.empty
 
 fromListR :: Ord k => [(k, v)] -> M.Map k v
 fromListR = foldr (uncurry M.insert) M.empty
+
+-- 1. foldl' имеет более оптимальное исполнение без риска stackoverflow,
+--      при этом преимущества foldr в виде работы с бесконечными списками тут бесполезны
+-- 2. M.insert будет перезаписывать значения, если происходит попытка вставить пару с существующим ключом,
+--      из-за этого реализация с foldl' оставить только самую правую пару с одним ключом, fodlr - наоборот, левую
 
 ------------------------------------------------------------------------------------------------
 
