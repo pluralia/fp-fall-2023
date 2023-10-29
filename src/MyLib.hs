@@ -121,11 +121,8 @@ gcContent str
 reverseComplementStr :: T.Text -> T.Text
 reverseComplementStr = T.reverse . T.map complement
     where
-        complement 'A' = 'T'
-        complement 'T' = 'A'
-        complement 'G' = 'C'
-        complement 'C' = 'G'
-        complement _   = error "WTF dude u have different non-human DNA"
+        complement nucleotide = M.findWithDefault (error "WTF dude u have different non-human DNA") nucleotide complementMap
+        complementMap = M.fromList [('A', 'T'), ('T', 'A'), ('G', 'C'), ('C', 'G')]
 
 isReversePalindrom :: T.Text -> Bool
 isReversePalindrom str = str == reverseComplementStr str
@@ -143,11 +140,8 @@ isReversePalindrom str = str == reverseComplementStr str
 meltingTemp :: T.Text -> Int
 meltingTemp = T.foldl' (\acc x -> acc + getTemp x) 0
   where
-    getTemp 'G' = 4
-    getTemp 'C' = 4
-    getTemp 'A' = 2
-    getTemp 'T' = 2
-    getTemp _   = error "NONONONONONONONONONONONONONONONONONONO"
+    getTemp nucleotide = M.findWithDefault (error "NONONONONONONONONONONONONONONONONONONO") nucleotide tempMap
+    tempMap = M.fromList [('G', 4), ('C', 4), ('A', 2), ('T', 2)]
 
 
 ------------------------------------------------------------------------------------------------
@@ -216,7 +210,7 @@ nubOrd = S.toList . foldl' (flip S.insert) S.empty
 buildQuery :: M.Map T.Text T.Text -> T.Text
 buildQuery parameters 
     | M.null parameters = "" 
-    | otherwise = T.init $ M.foldlWithKey' (\acc key value -> acc <> key <> "=" <> value <> "&") "" parameters
+    | otherwise = T.intercalate $ M.foldlWithKey' (\acc key value -> acc <> key <> "=" <> value) "" parameters
 -- T.init нужен чтобы отрубать лишний & в конце
 
 
