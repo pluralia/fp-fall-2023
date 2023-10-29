@@ -3,13 +3,13 @@
 
 module MyLib where
 
-
-
 import           Data.Char       (ord)
-import           Data.Foldable   (foldl', foldr, toList)
+import           Data.Foldable   (foldl')
 import qualified Data.Map.Strict as M
 import qualified Data.Text       as T
 import qualified Data.Vector     as V
+import qualified Data.Set        as S
+
 
 -- К каждой задаче приведите хотя бы 1 или 2 тестовых примера.
 -- Подсказка: Text и Vector можно конкатенировать с помощью оператора '<>'.
@@ -31,7 +31,7 @@ import qualified Data.Vector     as V
 -- Готовую функцию из пакета text использовать нельзя
 
 padZero :: T.Text -> Int -> T.Text
-padZero str width = undefined
+padZero str width = T.replicate (max (width - T.length str) 0) "0" <> str
 
 ------------------------------------------------------------------------------------------------
 
@@ -40,7 +40,9 @@ padZero str width = undefined
 -- Может пригодиться документация пакета vector: https://hackage.haskell.org/package/vector-0.13.1.0/docs/Data-Vector.html
 
 cypher :: V.Vector Char
-cypher = ['X', 'W', 'P'] -- произвольно дополнить до 26 символов
+cypher = V.fromList ['X', 'W', 'P', 'C', 'M', 'Q', 'L', 'F', 'E', 
+                     'J', 'K', 'N', 'O', 'R', 'S', 'T', 'U', 'V', 
+                     'A', 'B', 'D', 'G', 'H', 'I', 'Y', 'Z'] -- произвольно дополнить до 26 символов
 
 -- >>> index 'A'
 -- 0
@@ -51,7 +53,7 @@ index c = ord c - ord 'A'
 
 -- Считаем что приходят только заглавные английские буквы
 encode :: T.Text -> T.Text
-encode str = undefined
+encode = T.map ((cypher V.!) . index)   
 
 ------------------------------------------------------------------------------------------------
 
@@ -61,7 +63,12 @@ encode str = undefined
 -- должен сохраняться.
 
 evenodd :: [a] -> ([a], [a])
-evenodd xs = undefined
+evenodd = foldr helper ([], []) . zip [0..]
+  where
+    helper :: (Int, a) -> ([a], [a]) -> ([a], [a])
+    helper (i, x) (evens, odds) = if even i
+                                  then (x:evens, odds)
+                                  else (evens, x:odds)
 
 ------------------------------------------------------------------------------------------------
 
@@ -70,7 +77,10 @@ evenodd xs = undefined
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average vec = undefined
+average = uncurry (/) . foldl' helper (0, 0)
+  where
+    helper :: (Double, Double) -> Double -> (Double, Double)
+    helper (total, len) x = (total + x, len + 1)
 
 ------------------------------------------------------------------------------------------------
 
@@ -80,7 +90,12 @@ average vec = undefined
 -- Посчитать долю G/C в последовательности с помощью свёртки за один проход.
 
 gcContent :: T.Text -> Double
-gcContent str = undefined
+gcContent = uncurry (/) . T.foldl' helper (0, 0)
+  where
+    helper :: (Double, Double) -> Char -> (Double, Double)
+    helper (gc, len) x = if x == 'G' || x == 'C'
+                         then (gc + 1, len + 1)
+                         else (gc, len + 1)
 
 ------------------------------------------------------------------------------------------------
 
@@ -97,7 +112,14 @@ gcContent str = undefined
 -- https://hackage.haskell.org/package/text-2.1/docs/Data-Text.html
 
 isReversePalindrom :: T.Text -> Bool
-isReversePalindrom str = undefined
+isReversePalindrom str = (==) str . T.map complement . T.reverse $ str
+
+complement :: Char -> Char
+complement 'A' = 'T'
+complement 'T' = 'A'
+complement 'G' = 'C'
+complement 'C' = 'G'
+complement _   = error "Invalid nucleotide"
 
 ------------------------------------------------------------------------------------------------
 
@@ -109,13 +131,18 @@ isReversePalindrom str = undefined
 -- Посчитать используя свёртку за один проход по последовательности.
 
 meltingTemp :: T.Text -> Int
-meltingTemp str = undefined
+meltingTemp = T.foldl' helper 0
+  where
+    helper :: Int -> Char -> Int
+    helper temp x = if x == 'G' || x == 'C'
+                    then temp + 4
+                    else temp + 2
 
 ------------------------------------------------------------------------------------------------
 
 -- 8. Identity (0,75 балла)
 --
--- Identity — мера похожести двух последовательностей одной длины, вычисляется как (1 - hamming) / length,
+-- Identity — мера похожести двух последовательностей одной длины, вычисляется как 1 - hamming / length,
 -- где hamming — "расстояние Хэмминга" между последовательностями, то есть число позиций с отличающимися буквами.
 --
 -- Например, для последовательностей AGCCAGT и AGTCACC расстояние Хэмминга равно 3, а identity — 4/7.
@@ -124,7 +151,14 @@ meltingTemp str = undefined
 -- разной длины, выдать ошибку 
 
 identity :: T.Text -> T.Text -> Double
-identity str1 str2 = undefined
+identity str1 str2 = if T.length str1 /= T.length str2
+                     then error "Sequences have different lengths"
+                     else (-) 1 . uncurry (/) . foldl' helper (0, 0) $ T.zip str1 str2
+  where
+    helper :: (Double, Double) -> (Char, Char) -> (Double, Double)
+    helper (hamming, len) (x, y) = if x == y
+                                   then (hamming, len + 1)
+                                   else (hamming + 1, len + 1)
 
 ------------------------------------------------------------------------------------------------
 
@@ -134,10 +168,20 @@ identity str1 str2 = undefined
 -- чем будет отличаться поведение этих вариантов.
 
 fromListL :: Ord k => [(k, v)] -> M.Map k v
-fromListL lst = undefined
+fromListL = foldl' helper M.empty
+  where
+    helper :: Ord k => M.Map k v -> (k, v) -> M.Map k v
+    helper mp (key, value) = M.insert key value mp
 
 fromListR :: Ord k => [(k, v)] -> M.Map k v
-fromListR lst = undefined
+fromListR = foldr helper M.empty
+  where
+    helper :: Ord k => (k, v) -> M.Map k v -> M.Map k v
+    helper (key, value) = M.insert key value
+
+-- Отличие в порядке добавления элементов в Map. В первом случае элементы добавляются в порядке их следования в списке,
+-- во втором — в обратном порядке. Таким образом, в случае совпадения ключей в первом случае (foldl') будет использовано значение,
+-- которое было в списке последним, во втором (foldr) — первым.
 
 ------------------------------------------------------------------------------------------------
 
@@ -151,7 +195,7 @@ fromListR lst = undefined
 -- Решение должно использовать свёртку по входному списку в один проход. Использовать fromList нельзя.
 
 nubOrd :: Ord a => [a] -> [a]
-nubOrd xs = undefined
+nubOrd = S.toList . foldl' (flip S.insert) S.empty
 
 ------------------------------------------------------------------------------------------------
 
@@ -162,7 +206,10 @@ nubOrd xs = undefined
 -- Соберите строку "a=1&b=2&c=hello" из `Map Text Text` используя `foldlWithKey'` или `foldrWithKey`.
 
 buildQuery :: M.Map T.Text T.Text -> T.Text
-buildQuery parameters = undefined
+buildQuery = T.intercalate "&" . M.foldlWithKey' helper []
+  where
+    helper :: [T.Text] -> T.Text -> T.Text -> [T.Text]
+    helper acc key value = (key <> "=" <> value):acc
 
 ------------------------------------------------------------------------------------------------
 
@@ -177,7 +224,10 @@ buildQuery parameters = undefined
 --
 -- Выведите для этого типа инстансы Eq, Show и Ord автоматически.
 
--- data AminoAcid = Ala | ...
+data AminoAcid = Ala | Arg | Asn | Asp | Cys | Gln | Glu | Gly | His | Ile | 
+                 Leu | Lys | Met | Phe | Pro | Pyl | Sec | Ser | Thr | Trp | 
+                 Tyr | Val | Stp
+  deriving (Eq, Show, Ord)
 
 ------------------------------------------
 
@@ -187,7 +237,33 @@ buildQuery parameters = undefined
 -- класса для типа AminoAcid, преобразующий аминокислоты в однобуквенный код (A, C, D, ... — см. таблицу в предыдущем пункте).
 -- Стоп-кодон превращается в символ "*".
 
--- class ToSymbol a where ...
+class ToSymbol a where
+  toSymbol :: a -> Char
+
+instance ToSymbol AminoAcid where
+  toSymbol Ala = 'A'
+  toSymbol Arg = 'R'
+  toSymbol Asn = 'N'
+  toSymbol Asp = 'D'
+  toSymbol Cys = 'C'
+  toSymbol Gln = 'Q'
+  toSymbol Glu = 'E'
+  toSymbol Gly = 'G'
+  toSymbol His = 'H'
+  toSymbol Ile = 'I'
+  toSymbol Leu = 'L'
+  toSymbol Lys = 'K'
+  toSymbol Met = 'M'
+  toSymbol Phe = 'F'
+  toSymbol Pro = 'P'
+  toSymbol Pyl = 'O'
+  toSymbol Sec = 'U'
+  toSymbol Ser = 'S'
+  toSymbol Thr = 'T'
+  toSymbol Trp = 'W'
+  toSymbol Tyr = 'Y'
+  toSymbol Val = 'V'
+  toSymbol Stp = '*'
 
 ------------------------------------------
 
@@ -195,8 +271,8 @@ buildQuery parameters = undefined
 --
 -- Определите функцию, превращающую список аминокислот в строку из однобуквенного кода.
 
--- aminoToStr :: [AminoAcid] -> T.Text
--- aminoToStr = undefined
+aminoToStr :: [AminoAcid] -> T.Text
+aminoToStr = T.pack . map toSymbol
 
 ------------------------------------------
 
@@ -211,5 +287,38 @@ buildQuery parameters = undefined
 --
 -- Если длина строки не кратна 3, вернуть ошибку.
 
--- translate :: T.Text -> [AminoAcid]
--- translate = undefined
+translate :: T.Text -> [AminoAcid]
+translate str = if T.length str `mod` 3 /= 0
+                then error "Invalid length"
+                else map (codonToAmino . T.toUpper) $ T.chunksOf 3 str
+  where
+    codonToAmino :: T.Text -> AminoAcid
+    codonToAmino codon = case M.lookup codon codonTable of
+                           Just amino -> amino
+                           Nothing    -> error "Invalid codon"
+    -- It took more time to write this table than to write the else of the hw btw
+    codonTable :: M.Map T.Text AminoAcid
+    codonTable = M.fromList [("GCT", Ala), ("GCC", Ala), ("GCA", Ala), ("GCG", Ala),
+                             ("CGT", Arg), ("CGC", Arg), ("CGA", Arg), ("CGG", Arg), ("AGA", Arg), ("AGG", Arg),
+                             ("AAT", Asn), ("AAC", Asn),
+                             ("GAT", Asp), ("GAC", Asp),
+                             ("TGT", Cys), ("TGC", Cys),
+                             ("CAA", Gln), ("CAG", Gln),
+                             ("GAA", Glu), ("GAG", Glu),
+                             ("GGT", Gly), ("GGC", Gly), ("GGA", Gly), ("GGG", Gly),
+                             ("CAT", His), ("CAC", His),
+                             ("ATT", Ile), ("ATC", Ile), ("ATA", Ile),
+                             ("TTA", Leu), ("TTG", Leu), ("CTT", Leu), ("CTC", Leu), ("CTA", Leu), ("CTG", Leu),
+                             ("AAA", Lys), ("AAG", Lys),
+                             ("ATG", Met),
+                             ("TTT", Phe), ("TTC", Phe),
+                             ("CCT", Pro), ("CCC", Pro), ("CCA", Pro), ("CCG", Pro),
+                             ("TAA", Stp), ("TAG", Stp), ("TGA", Stp),
+                             ("ACT", Thr), ("ACC", Thr), ("ACA", Thr), ("ACG", Thr),
+                             ("TGG", Trp),
+                             ("TAT", Tyr), ("TAC", Tyr),
+                             ("GTT", Val), ("GTC", Val), ("GTA", Val), ("GTG", Val),
+                             ("TAA", Stp), ("TGA", Stp), ("TAG", Stp)]
+
+
+
