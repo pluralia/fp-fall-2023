@@ -77,7 +77,7 @@ spec = do
         buildQuery M.empty                                          `shouldBe` (T.pack ""             :: T.Text)
 
       it "test toSymbol" $ do
-        toSymbol Cys  `shouldBe` ('С' :: Char)
+        toSymbol Cys  `shouldBe` ('C' :: Char)
         toSymbol Stop `shouldBe` ('*' :: Char)
 
       it "test aminoToStr" $ do
