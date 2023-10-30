@@ -59,8 +59,7 @@ index c = ord c - ord 'A'
 
 -- Считаем что приходят только заглавные английские буквы
 encode :: T.Text -> T.Text
-encode str = T.pack $ map (\c -> cypher V.! index c) (T.unpack str)
-
+encode = T.map (\c -> cypher V.! index c)
 ------------------------------------------------------------------------------------------------
 
 -- 3. Четные и нечетные (0,5 балла)
@@ -78,8 +77,11 @@ evenodd = foldr (\x (ev, od) -> (x:od, ev)) ([], [])
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average vec = V.foldl' (+) 0 vec / fromIntegral (V.length vec)
+average vec | V.length vec > 0 = V.foldl' (+) 0 vec / fromIntegral (V.length vec)
+            | otherwise        = error "Empty list"
 
+-- На пустом массиве исходная реализация ничего не выдаст (NaN),
+-- можно модифицировать, чтобы выдавала ошибку
 ------------------------------------------------------------------------------------------------
 
 -- 5. GC состав (0,75 балла)
@@ -89,6 +91,17 @@ average vec = V.foldl' (+) 0 vec / fromIntegral (V.length vec)
 
 gcContent :: T.Text -> Double
 gcContent = (/) <$> fromIntegral . T.length . T.filter (\c -> c == 'G' || c == 'C') <*> fromIntegral . T.length
+
+-- условно gcContent можно представить так: 1 <$> 2 <*> 3
+-- где 1 это операция деления
+-- 2 вычисляет количество символов 'G' и 'C' в строке
+-- 3 вычисляет общую длину строки
+-- затем результаты 2 и 3 частей делятся друг на друга с помощью оператора (/)
+--
+-- Таким образом, gcContent использует конструкции типового класса Applicative (операторы <$> и <*>)
+-- для применения функций к результатам и затем выполняет деление, чтобы вычислить GC-содержание в строке.
+--
+-- Очень понравилась конструкция, и именно в такие моменты бабочки пархают в животике.
 
 
 ------------------------------------------------------------------------------------------------
@@ -106,13 +119,15 @@ gcContent = (/) <$> fromIntegral . T.length . T.filter (\c -> c == 'G' || c == '
 -- https://hackage.haskell.org/package/text-2.1/docs/Data-Text.html
 
 isReversePalindrom :: T.Text -> Bool
-isReversePalindrom str = str == T.reverse (T.map complement str)
+isReversePalindrom str = str == T.reverse (T.map (\c -> M.findWithDefault (error "Invalid character in DNA sequence") c complementMap) str)
   where
-    complement 'A' = 'T'
-    complement 'T' = 'A'
-    complement 'G' = 'C'
-    complement 'C' = 'G'
-    complement _   = error "Invalid character in DNA sequence"
+    complementMap :: M.Map Char Char
+    complementMap = M.fromList
+        [ ('A', 'T')
+        , ('T', 'A')
+        , ('G', 'C')
+        , ('C', 'G')
+        ]
 ------------------------------------------------------------------------------------------------
 
 -- 7. Температура плавления (0,75 балла)
@@ -123,13 +138,15 @@ isReversePalindrom str = str == T.reverse (T.map complement str)
 -- Посчитать используя свёртку за один проход по последовательности.
 
 meltingTemp :: T.Text -> Int
-meltingTemp = T.foldl' (\temp c -> temp + case c of
-                                            'G' -> 4
-                                            'C' -> 4
-                                            'A' -> 2
-                                            'T' -> 2
-                                            _   -> error "Invalid character in DNA sequence"
-                        ) 0
+meltingTemp = T.foldl' (\temp c -> temp + M.findWithDefault (error "Invalid character in DNA sequence") c meltingTempMap) 0
+  where
+    meltingTempMap :: M.Map Char Int
+    meltingTempMap = M.fromList
+        [ ('G', 4)
+        , ('C', 4)
+        , ('A', 2)
+        , ('T', 2)
+        ]
 
 ------------------------------------------------------------------------------------------------
 
@@ -148,18 +165,13 @@ identity sequence1 sequence2
     | validInputLength = calculateIdentity sequence1 sequence2
     | otherwise        = error "Invalid identity call"
     where
-        validInputLength = lengthSequence1 == lengthSequence2 && lengthSequence1 > 0
-        lengthSequence1 = T.length sequence1
-        lengthSequence2 = T.length sequence2
+        validInputLength = T.length sequence1 == T.length sequence2 && T.length sequence1 > 0
 
-calculateIdentity :: T.Text -> T.Text -> Double
-calculateIdentity s1 s2 = fromIntegral (matchingCount s1 s2) / fromIntegral (T.length s1)
+        calculateIdentity :: T.Text -> T.Text -> Double
+        calculateIdentity s1 s2 = fromIntegral (matchingCount s1 s2) / fromIntegral (T.length s1)
 
-matchingCount :: T.Text -> T.Text -> Int
-matchingCount s1 s2 = sum $ map (\(c1, c2) -> if c1 == c2 then 1 else 0) $ T.zip s1 s2
-
-
-
+        matchingCount :: T.Text -> T.Text -> Int
+        matchingCount s1 s2 = sum $ map (\(c1, c2) -> if c1 == c2 then 1 else 0) $ T.zip s1 s2
 
 -----------------------------------------------------------------------------------------------
 
@@ -177,8 +189,10 @@ fromListL = foldl' (\m (k, v) -> M.insert k v m) M.empty
 fromListR :: Ord k => [(k, v)] -> M.Map k v
 fromListR = foldr (\(k, v) m -> M.insert k v m) M.empty
 -- Эта реализация использует foldr для обхода списка в обратном порядке.
--- Она также начинает с пустой карты M.empty и добавляет очередную пару ключ-значение
--- Поведение различается в том, как элементы добавляются в карту и в каком порядке они будут в ней находиться
+-- Она также начинает с пустой карты M.empty и добавляет очередную пару ключ-значение.
+-- Поведение различается в том, как элементы добавляются в карту и в каком порядке они будут в ней находиться.
+-- Так, в первом случае элементы будут добавляться в порядке расположения во входном списке, во втором случае наоборот.
+-- Самым интересным является случай совпадения ключей, тогда foldl' использует последнее значение в списке, а foldr первое.
 ------------------------------------------------------------------------------------------------
 
 -- 10. Уникальные элементы (0,5 балла)
@@ -189,9 +203,10 @@ fromListR = foldr (\(k, v) m -> M.insert k v m) M.empty
 -- https://hackage.haskell.org/package/containers-0.7/docs/Data-Set.html
 --
 -- Решение должно использовать свёртку по входному списку в один проход. Использовать fromList нельзя.
-
+-- Да, здесь не было смысла использовать foldr, потому что ленивость здесь не пригодится.
+-- Лучше использовать foldl'
 nubOrd :: Ord a => [a] -> [a]
-nubOrd = S.toList . foldr S.insert S.empty
+nubOrd = S.toList . foldl' (flip S.insert) S.empty
 ------------------------------------------------------------------------------------------------
 
 -- 11. Сложная: query parameters (1,25 балл)
@@ -216,7 +231,7 @@ buildQuery = T.intercalate "&" . M.foldrWithKey (\k v acc -> k `T.append` "=" `T
 --
 -- Выведите для этого типа инстансы Eq, Show и Ord автоматически.
 
-data AminoAcid = Ala   -- Аланин
+data AminoAcid = Ala  -- Аланин
               | Arg   -- Аргинин
               | Asn   -- Аспарагин
               | Asp   -- Аспарагиновая кислота
@@ -322,3 +337,9 @@ translate str
       , ("GAT", Asp), ("GAC", Asp), ("GAA", Glu), ("GAG", Glu)
       , ("GGT", Gly), ("GGC", Gly), ("GGA", Gly), ("GGG", Gly)
       ]
+
+-- Здесь я использовал тот факт, что m >>= k suggests "feed the result of computation m to the function k",
+-- который увидел в одном из обсуждений на stackoverflow, забавно, что это оказалась монадическая функция
+--
+-- Мне кажется, что она смотрится здесь очень органично
+ 
