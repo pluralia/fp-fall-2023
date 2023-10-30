@@ -54,14 +54,14 @@ spec = do
         identity (T.pack "AAAAG") (T.pack "AAAAT")       `shouldBe`    (0.8 :: Double)
         
       it "fromListL tests" $ do
-        fromListL [(4, "H"), (1, "W")] `shouldBe` (M.fromList [(1,"W"),(4,"H")] :: M.Map Int String)
-        fromListL [("red", 5)]         `shouldBe` (M.fromList [("red", 5)]      :: M.Map String Int)
-        fromListL []                   `shouldBe` (M.empty                      :: M.Map Int String)
+        fromListL [(4, "H"), (1, "W")]                           `shouldBe` (M.fromList [(1,"W"),(4,"H")]            :: M.Map Int String)
+        fromListL [(15, "Apple"), (15, "Banana"), (7, "Orange")] `shouldBe` (M.fromList [(7,"Orange"),(15,"Banana")] :: M.Map Int String)
+        fromListL []                                             `shouldBe` (M.empty                                 :: M.Map Int String)
 
       it "fromListR tests" $ do
-        fromListR [(4, "H"), (1, "W")] `shouldBe` (M.fromList [(1,"W"),(4,"H")] :: M.Map Int String)
-        fromListL [("red", 5)]         `shouldBe` (M.fromList [("red", 5)]      :: M.Map String Int)
-        fromListR []                   `shouldBe` (M.empty                      :: M.Map Int String)
+        fromListR [(4, "H"), (1, "W")]                           `shouldBe` (M.fromList [(1,"W"),(4,"H")]           :: M.Map Int String)
+        fromListR [(15, "Apple"), (15, "Banana"), (7, "Orange")] `shouldBe` (M.fromList [(7,"Orange"),(15,"Apple")] :: M.Map Int String)
+        fromListR []                                             `shouldBe` (M.empty                                :: M.Map Int String)
 
       it "nubOrd tests" $ do
         nubOrd [1, 2, 3, 1, 3, 2, 1, 4]         `shouldMatchList` ([1, 2, 3, 4]            :: [Int])
