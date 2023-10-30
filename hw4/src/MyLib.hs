@@ -77,8 +77,16 @@ evenodd = foldr (\x (ev, od) -> (x:od, ev)) ([], [])
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average vec | V.length vec > 0 = V.foldl' (+) 0 vec / fromIntegral (V.length vec)
+average vec | V.length vec > 0 = divide (V.foldl' sumAndLength (0.0 :: Double, 0 :: Int) vec)
             | otherwise        = error "Empty list"
+  where
+    sumAndLength (sum', len) x = (sum' + x, len + 1)
+    divide (sum', len) = sum' / fromIntegral len
+
+-- Здесь sumAndLength используется с foldl'
+-- для одновременного вычисления суммы и длины списка. 
+-- Затем divide - это функция, которая принимает пару (сумма, длина)
+-- и делит сумму на длину с использованием fromIntegral.
 
 -- На пустом массиве исходная реализация ничего не выдаст (NaN),
 -- можно модифицировать, чтобы выдавала ошибку
@@ -103,7 +111,24 @@ gcContent = (/) <$> fromIntegral . T.length . T.filter (\c -> c == 'G' || c == '
 --
 -- Очень понравилась конструкция, и именно в такие моменты бабочки пархают в животике.
 
+-- (<$>) :: Functor f => (a -> b) -> f a -> f b
+-- По сути это fmap. Этот оператор применяет функцию к значению,
+-- находящемуся внутри некоторого контекста (Functor). 
 
+-- (<*>) :: Applicative f => f (a -> b) -> f a -> f b
+-- Этот оператор используется для применения функции, находящейся внутри функтора,
+-- к значению, также находящемуся внутри функтора.
+
+-- Где f - это тип функции, a - это тип аргумента функции, а b - это тип результата функции.
+
+-- <$>:
+-- В нашем случае, f - это функция (a -> b), a - это T.Text, и b - это Double.
+
+-- <*>:
+-- В нашем случае, f - это функция (a -> b), a - это T.Text, и b - это Double.
+
+-- Таким образом, gcContent применяет оператор (/) к двум значениям типа Double,
+-- которые получены из Text с помощью функций fromIntegral . T.length . T.filter (\c -> c == 'G' || c == 'C') и fromIntegral . T.length, соответственно.
 ------------------------------------------------------------------------------------------------
 
 -- 6. Обратный палиндром (0,75 балла)
@@ -311,13 +336,12 @@ aminoToStr = T.pack . map toSymbol
 -- Храните соответствие кодонов и аминокислот в M.Map.
 --
 -- Если длина строки не кратна 3, вернуть ошибку.
-
 translate :: T.Text -> [AminoAcid]
 translate str
   | T.length str `mod` 3 /= 0 = error "Input length is not a multiple of 3"
-  | otherwise = T.chunksOf 3 str >>= (\codon -> case M.lookup codon codonTable of
-                                                Just amino -> [amino]
-                                                Nothing    -> [Stop])
+  | otherwise = concatMap (\codon -> case M.lookup codon codonTable of
+                                      Just amino -> [amino]
+                                      Nothing    -> [Stop]) (T.chunksOf 3 str)
   where
     codonTable = M.fromList
       [ ("TTT", Phe), ("TTC", Phe), ("TTA", Leu), ("TTG", Leu)
@@ -338,8 +362,16 @@ translate str
       , ("GGT", Gly), ("GGC", Gly), ("GGA", Gly), ("GGG", Gly)
       ]
 
+-- переписал с помощью concatMap
+-- по идее обе версии должны работать за линию, но
+-- вторая версия более эффективна с точки зрения использования памяти
+-- и создания временных структур данных, так как не требует создания множества
+-- одноэлементных списков, которые затем объединяются.
+
+
 -- Здесь я использовал тот факт, что m >>= k suggests "feed the result of computation m to the function k",
--- который увидел в одном из обсуждений на stackoverflow, забавно, что это оказалась монадическая функция
+-- который увидел в одном из обсуждений на stackoverflow, забавно, что это оказалась монадическая функция,
+-- которые мы проходили сразу после
 --
--- Мне кажется, что она смотрится здесь очень органично
+-- Мне кажется, что она смотрится здесь очень органично и уместно
  
