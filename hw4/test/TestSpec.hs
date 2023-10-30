@@ -51,16 +51,16 @@ spec = do
 
       it "test identity" $ do
         identity (T.pack "ATTCTTT") (T.pack "ATCGATA") `shouldBe`    (0.42857142857142855 :: Double)
-        identity (T.pack "AAAA") (T.pack "AAAA")       `shouldBe`    (1.0 :: Double)
+        identity (T.pack "AAAAG") (T.pack "AAAAT")       `shouldBe`    (0.8 :: Double)
         
       it "fromListL tests" $ do
         fromListL [(4, "H"), (1, "W")] `shouldBe` (M.fromList [(1,"W"),(4,"H")] :: M.Map Int String)
-        fromListL [(15, "Apple")]      `shouldBe` (M.fromList [(15,"Apple")]    :: M.Map Int String)
+        fromListL [("red", 5)]         `shouldBe` (M.fromList [("red", 5)]      :: M.Map String Int)
         fromListL []                   `shouldBe` (M.empty                      :: M.Map Int String)
 
       it "fromListR tests" $ do
         fromListR [(4, "H"), (1, "W")] `shouldBe` (M.fromList [(1,"W"),(4,"H")] :: M.Map Int String)
-        fromListR [(15, "Apple")]      `shouldBe` (M.fromList [(15,"Apple")]    :: M.Map Int String)
+        fromListL [("red", 5)]         `shouldBe` (M.fromList [("red", 5)]      :: M.Map String Int)
         fromListR []                   `shouldBe` (M.empty                      :: M.Map Int String)
 
       it "nubOrd tests" $ do
