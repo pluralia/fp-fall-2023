@@ -31,7 +31,7 @@ import qualified Data.Set        as S
 -- Готовую функцию из пакета text использовать нельзя
 
 padZero :: T.Text -> Int -> T.Text
-padZero str width = T.replicate (max (width - T.length str) 0) "0" <> str
+padZero str width = T.replicate (width - T.length str) "0" <> str
 
 ------------------------------------------------------------------------------------------------
 
@@ -77,10 +77,7 @@ evenodd = foldr helper ([], []) . zip [0..]
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average = uncurry (/) . foldl' helper (0, 0)
-  where
-    helper :: (Double, Double) -> Double -> (Double, Double)
-    helper (total, len) x = (total + x, len + 1)
+average = uncurry (/) . foldl' (\(total, len) x -> (total + x, len + 1)) (0, 0)
 
 ------------------------------------------------------------------------------------------------
 
@@ -113,13 +110,13 @@ gcContent = uncurry (/) . T.foldl' helper (0, 0)
 
 isReversePalindrom :: T.Text -> Bool
 isReversePalindrom str = (==) str . T.map complement . T.reverse $ str
-
-complement :: Char -> Char
-complement 'A' = 'T'
-complement 'T' = 'A'
-complement 'G' = 'C'
-complement 'C' = 'G'
-complement _   = error "Invalid nucleotide"
+  where 
+    complement :: Char -> Char
+    complement nuc = case M.lookup nuc complementsMap of
+                       Just comp -> comp
+                       Nothing   -> error "Invalid nucleotide"
+    complementsMap :: M.Map Char Char
+    complementsMap = M.fromList [('A', 'T'), ('T', 'A'), ('G', 'C'), ('C', 'G')]
 
 ------------------------------------------------------------------------------------------------
 
@@ -168,16 +165,12 @@ identity str1 str2 = if T.length str1 /= T.length str2
 -- чем будет отличаться поведение этих вариантов.
 
 fromListL :: Ord k => [(k, v)] -> M.Map k v
-fromListL = foldl' helper M.empty
-  where
-    helper :: Ord k => M.Map k v -> (k, v) -> M.Map k v
-    helper mp (key, value) = M.insert key value mp
+fromListL = foldl' (\mp (key, value) -> M.insert key value mp) M.empty
+
 
 fromListR :: Ord k => [(k, v)] -> M.Map k v
-fromListR = foldr helper M.empty
-  where
-    helper :: Ord k => (k, v) -> M.Map k v -> M.Map k v
-    helper (key, value) = M.insert key value
+fromListR = foldr (uncurry M.insert) M.empty
+
 
 -- Отличие в порядке добавления элементов в Map. В первом случае элементы добавляются в порядке их следования в списке,
 -- во втором — в обратном порядке. Таким образом, в случае совпадения ключей в первом случае (foldl') будет использовано значение,
