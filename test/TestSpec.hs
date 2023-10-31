@@ -9,6 +9,7 @@ import qualified Data.Text       as T
 import qualified Data.Vector     as V
 import qualified Data.Set        as S
 import Control.Exception (evaluate)
+import qualified MyLib as M
 
 spec :: Spec
 spec = do
@@ -39,15 +40,17 @@ spec = do
 
     describe "4 - cреднее" $ do
         it "average" $ do
-            average (V.fromList [1, 2, 3, 4, 5, 6, 7]) `shouldBe` (4.0 :: Double)
-            average (V.fromList [1, 2, 3])             `shouldBe` (2.0  :: Double)
-            average (V.fromList [-1, 1, -2, 2])        `shouldBe` (0.0  :: Double)
+            average (V.fromList [1, 2, 3, 4, 5, 6, 7]) `shouldBe`    (4.0  :: Double)
+            average (V.fromList [1, 2, 3])             `shouldBe`    (2.0  :: Double)
+            average (V.fromList [-1, 1, -2, 2])        `shouldBe`    (0.0  :: Double)
+            evaluate (average (V.fromList []))         `shouldThrow` errorCall "Vector is empty!"            
 
     describe "5 - GC состав" $ do
         it "gcContent" $ do
-            gcContent seq1 `shouldBe` ((6.0 / 13.0)  :: Double)
-            gcContent seq2 `shouldBe` ((13.0 / 29.0) :: Double)
-            gcContent seq3 `shouldBe` (0.0           :: Double)
+            gcContent seq1               `shouldBe`    ((6.0 / 13.0)  :: Double)
+            gcContent seq2               `shouldBe`    ((13.0 / 29.0) :: Double)
+            gcContent seq3               `shouldBe`    (0.0           :: Double)
+            evaluate (gcContent T.empty) `shouldThrow` errorCall "Sequence is empty!"
 
     describe "6 - обратный палиндром" $ do
         it "isRevercePalindrom" $ do
@@ -63,9 +66,10 @@ spec = do
 
     describe "8 - мера похожести двух последовательностей" $ do
         it "identity" $ do
-            evaluate (identity seq1 seq2) `shouldThrow` errorCall "Different sequences length!"
-            identity seq1 seq1 `shouldBe` (1.0  :: Double)
-            identity seq3 seq4 `shouldBe` (0.75 :: Double)
+            evaluate (identity seq1 seq2)       `shouldThrow` errorCall "Different sequences length!"
+            evaluate (identity T.empty T.empty) `shouldThrow` errorCall "Sequences are empty!"
+            identity seq1 seq1                  `shouldBe`    (1.0  :: Double)
+            identity seq3 seq4                  `shouldBe`    (0.75 :: Double)
 
     let list1 = [(1, 'A'), (2, 'T'), (3, 'G'), (4, 'C')] :: [(Int, Char)]
     let list2 = [(5, 178)] :: [(Int, Int)]
@@ -75,15 +79,21 @@ spec = do
     let map2 = M.fromList list2
     let map3 = M.fromList list3
 
+    let list7 = [(1, 'A'), (1, 'B'), (2, 'C'), (2, 'D')] :: [(Int, Char)]
+    let map7L = M.fromListL list7
+    let map7R = M.fromListR list7
+
     describe "9 - M.fromList" $ do
         it "fromListL" $ do
             fromListL list1 `shouldBe` map1
             fromListL list2 `shouldBe` map2
             fromListL list3 `shouldBe` map3
+            fromListL list7 `shouldBe` map7L
         it "fromListR" $ do
             fromListR list1 `shouldBe` map1
             fromListR list2 `shouldBe` map2
             fromListR list3 `shouldBe` map3
+            fromListR list7 `shouldBe` map7R
 
     let list4 = [1, 2, 3, 3, 3, 4, 5, 5, 6, 7, 7, 7] :: [Int]
     let list5 = [1, 1, 1, 1, 1] :: [Int]
@@ -95,6 +105,7 @@ spec = do
 
     describe "10 - уникальные элементы" $ do
         it "nubOrd" $ do
+            nubOrd list3 `shouldBe` list3
             nubOrd list4 `shouldBe` set4
             nubOrd list5 `shouldBe` set5
             nubOrd list6 `shouldBe` set6

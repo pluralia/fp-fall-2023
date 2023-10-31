@@ -35,7 +35,7 @@ padZero :: T.Text -> Int -> T.Text
 padZero str width = strZeros <> str
     where
         strZeros :: T.Text
-        strZeros = T.replicate (max 0 (width - T.length str)) $ T.singleton '0'
+        strZeros = T.replicate (width - T.length str) $ T.singleton '0'
 
 ------------------------------------------------------------------------------------------------
 
@@ -59,10 +59,7 @@ index c = ord c - ord 'A'   -- из Data.Char
 
 -- Считаем что приходят только заглавные английские буквы
 encode :: T.Text -> T.Text
-encode = T.map encodeChar
-    where
-        encodeChar :: Char -> Char
-        encodeChar symbol = cypher V.! index symbol
+encode = T.map (\x -> cypher V.! index x)
 
 ------------------------------------------------------------------------------------------------
 
@@ -72,11 +69,10 @@ encode = T.map encodeChar
 -- должен сохраняться.
 
 evenodd :: [a] -> ([a], [a])
-evenodd xs = (subArray False (zip [(0 :: Int)..] xs), subArray True (zip [(0 :: Int)..] xs))
+evenodd xs = (subArray False (zip [0..] xs), subArray True (zip [0..] xs))
     where
         subArray :: Bool -> [(Int, a)] -> [a]
-        subArray oddFlag = foldr (\x acc ->
-            if oddFlag /= even (fst x) then snd x : acc else acc) []
+        subArray oddFlag = map snd . filter (\(i, _) -> oddFlag /= even i)
 
 ------------------------------------------------------------------------------------------------
 
@@ -85,7 +81,8 @@ evenodd xs = (subArray False (zip [(0 :: Int)..] xs), subArray True (zip [(0 :: 
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average xs = foldl' (+) 0 xs / fromIntegral (V.length xs)
+average xs | V.length xs == 0 = error "Vector is empty!"
+           | otherwise        = foldl' (+) 0 xs / fromIntegral (V.length xs)
 
 ------------------------------------------------------------------------------------------------
 
@@ -95,9 +92,9 @@ average xs = foldl' (+) 0 xs / fromIntegral (V.length xs)
 -- Посчитать долю G/C в последовательности с помощью свёртки за один проход.
 
 gcContent :: T.Text -> Double
-gcContent str =
-    T.foldl' (\acc x ->
-        if x == 'G' || x == 'C' then acc + 1 else acc) 0 str / fromIntegral (T.length str)
+gcContent str | T.length str == 0 = error "Sequence is empty!"
+              | otherwise         = T.foldl' (\acc x ->
+                    if x == 'G' || x == 'C' then acc + 1 else acc) 0 str / fromIntegral (T.length str)
 
 ------------------------------------------------------------------------------------------------
 
@@ -113,12 +110,13 @@ gcContent str =
 -- Для решения этой задачи потребуются найти нужные функции в Hoogle или документации пакета text:
 -- https://hackage.haskell.org/package/text-2.1/docs/Data-Text.html
 
-dict :: M.Map Char Char
-dict = M.fromList [('A', 'T'), ('T', 'A'), ('C', 'G'), ('G', 'C')]
 
 isReversePalindrom :: T.Text -> Bool
 isReversePalindrom str = helper (T.length str) 0
     where
+        dict :: M.Map Char Char
+        dict = M.fromList [('A', 'T'), ('T', 'A'), ('C', 'G'), ('G', 'C')]
+
         helper :: Int -> Int -> Bool
         helper n ind | n == ind  = True
                      | otherwise =
@@ -152,6 +150,7 @@ meltingTemp =
 
 identity :: T.Text -> T.Text -> Double
 identity str1 str2 | T.length str1 /= T.length str2 = error "Different sequences length!"
+                   | T.length str1 == 0             = error "Sequences are empty!"
                    | otherwise                      =
                         1 - (hammingDistance (T.zip str1 str2) / fromIntegral (T.length str1))
     where
@@ -172,7 +171,9 @@ fromListR :: Ord k => [(k, v)] -> M.Map k v
 fromListR = foldr (uncurry M.insert) M.empty
 
 -- Отличие в необходимости использования flip, так как аргументы в foldl' и foldr 
--- передаются в разном порядке.
+-- передаются в разном порядке. Из-за того, что аргументы передаются в разном порядке, 
+-- в случае повтора tupl'ов с парой (k, v) для foldr сохранится самый последний (правый) вариант, 
+-- а для foldl самый первый (левый).
 
 ------------------------------------------------------------------------------------------------
 
@@ -202,11 +203,7 @@ nubOrd = Set.toList . foldl' (flip Set.insert) Set.empty
 -- Соберите строку "a=1&b=2&c=hello" из `Map Text Text` используя `foldlWithKey'` или `foldrWithKey`.
 
 buildQuery :: M.Map T.Text T.Text -> T.Text
-buildQuery = M.foldrWithKey (\ k a acc ->
-                if acc == T.empty then f k a else f k a <> T.pack "&" <> acc) T.empty
-    where
-        f :: T.Text -> T.Text -> T.Text
-        f k v = k <> T.pack "=" <> v
+buildQuery = T.intercalate (T.singleton '&') . map (\(k, v) -> k <> T.singleton '=' <> v) . M.toList
 
 ------------------------------------------------------------------------------------------------
 
@@ -269,7 +266,7 @@ instance ToSymbol AminoAcid where
 -- Определите функцию, превращающую список аминокислот в строку из однобуквенного кода.
 
 aminoToStr :: [AminoAcid] -> T.Text
-aminoToStr = foldl' (\ acc x -> acc <> (T.singleton . transformation) x) T.empty
+aminoToStr = T.intercalate T.empty . map (T.singleton . transformation)
 
 ------------------------------------------
 
