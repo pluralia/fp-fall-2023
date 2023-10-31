@@ -14,6 +14,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Text       as T
 import qualified Data.Vector     as V
 import qualified Data.Set        as S
+import Data.Maybe (fromMaybe)
 
 -- К каждой задаче приведите хотя бы 1 или 2 тестовых примера.
 -- Подсказка: Text и Vector можно конкатенировать с помощью оператора '<>'.
@@ -77,16 +78,19 @@ evenodd = foldr (\x (ev, od) -> (x:od, ev)) ([], [])
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average vec | V.length vec > 0 = divide (V.foldl' sumAndLength (0.0 :: Double, 0 :: Int) vec)
+average vec | V.length vec > 0 = sum' / fromIntegral len
             | otherwise        = error "Empty list"
   where
-    sumAndLength (sum', len) x = (sum' + x, len + 1)
-    divide (sum', len) = sum' / fromIntegral len
+    sumAndLength (sumAcc, lenAcc) x = (sumAcc + x, lenAcc + 1)
+    (sum', len) = V.foldl' sumAndLength (0.0 :: Double, 0 :: Int) vec
 
--- Здесь sumAndLength используется с foldl'
--- для одновременного вычисления суммы и длины списка. 
--- Затем divide - это функция, которая принимает пару (сумма, длина)
--- и делит сумму на длину с использованием fromIntegral.
+-- Здесь не получается использовать оператор / напрямую,
+-- потому что sum' и len имеют разные типы: sum' имеет тип Double,
+-- а len имеет тип Int. Оператор / требует, чтобы оба его операнда имели одинаковый числовой тип
+--
+-- В этой версии average, sum' и len вычисляются внутри where-блока.
+-- А sum' / fromIntegral len выполняется непосредственно, без необходимости определения дополнительной функции divide.
+-- Но решение выглядит как-то костыльно.
 
 -- На пустом массиве исходная реализация ничего не выдаст (NaN),
 -- можно модифицировать, чтобы выдавала ошибку
@@ -339,9 +343,7 @@ aminoToStr = T.pack . map toSymbol
 translate :: T.Text -> [AminoAcid]
 translate str
   | T.length str `mod` 3 /= 0 = error "Input length is not a multiple of 3"
-  | otherwise = concatMap (\codon -> case M.lookup codon codonTable of
-                                      Just amino -> [amino]
-                                      Nothing    -> [Stop]) (T.chunksOf 3 str)
+  | otherwise = map (fromMaybe Stop . flip M.lookup codonTable) (T.chunksOf 3 str)
   where
     codonTable = M.fromList
       [ ("TTT", Phe), ("TTC", Phe), ("TTA", Leu), ("TTG", Leu)
@@ -362,12 +364,9 @@ translate str
       , ("GGT", Gly), ("GGC", Gly), ("GGA", Gly), ("GGG", Gly)
       ]
 
--- переписал с помощью concatMap
--- по идее обе версии должны работать за линию, но
--- вторая версия более эффективна с точки зрения использования памяти
--- и создания временных структур данных, так как не требует создания множества
--- одноэлементных списков, которые затем объединяются.
 
+-- переписал через map
+-- тут hlint попросил заменить case на fromMaybe Stop
 
 -- Здесь я использовал тот факт, что m >>= k suggests "feed the result of computation m to the function k",
 -- который увидел в одном из обсуждений на stackoverflow, забавно, что это оказалась монадическая функция,
