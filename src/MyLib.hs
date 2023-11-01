@@ -12,7 +12,7 @@ module MyLib where
 
 import           Data.Char       (ord)
 -- здесь при сборке cabal пишет, что импорт foldl', foldr из Data.Foldable избыточен, но я тогда не поняла, откуда мы его берем
-import           Data.Foldable   (foldl', foldr, toList)
+import           Data.Foldable   (toList, foldl')
 import qualified Data.Map.Strict as M
 import qualified Data.Text       as T
 import qualified Data.Vector     as V
@@ -88,7 +88,8 @@ evenodd = foldr (\x (even2, odd2) -> (x:odd2, even2)) ([], [])
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average vec = V.foldl' (+) 0 vec / fromIntegral (V.length vec)
+average vec | V.length vec > 0 = V.foldl' (+) 0 vec / fromIntegral (V.length vec)
+            | otherwise = error "Nothing to count - empty list"
 
 ------------------------------------------------------------------------------------------------
 
@@ -102,11 +103,12 @@ nuclCheck n1 n2 | n1 == n2 = 1
               | otherwise = 0
 
 gcContent :: T.Text -> Double
-gcContent str = fromIntegral gcTotal / fromIntegral (T.length str)
+gcContent str | T.length str > 0 = fromIntegral gcTotal / fromIntegral (T.length str)
+              | otherwise = error "Nothing to count - empty string"
     where
+      gcIsland x = nuclCheck 'G' x + nuclCheck 'C' x
       gcTotal = T.foldl'(\c x -> c + gcIsland x) 0 str
-          where
-            gcIsland x = nuclCheck 'G' x + nuclCheck 'C' x
+      
 
 ------------------------------------------------------------------------------------------------
 
@@ -122,11 +124,12 @@ gcContent str = fromIntegral gcTotal / fromIntegral (T.length str)
 -- Для решения этой задачи потребуются найти нужные функции в Hoogle или документации пакета text:
 -- https://hackage.haskell.org/package/text-2.1/docs/Data-Text.html
 
-reverseNucl :: M.Map Char Char
-reverseNucl = M.fromList [('A', 'T'), ('T', 'A'), ('C', 'G'), ('G', 'C')]
-
 isReversePalindrom :: T.Text -> Bool
 isReversePalindrom str = str == T.reverse (T.map (reverseNucl M.!) str)
+    where
+      reverseNucl :: M.Map Char Char
+      reverseNucl = M.fromList [('A', 'T'), ('T', 'A'), ('C', 'G'), ('G', 'C')]
+
 
 ------------------------------------------------------------------------------------------------
 
@@ -162,7 +165,7 @@ hamming :: T.Text -> T.Text -> Int
 hamming str1 str2 = sum $ map (\(c1, c2) -> if c1 /= c2 then 1 else 0) $ T.zip str1 str2
 
 identity :: T.Text -> T.Text -> Double
-identity str1 str2 | T.length str1 == T.length str2 = 1 - fromIntegral (hamming str1 str2) / fromIntegral (T.length str1)
+identity str1 str2 | T.length str1 == T.length str2 && T.length str1 > 0 = 1 - fromIntegral (hamming str1 str2) / fromIntegral (T.length str1)
                    | otherwise = error "Different length"
 
 ------------------------------------------------------------------------------------------------
@@ -172,9 +175,10 @@ identity str1 str2 | T.length str1 == T.length str2 = 1 - fromIntegral (hamming 
 -- Реализовать `M.fromList :: [(k, v)] -> M.Map k v` с помощью свёрток `foldl'` и `foldr`. Объяснить
 -- чем будет отличаться поведение этих вариантов.
 
---я не поняла, как с левой сверткой делать
+--разница в том, какое значение при перезаписи (если значения ключа повторяются) будет оставаться - 
+--правая или левая (т.к. правая и левая свертки смотрят с разных концов)
 fromListL :: Ord k => [(k, v)] -> M.Map k v
-fromListL = undefined
+fromListL = foldl' (flip(uncurry M.insert)) M.empty
 
 fromListR :: Ord k => [(k, v)] -> M.Map k v
 fromListR = foldr (uncurry M.insert) M.empty
