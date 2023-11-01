@@ -35,11 +35,11 @@ spec = do
     average (V.fromList [1, 2, 3, 4, 5]) `shouldBe` (3 :: Double)
 
   it "gcContent" $ do
-    gcContent (T.pack "GCTGCAA") `shouldBe` (0.5714285714285714 :: Double)
-    gcContent (T.pack "TTAAATT") `shouldBe` (0.0 :: Double)
-    gcContent (T.pack "GCGCGCG") `shouldBe` (1.0 :: Double)
-    gcContent (T.pack "GCG") `shouldBe` (1.0 :: Double)
-    isNaN (gcContent (T.pack "")) `shouldBe` True
+    gcContent (T.pack "GCTGCAA") `shouldBe` Just (0.5714285714285714 :: Double)
+    gcContent (T.pack "TTAAATT") `shouldBe` Just (0.0 :: Double)
+    gcContent (T.pack "GCGCGCG") `shouldBe` Just (1.0 :: Double)
+    gcContent (T.pack "GCG") `shouldBe` Just (1.0 :: Double)
+    gcContent (T.pack "") `shouldBe` Nothing
 
   it "isReversePalindrom" $ do
     isReversePalindrom (T.pack "GCTGCAA") `shouldBe` False

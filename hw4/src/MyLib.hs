@@ -3,13 +3,13 @@
 
 module MyLib where
 
+import           Debug.Trace
 import           Data.Char       (ord)
 import           Data.Foldable   (foldl')
 import qualified Data.Map.Strict as M
 import qualified Data.Text       as T
 import qualified Data.Vector     as V
 import qualified Data.Set        as S
-
 
 -- К каждой задаче приведите хотя бы 1 или 2 тестовых примера.
 -- Подсказка: Text и Vector можно конкатенировать с помощью оператора '<>'.
@@ -77,7 +77,7 @@ evenodd = foldr helper ([], []) . zip [0..]
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average = uncurry (/) . foldl' (\(total, len) x -> (total + x, len + 1)) (0, 0)
+average = uncurry (/) . foldl' (\(total, len) x -> (total + x, len + 1)) (0, 0) 
 
 ------------------------------------------------------------------------------------------------
 
@@ -86,8 +86,10 @@ average = uncurry (/) . foldl' (\(total, len) x -> (total + x, len + 1)) (0, 0)
 --
 -- Посчитать долю G/C в последовательности с помощью свёртки за один проход.
 
-gcContent :: T.Text -> Double
-gcContent = uncurry (/) . T.foldl' helper (0, 0)
+gcContent :: T.Text -> Maybe Double
+-- pattern matching empty string  
+gcContent "" = Nothing
+gcContent s = Just $ uncurry (/) . T.foldl' helper (0, 0) $ s
   where
     helper :: (Double, Double) -> Char -> (Double, Double)
     helper (gc, len) x = if x == 'G' || x == 'C'
@@ -282,13 +284,13 @@ aminoToStr = T.pack . map toSymbol
 
 translate :: T.Text -> [AminoAcid]
 translate str = if T.length str `mod` 3 /= 0
-                then error "Invalid length"
-                else map (codonToAmino . T.toUpper) $ T.chunksOf 3 str
+                then trace "-- Invalid length" error "Invalid length"
+                else map ( traceCodonToAmino . T.toUpper . traceShowId) $ trace ("-- " ++ show (T.chunksOf 3 str)) $ T.chunksOf 3 str
   where
-    codonToAmino :: T.Text -> AminoAcid
-    codonToAmino codon = case M.lookup codon codonTable of
+    traceCodonToAmino :: T.Text -> AminoAcid
+    traceCodonToAmino codon = case M.lookup codon codonTable of
                            Just amino -> amino
-                           Nothing    -> error "Invalid codon"
+                           Nothing    -> trace ("Invalid codon: " ++ T.unpack codon) error "Invalid codon"
     -- It took more time to write this table than to write the else of the hw btw
     codonTable :: M.Map T.Text AminoAcid
     codonTable = M.fromList [("GCT", Ala), ("GCC", Ala), ("GCA", Ala), ("GCG", Ala),
@@ -312,6 +314,4 @@ translate str = if T.length str `mod` 3 /= 0
                              ("TAT", Tyr), ("TAC", Tyr),
                              ("GTT", Val), ("GTC", Val), ("GTA", Val), ("GTG", Val),
                              ("TAA", Stp), ("TGA", Stp), ("TAG", Stp)]
-
-
 
