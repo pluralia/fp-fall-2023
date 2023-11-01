@@ -6,6 +6,7 @@ build-depends: base, containers, text, vector
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+import           Data.Maybe (mapMaybe)
 import           Data.Char       (ord)
 import           Data.Foldable   (foldl')
 import qualified Data.Map.Strict as M
@@ -74,12 +75,7 @@ evenodd = foldr (\ x (ys, zs) -> (zs, x : ys)) ([], [])
 average :: V.Vector Double -> Double
 average vec
     | V.null vec = 0.0
-    |otherwise = 
-        let sumAndCount = V.foldl' step (0, 0) vec
-            step :: (Double, Int) -> Double -> (Double, Int)
-            step (s, l) x = (s + x, l + 1)
-            (sum', len) = fmap fromIntegral sumAndCount
-        in sum' / len
+    | otherwise =  uncurry (/) (fromIntegral <$> V.foldl' (\ (s, l) x -> (s + x, l + (1 :: Int))) (0, 0) vec)
 
 ------------------------------------------------------------------------------------------------
 
@@ -94,9 +90,9 @@ gcContent str =
         step :: (Int, Int) -> Char -> (Int, Int)
         step (gc, count') c 
             | c == 'G' || c == 'C' = (gc + 1, count' + 1)
-            | c == 'A' || c == 'T' = (gc, count' + 1)
-            | otherwise = (gc, count')
-    in if totalCount == 0 then 0 else fromIntegral gcCount / fromIntegral totalCount
+            | otherwise            = (gc, count' + 1)
+    in fromIntegral gcCount / fromIntegral totalCount
+
 
 ------------------------------------------------------------------------------------------------
 
@@ -113,16 +109,11 @@ gcContent str =
 -- https://hackage.haskell.org/package/text-2.1/docs/Data-Text.html
 -- !!!!!!!!!!!!!!
 
-
 isReversePalindrom :: T.Text -> Bool
 isReversePalindrom dna = T.reverse (T.map complement dna) == dna
     where
-        complement :: Char -> Char
-        complement 'A' = 'T'
-        complement 'T' = 'A'
-        complement 'G' = 'C'
-        complement 'C' = 'G'
-        complement  _  = error "Incorrect input"
+        complementMap = M.fromList [('A', 'T'), ('T', 'A'), ('G', 'C'), ('C', 'G')]
+        complement c = M.findWithDefault (error "Incorrect input") c complementMap
 
 
 ------------------------------------------------------------------------------------------------
@@ -137,11 +128,8 @@ isReversePalindrom dna = T.reverse (T.map complement dna) == dna
 meltingTemp :: T.Text -> Int
 meltingTemp = T.foldl' (\ acc c -> acc + temp c) 0
     where
-        temp 'G' = 4
-        temp 'C' = 4
-        temp 'A' = 2
-        temp 'T' = 2
-        temp _   = 0
+        tempMap = M.fromList [('G', 4), ('C', 4), ('A', 2), ('T', 2)]
+        temp c = M.findWithDefault 0 c tempMap
 
 ------------------------------------------------------------------------------------------------
 
@@ -157,8 +145,9 @@ meltingTemp = T.foldl' (\ acc c -> acc + temp c) 0
 
 identity :: T.Text -> T.Text -> Double
 identity str1 str2
-    | T.length str1 /= T.length str2 = -1.0 -- вместо ошибки возращаем -1 так как в типы указан был только Double
-    | otherwise                      = 1 - hamming / len
+    | T.length str1 /= T.length str2           = -1.0 -- вместо ошибки возращаем -1 так как в типы указан был только Double
+    | T.length str1 == 0 && T.length str2 == 0 = 1.0
+    | otherwise                                = 1 - hamming / len
     where
         len = fromIntegral $ T.length str1
         hamming = fromIntegral $ length $ filter not $ zipWith (==) (T.unpack str1) (T.unpack str2)
@@ -188,11 +177,8 @@ fromListR = foldr (\ (k, v) acc -> M.insert k v acc) M.empty
 -- Решение должно использовать свёртку по входному списку в один проход. Использовать fromList нельзя.
 
 nubOrd :: Ord a => [a] -> [a]
-nubOrd = reverse . uniqueElements
+nubOrd = reverse . snd . foldl processElement (Set.empty, [])
     where
-        uniqueElements :: Ord a => [a] -> [a]
-        uniqueElements = snd . foldl processElement (Set.empty, [])
-
         processElement :: Ord a => (Set.Set a, [a]) -> a -> (Set.Set a, [a])
         processElement (set, list) element
             | Set.member element set = (set, list)
@@ -206,9 +192,9 @@ nubOrd = reverse . uniqueElements
 -- Соберите строку "a=1&b=2&c=hello" из `Map Text Text` используя `foldlWithKey'` или `foldrWithKey`.
 
 buildQuery :: M.Map T.Text T.Text -> T.Text
-buildQuery parameters = T.drop 1 $ M.foldlWithKey' appendKeyValue (T.pack "") parameters
+buildQuery parameters = T.intercalate (T.pack "&") $ map appendKeyValue $ M.toList parameters
     where
-        appendKeyValue acc k v = acc `T.append` T.pack "&" `T.append` k `T.append` T.pack "=" `T.append` v
+        appendKeyValue (k, v) = k `T.append` T.pack "=" `T.append` v
 
 ------------------------------------------------------------------------------------------------
 
@@ -320,9 +306,4 @@ codonTable = M.fromList
 translate :: T.Text -> Either String [AminoAcid]
 translate dna
     |T.length dna `mod` 3 /= 0 = Left "Input is not correct"
-    | otherwise = Right (go (T.unpack dna))
-    where
-        go [] = []
-        go xs = case M.lookup (T.pack (take 3 xs)) codonTable of
-            Just a -> a : go (drop 3 xs)
-            Nothing -> []
+    | otherwise = Right $ mapMaybe (`M.lookup` codonTable) (T.chunksOf 3 dna)
