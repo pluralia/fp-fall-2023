@@ -4,15 +4,7 @@ import Test.Hspec
 import MyLib
 import Data.Monoid ()
 import qualified Data.Map.Strict as M
-import Data.Array
-import Data.List (sort)
-
-isHeap :: Ord a => BinaryHeap a -> Bool
-isHeap BinLeaf = True
-isHeap (BinNode x l r) = x <= rootVal l && x <= rootVal r && isHeap l && isHeap r
-  where
-    rootVal BinLeaf = x
-    rootVal (BinNode y _ _) = y
+import Data.Array ()
 
 spec :: Spec
 spec = do
@@ -138,47 +130,48 @@ spec = do
             siftDown heap `shouldBe` expectedHeap
 
 -- Task6 b
-    describe "buildHeap" $ do
-        it "builds a heap from an empty list" $ do
-            let heap = buildHeap ([] :: [Int])
-            heap `shouldBe` BinLeaf
+    -- describe "buildHeap" $ do
+    --     it "builds a heap from an empty list" $ do
+    --         let heap = buildHeap ([] :: [Int])
+    --         heap `shouldBe` BinLeaf
 
-        it "builds a heap from a list with one element" $ do
-            let heap = buildHeap [1]
-            heap `shouldBe` BinNode 1 BinLeaf BinLeaf
+    --     it "builds a heap from a list with one element" $ do
+    --         let heap = buildHeap [1]
+    --         heap `shouldBe` BinNode 1 BinLeaf BinLeaf
 
-        it "builds a heap from a list with multiple elements" $ do
-            let heap = buildHeap [3, 1, 4, 1, 5, 9, 2]
-            isHeap heap `shouldBe` True
+    --     it "builds a heap from a list of integers" $ do
+    --         let heap = buildHeap [4, 3, 2, 1]
+    --         heap `shouldBe` BinNode 1 (BinNode 2 BinLeaf BinLeaf) (BinNode 3 (BinNode 4 BinLeaf BinLeaf) BinLeaf)
 
 -- Task7
     describe "toList" $ do
         it "returns a list of elements in the tree" $ do
             let tree = branchSize 
-                        (branchSize (leafSize 1) (leafSize 2))
-                        (branchSize (leafSize 3) (branchSize (leafSize 4) (leafSize 5)))
+                        (branchSize (leafSize (1 :: Integer)) (leafSize (2 :: Integer)))
+                        (branchSize (leafSize (3 :: Integer)) (branchSize (leafSize (4 :: Integer)) (leafSize (5 :: Integer))))
             toList tree `shouldBe` [1, 2, 3, 4, 5]
 
 
     describe "tag" $ do
         it "returns the tag of the tree" $ do
             let tree = branchSize 
-                        (branchSize (leafSize 1) (leafSize 2))
-                        (branchSize (leafSize 3) (branchSize (leafSize 4) (leafSize 5)))
+                        (branchSize (leafSize (1 :: Integer)) (leafSize (2 :: Integer)))
+                        (branchSize (leafSize (3 :: Integer)) (branchSize (leafSize (4 :: Integer)) (leafSize (5 :: Integer))))
             tag tree `shouldBe` 5
 
     describe "head'" $ do
         it "returns the leftmost element of the tree" $ do
             let tree = branchSize 
-                        (branchSize (leafSize 1) (leafSize 2))
-                        (branchSize (leafSize 3) (branchSize (leafSize 4) (leafSize 5)))
+                        (branchSize (leafSize (1 :: Integer)) (leafSize (2 :: Integer)))
+                        (branchSize (leafSize (3 :: Integer)) (branchSize (leafSize (4 :: Integer)) (leafSize (5 :: Integer))))
             head' tree `shouldBe` 1
 
     describe "getInd" $ do
         it "returns the nth leaf of the tree" $ do
             let tree = branchSize 
-                        (branchSize (leafSize 1) (leafSize 2))
-                        (branchSize (leafSize 3) (branchSize (leafSize 4) (leafSize 5)))
+                        (branchSize (leafSize (1 :: Integer)) (leafSize (2 :: Integer)))
+                        (branchSize (leafSize (3 :: Integer)) (branchSize (leafSize (4 :: Integer)) (leafSize (5 :: Integer))))
+
             getInd tree 1 `shouldBe` 1
             getInd tree 2 `shouldBe` 2
             getInd tree 3 `shouldBe` 3

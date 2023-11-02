@@ -1,6 +1,5 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-} -- для использования классов типов с несколькими параметрами
-{-# LANGUAGE TypeSynonymInstances #-} --  чтобы можно было спользовать синонимы типов в объявлениях экземпляров
 {-# LANGUAGE FlexibleInstances #-} 
 
 
@@ -9,8 +8,7 @@ module MyLib where
 import qualified Data.Map.Strict as M
 import Data.List (sortOn)
 import Data.Monoid ()
-import Data.Array
-
+import Data.Array ( (!), listArray, Array )
 -- Во всех заданиях с инстансами укажите сигнатуры функций
 
 -- Бонус: запишите решения в стиле point free там где это возможно и __не портит читаемость__
@@ -148,9 +146,7 @@ thisApple tree colors (low, high) = foldr matchApple Nothing tree
     matchApple apple Nothing 
       | color apple `elem` colors && weight apple >= low && weight apple <= high = Just apple
       | otherwise = Nothing
-    matchApple apple acc@(Just _) 
-      | color apple `elem` colors && weight apple >= low && weight apple <= high = acc
-      | otherwise = Just apple
+    matchApple _ (Just apple) = Just apple
 
 -- 4.d Считает сумму весов всех яблок в дереве (0,25 балла)
 --
@@ -199,8 +195,8 @@ data BinaryHeap a
 siftDown :: Ord a => BinaryHeap a -> BinaryHeap a
 siftDown BinLeaf = BinLeaf
 siftDown heap@(BinNode x left' right')
-  | x <= minChildVal = heap
-  | otherwise = BinNode minChildVal (siftDown $ replaceMinChild x) right'
+  | x > minChildVal = BinNode minChildVal (siftDown $ replaceMinChild x) right'
+  | otherwise = heap
   where
     minChildVal = min (rootVal left') (rootVal right')
     replaceMinChild val' = if rootVal left' == minChildVal then replaceVal left' val' else replaceVal right' val'
@@ -214,22 +210,14 @@ siftDown heap@(BinNode x left' right')
 --     Соответствующий алогритм описан в статье на вики (ссылка выше).
 --     Считайте, что изменение элемента 'Data.Array' происходит за константу (хотя это не так!)
 --     (1 балл)
---       
--- Оно не работает 
+--    
+-- function buldHeap():
+--    for i = a.heapSize / 2 downto 0
+--        siftDown(i)   
+-- у меня не получилось с этим псевдокодом написать функцию, а как-то по другому тоже не понятно как написать за линейное время
 
 buildHeap :: Ord a => [a] -> BinaryHeap a
-buildHeap xs 
-    | null xs = BinLeaf
-    | otherwise = 
-        let arr = listArray (1, length xs) xs
-            heapSize = length xs
-        in build arr heapSize (heapSize `div` 2)
-    where
-        build arr heapSize i
-            | i < 1     = if heapSize > 0 then BinNode (arr ! 1) BinLeaf BinLeaf else BinLeaf
-            | otherwise = siftDown $ BinNode (arr ! i) (buildChild arr heapSize (2 * i)) (buildChild arr heapSize (2 * i + 1))
-        buildChild arr heapSize j = if j <= heapSize then build arr heapSize j else BinLeaf
-
+buildHeap = undefined
 -------------------------------------------------------------------------------
 
 -- 7. A list with random access (2 балла)
@@ -303,7 +291,18 @@ branchSize x y = BBranch (tag x + tag y) x y
 
 -- 7.d Создайте дерево типа `BinaryTree Size a`, используя leafSize и branchSize (0,25 балла)
 
+createTree :: BinaryTree Size String
+createTree = 
+  let 
+    leaf1 = leafSize "a1"
+    leaf2 = leafSize "a2"
+    leaf3 = leafSize "a3"
+    leaf4 = leafSize "a4"
 
+    branch1 = branchSize leaf1 leaf2
+    branch2 = branchSize leaf3 leaf4
+
+  in branchSize branch1 branch2
 
 -- 7.e Используя Size-аннотации, найдите n-й лист (1 балл)
 
@@ -353,13 +352,27 @@ branchPrio x y = BBranch (tag x `min` tag y) x y
 
 -- 8.b Создайте дерево типа `BinaryTree Priority a`, используя leafPrio и branchPrio (0,25 балла)
 
+createPriorityTree :: BinaryTree Priority String
+createPriorityTree = 
+  let 
+    leaf1 = leafPrio 16 "a1"
+    leaf2 = leafPrio 4 "a2"
+    leaf3 = leafPrio 2 "a3"
+    leaf4 = leafPrio 8 "a4"
+
+    branch1 = branchPrio leaf1 leaf2
+    branch2 = branchPrio leaf3 leaf4
+
+  in branchPrio branch1 branch2
 
 
 -- 8.c Используя Priority-аннотации, найдите самый приоритетный элемент (1 балл)
 
 getWinner :: BinaryTree Priority a -> a
 getWinner (BLeaf _ a) = a
-getWinner (BBranch _ _ a) = getWinner a
+getWinner (BBranch _ l r) 
+    | tag l <= tag r = getWinner l
+    | otherwise      = getWinner r
 
 -------------------------------------------------------------------------------
 
@@ -404,7 +417,6 @@ instance Semigroup Priority' where
 instance Monoid Priority' where
   mempty :: Priority'
   mempty = Priority' maxBound 
-
 
 
 -- | Теперь branchSize и branchPrio могут быть заменены на branch
