@@ -1,10 +1,10 @@
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE InstanceSigs, MultiParamTypeClasses, FlexibleInstances #-}
 
 module MyLib where
 
+import           Data.List (foldl')
+import           Data.Monoid()
 import qualified Data.Map.Strict as M
-
-import Data.Monoid
 
 -- Во всех заданиях с инстансами укажите сигнатуры функций
 
@@ -19,10 +19,15 @@ import Data.Monoid
 --
 newtype Arrow a b = Arrow (a -> b)
 
-
-
 -- Напишите инстанс Functor для Arrow и покажите выполнение законов
 
+instance Functor (Arrow a) where
+  fmap :: (b -> c) -> Arrow a b -> Arrow a c
+  fmap f (Arrow g) = Arrow (f . g)
+
+-- Законы:
+-- fmap id = id
+-- fmap (f . g) (Arrow h) = fmap f (fmap g (Arrow h)) = fmap f . fmap g (Arrow h)
 -------------------------------------------------------------------------------
 
 -- 2. Студенты и Moinoid (1 балл)
@@ -32,25 +37,52 @@ newtype Arrow a b = Arrow (a -> b)
 data Student = Student 
     { name  :: String -- имя студента
     , grade :: Int    -- оценка студента по нашему предмету
-    }
+    }deriving (Eq, Show)
 
 data StudentsLog = StudentsLog
     { studentNames :: [String]  -- список имён студентов
     , worstGrade   :: Maybe Int -- наименьшая оценка по курсу
     , bestGrade    :: Maybe Int -- наибольшая оценка по курсу
-    }
+    }deriving (Eq, Show)
 
 -- 2.a Функция, которая по списку студентов курса рассчитывает информацию по курсу (0,5 балла)
 --
 calculateStudentsLog :: [Student] -> StudentsLog
-calculateStudentsLog = undefined
+calculateStudentsLog = foldr helper (StudentsLog [] Nothing Nothing)
+  where
+    helper :: Student -> StudentsLog -> StudentsLog
+    helper (Student n g) (StudentsLog names worst best) = 
+      StudentsLog (n : names) (calcmin (Just g) worst) (max (Just g) best)
+
+    calcmin :: Maybe Int -> Maybe Int -> Maybe Int
+    calcmin Nothing Nothing = Nothing
+    calcmin Nothing (Just x) = Just x
+    calcmin (Just x) Nothing = Just x
+    calcmin (Just x) (Just y) = Just $ min x y
 
 -- 2.b Сделайте 'StudentsLog' представителем класса типов 'Monoid' и реализуйте
 --     calculateStudentsLog', которая делает то же самое, что и calculateStudentsLog
 --     В реализации нужно использовать то, что 'StudentsLog' — моноид. (0,5 балла)
 --
+
+instance Semigroup StudentsLog where
+  (<>) :: StudentsLog -> StudentsLog -> StudentsLog
+  (<>) (StudentsLog names1 worst1 best1) (StudentsLog names2 worst2 best2) = 
+    StudentsLog (names1 ++ names2) (calcmin worst1 worst2) (max best1 best2)
+    where
+      calcmin :: Maybe Int -> Maybe Int -> Maybe Int
+      calcmin Nothing Nothing = Nothing
+      calcmin Nothing (Just x) = Just x
+      calcmin (Just x) Nothing = Just x
+      calcmin (Just x) (Just y) = Just $ min x y
+
+
+instance Monoid StudentsLog where
+  mempty :: StudentsLog
+  mempty = StudentsLog [] Nothing Nothing
+
 calculateStudentsLog' :: [Student] -> StudentsLog
-calculateStudentsLog' = undefined
+calculateStudentsLog' = foldMap (\(Student n g) -> StudentsLog [n] (Just g) (Just g))
 
 -------------------------------------------------------------------------------
 
@@ -61,15 +93,23 @@ data Tree a = Node a [Tree a] | Leaf
 
 -- Сделайте 'Tree' представителем класса типов 'Foldable'
 
+instance Foldable Tree where
+  foldr :: (a -> b -> b) -> b -> Tree a -> b
+  foldr _ acc Leaf = acc
+  foldr f acc (Node a children) = f a $ foldr (flip (foldr f)) acc children 
+
 -------------------------------------------------------------------------------
 
 -- 4. Яблоко и Foldable (1 балл)
 
 data Apple = Apple
-    { color  :: String -- цвет яблока
-    , weight :: Float  -- вес яблока
-    }
+  { color  :: String -- цвет яблока
+  , weight :: Float  -- вес яблока
+  }
   deriving (Eq, Show)
+
+appleTree :: Tree Apple
+appleTree = Node (Apple "red" 0.3) [Node (Apple "green" 0.2) [Leaf], Node (Apple "red" 0.1) [Leaf]]
 
 -- С помощью функций из 'Data.Foldable' реализуйте следующие функции:
 
@@ -77,23 +117,36 @@ data Apple = Apple
 --     в заданном диапазоне весов (0,25 балла)
 --
 applesInRange :: Tree Apple -> (Float, Float) -> Bool
-applesInRange = undefined
+applesInRange tree (minim, maxim) = foldr helper True tree
+  where
+    helper :: Apple -> Bool -> Bool
+    helper (Apple _ w) acc = acc && (w >= minim) && (w <= maxim)
 
 -- 4.b Находит яблоко с наибольшим весом (0,25 балла)
 --
 heaviestApple :: Tree Apple -> Maybe Apple
-heaviestApple = undefined
+heaviestApple = foldr helper Nothing
+  where
+    helper :: Apple -> Maybe Apple -> Maybe Apple
+    helper a Nothing = Just a
+    helper a (Just b) = if weight a > weight b then Just a else Just b
 
 -- 4.c Находит яблоко с цветом из заданного списка цветов и весом,
 --     находящимся в заданном диапазоне весов (0,25 балла)
 --
-thisApple :: Tree Apple -> [String] -> (Int, Int) -> Maybe Apple
-thisApple = undefined
+thisApple :: Tree Apple -> [String] -> (Float, Float) -> Maybe Apple
+thisApple tree colors (minim, maxim) = foldr helper Nothing tree
+  where
+    helper :: Apple -> Maybe Apple -> Maybe Apple
+    helper a Nothing = if color a `elem` colors && weight a >= minim && weight a <= maxim 
+                       then Just a 
+                       else Nothing
+    helper _ (Just b) = Just b
 
 -- 4.d Считает сумму весов всех яблок в дереве (0,25 балла)
 --
 sumOfApples :: Tree Apple -> Float
-sumOfApples = undefined
+sumOfApples = foldr (\(Apple _ w) acc -> w + acc) 0
 
 -------------------------------------------------------------------------------
 
@@ -111,7 +164,18 @@ newtype Basket = Basket { apples :: M.Map String [Apple] }
 -- инициализировать и модифицировать мапу
 --      
 collectBasket :: Tree Apple -> Basket
-collectBasket = undefined
+collectBasket = foldr helper (Basket M.empty)
+  where
+    helper :: Apple -> Basket -> Basket
+    helper a (Basket m) = Basket $ M.insertWith merge (color a) [a] m
+
+    merge :: [Apple] -> [Apple] -> [Apple]
+    merge [] ys = ys
+    merge xs [] = xs
+    merge (x:xs) (y:ys) = if weight x < weight y 
+                          then x : merge xs (y:ys) 
+                          else y : merge (x:xs) ys
+
 
 -------------------------------------------------------------------------------
 
@@ -127,10 +191,22 @@ data BinaryHeap a
   | BinLeaf
   deriving (Eq, Show)
 
+
+binHeap :: BinaryHeap Int
+binHeap = BinNode 3 (BinNode 2 BinLeaf BinLeaf) (BinNode 4 BinLeaf BinLeaf)
+        
 -- 6.a Реализуйте функцию siftDown, восстанавливающую свойство кучи в куче (0,5 балла)
---      
+--     
 siftDown :: Ord a => BinaryHeap a -> BinaryHeap a
-siftDown = undefined
+siftDown BinLeaf = BinLeaf
+siftDown (BinNode v BinLeaf BinLeaf) = BinNode v BinLeaf BinLeaf
+siftDown (BinNode v l BinLeaf) | v < val l = BinNode v l BinLeaf
+                               | otherwise = BinNode (val l) (siftDown (l {val = v})) BinLeaf
+siftDown (BinNode v BinLeaf r) | v < val r = BinNode v BinLeaf r
+                               | otherwise = BinNode (val r) BinLeaf (siftDown (r {val = v}))
+siftDown (BinNode v l r)       | v < min (val l) (val r) = BinNode v l r
+                               | val l < val r = BinNode (val l) (siftDown (l {val = v})) r
+                               | otherwise = BinNode (val r) l (siftDown (r {val = v}))
 
 -- 6.b Реализуйте с помощью свёртки функцию buildHeap,
 --     которая за __линейное время__ конструирует на основе спиcка элементов бинарную кучу.
@@ -139,7 +215,15 @@ siftDown = undefined
 --     (1 балл)
 --       
 buildHeap :: Ord a => [a] -> BinaryHeap a
-buildHeap l = foldr undefined undefined l
+buildHeap = foldl' helper BinLeaf
+  where 
+    helper :: Ord a => BinaryHeap a -> a -> BinaryHeap a
+    helper BinLeaf x = BinNode x BinLeaf BinLeaf
+    helper (BinNode y l r) x
+                | x <= y    = BinNode x (helper r y) l
+                | otherwise = BinNode y (helper r x) l
+-- Этот алгоритм работает за O(n log n). Я не понял как сделать за O(n)
+  
 
 -------------------------------------------------------------------------------
 
@@ -170,17 +254,20 @@ data BinaryTree v a = BLeaf v a | BBranch v (BinaryTree v a) (BinaryTree v a)
 --     Реализуйте получение списка элементов из дерева (0,25 балла)
 --
 toList :: BinaryTree v a -> [a]
-toList = undefined
+toList (BLeaf _ a) = [a]
+toList (BBranch _ l r) = toList l ++ toList r
 
 -- 7.b Реализуйте tag, возвращающую текущий тег дерева (0,25 балла)
 
 tag :: BinaryTree v a -> v
-tag = undefined
+tag (BLeaf v _) = v
+tag (BBranch v _ _) = v
 
 -- 7.c Реализуйте head, которая извлекает самый левый элемент (0,25 балла)
 --
-head :: BinaryTree v a -> a
-head = undefined
+head' :: BinaryTree v a -> a
+head' (BLeaf _ a) = a
+head' (BBranch _ l _) = head' l
 
 -- Итак, доступ к первому листу был прост, а как быть со вторым, третьим, n-ым листом?
 -- Решение состоит в том, чтобы аннотировать каждое поддерево его размером.
@@ -193,9 +280,11 @@ type Size = Int
 --   2     3
 --  / \   / \
 -- 1  1  1   2
--- a  a  a  / \
+-- a  b  c  / \
 --         1   1
---         a   a
+--         d   e
+binaryTree :: BinaryTree Int Char
+binaryTree = BBranch 5 (BBranch 2 (BLeaf 1 'a') (BLeaf 1 'b')) (BBranch 3 (BLeaf 1 'c') (BBranch 2 (BLeaf 1 'd') (BLeaf 1 'e')))
 
 -- Таким образом, мы задаем v = Size и хотим, чтобы аннотации выполняли следующие условия
 -- tag (BLeaf  ..)      = 1
@@ -211,10 +300,17 @@ branchSize x y = BBranch (tag x + tag y) x y
 
 -- 7.d Создайте дерево типа `BinaryTree Size a`, используя leafSize и branchSize (0,25 балла)
 
+binTree :: BinaryTree Size Char
+binTree = branchSize (branchSize (leafSize 'a') (leafSize 'b')) (branchSize (leafSize 'c') (branchSize (leafSize 'd') (leafSize 'e')))
+
 -- 7.e Используя Size-аннотации, найдите n-й лист (1 балл)
 
 getInd :: BinaryTree Size a -> Int -> a
-getInd = undefined
+getInd (BLeaf _ a) 0 = a
+getInd (BLeaf _ _) _ = error "Index out of range"
+getInd (BBranch _ l r) n | n < tag l = getInd l n
+                         | otherwise = getInd r (n - tag l)
+
 
 -------------------------------------------------------------------------------
 
@@ -235,9 +331,9 @@ type Priority = Int
 --   4     2
 --  / \   / \
 -- 16  4  2  8
--- a   a  a / \
+-- a   b  c / \
 --         32  8
---         a   a
+--         d   e
 
 -- Таким образом, мы задаем v = Priority и хотим, чтобы аннотации выполняли следующие условия
 -- tag (Leaf .. a)     = priority a
@@ -246,12 +342,30 @@ type Priority = Int
 -- 8.a Задайте собственные конструкторы leafPrio и branchPrio (на замену BLeaf и BBranch), чтобы
 --     быть уверенными в корректности аннотаций по аналогии с leafSize и branchSize (0,25 балла)
 
+data PrioTree a = PLeaf Priority a | PBranch Priority (PrioTree a) (PrioTree a)
+  deriving (Show)
+
+prio :: PrioTree a -> Priority
+prio (PLeaf p _) = p
+prio (PBranch p _ _) = p
+
+leafPrio :: Priority -> a -> PrioTree a
+leafPrio = PLeaf
+
+branchPrio :: PrioTree a -> PrioTree a -> PrioTree a
+branchPrio x y = PBranch (prio x `min` prio y) x y
+
 -- 8.b Создайте дерево типа `BinaryTree Priority a`, используя leafPrio и branchPrio (0,25 балла)
+
+prioTree :: PrioTree Char
+prioTree = branchPrio (branchPrio (leafPrio 16 'a') (leafPrio 4 'b')) (branchPrio (leafPrio 2 'c') (branchPrio (leafPrio 32 'd') (leafPrio 8 'e')))
 
 -- 8.c Используя Priority-аннотации, найдите самый приоритетный элемент (1 балл)
 
-getWinner :: BinaryTree Priority a -> a
-getWinner = undefined
+getWinner :: PrioTree a -> a
+getWinner (PLeaf _ a) = a
+getWinner (PBranch _ l r) | prio l < prio r = getWinner l
+                          | otherwise       = getWinner r
 
 -------------------------------------------------------------------------------
 
@@ -273,7 +387,34 @@ getWinner = undefined
 
 -- 10.a Обобщите эту функцию, написав инстансы `Monoid Size` и `Monoid Priority` (0,5 балла)
 -- Kакую ошибку вы получили с при текущем определении Size и Priority, попытавшись создать инстансы?
+
+-- Duplicate instance declarations. Что-то типо такого причина: Проблема здесь в том, что Priority и Size 
+-- являются синонимами типов для Int, а не новыми типами. Haskell не позволяет создавать новые экземпляры 
+-- синонимов типов, идентичных существующим экземплярам.
+
 -- Что нужно изменить в определении Size и Priority?
+
+-- Создать новый тип данных, а не синоним типа данных
+
+newtype Size' = Size' Int deriving (Eq, Show)
+
+instance Semigroup Size' where
+  (<>) :: Size' -> Size' -> Size'
+  Size' x <> Size' y = Size' (x + y)
+
+instance Monoid Size' where
+  mempty :: Size'
+  mempty = Size' 1
+
+newtype Priority' = Priority' Int deriving (Eq, Show)
+
+instance Semigroup Priority' where
+  (<>) :: Priority' -> Priority' -> Priority'
+  Priority' x <> Priority' y = Priority' (min x y)
+
+instance Monoid Priority' where
+  mempty :: Priority'
+  mempty = Priority' maxBound
 
 -- | Теперь branchSize и branchPrio могут быть заменены на branch
 --
@@ -285,17 +426,40 @@ branch x y = BBranch (tag x <> tag y) x y
 -- leaf :: Monoid v => a -> BinaryTree v a
 -- leaf = BLeaf mempty
 
+-- Ответ: нам нужно задавать приоритет листа, а размер не нужно. 
+-- Разные типы данных для leaf получаются 
+
+newBinTree :: BinaryTree Size' Char
+newBinTree = branch (branch (leaf 'a') (leaf 'b')) (branch (leaf 'c') (branch (leaf 'd') (leaf 'e')))
+
+-- veryNewBinTree :: BinaryTree Priority' Char
+-- veryNewBinTree = branch (branch (leaf 16 'a') (leaf 4 'b')) (branch (leaf 2 'c') (branch (leaf 32 'd') (leaf 8 'e')))
+
+
 -- Чтобы задать leaf унифицированным способом аналогично branch, давайте создадим класс типов Measured
 
---class Monoid v => Measured v a where
---    measure :: a -> v
+class Monoid v => Measured v a where
+  measure :: a -> v
 
 -- | Написав различные инстансы этого класса для наших `BinaryTree Size a` и `BinaryTree Priority a`,
 -- | мы сможем по-разному вычислять аннотацию листа по значению. Тогда
 -- 
---leaf :: Measured v a => a -> BinaryTree v a
---leaf x = BLeaf (measure x) x
+leaf :: Measured v a => a -> BinaryTree v a
+leaf x = BLeaf (measure x) x
+
+-- Мы не можем задавать приоритет:
+-- veryNewBinTree :: BinaryTree Priority' Char
+-- veryNewBinTree = branch (branch (leaf 16 'a') (leaf 4 'b')) (branch (leaf 2 'c') (branch (leaf 32 'd') (leaf 8 'e')))
 
 -- 10.b Напишите инстансы Measured для Size и Priority (0,5 балла)
 
+instance Measured Size' a where
+  measure :: a -> Size'
+  measure _ = Size' 1
+
 -------------------------------------------------------------------------------
+
+
+  
+  
+  
