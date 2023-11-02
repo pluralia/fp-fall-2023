@@ -1,0 +1,36 @@
+cabal-version:      2.4
+name:               hw5
+version:            0.1.0.0
+license:            MIT
+license-file:       LICENSE
+author:             Ivan
+maintainer:         shchukin.global@gmail.com
+extra-source-files: CHANGELOG.md
+
+library
+    exposed-modules:  MyLib
+    ghc-options:      -Wall 
+                      -fno-warn-name-shadowing 
+                      -fno-warn-unused-imports
+                      -fno-warn-missing-signatures
+    build-depends:    base ^>=4.18.0.0
+                 ,    containers
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+test-suite hw5-test
+    default-language: Haskell2010
+    ghc-options:      -Wall 
+                      -fno-warn-name-shadowing 
+                      -fno-warn-unused-imports
+                      -fno-warn-missing-signatures
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          MyLibTest.hs
+    build-depends:    base ^>=4.18.0.0
+                 ,    hw5
+                 ,    hspec
+                 ,    containers
+                 ,    hspec-discover
+    other-modules:    TestSpec
+
