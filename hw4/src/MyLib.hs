@@ -177,7 +177,7 @@ fromListR = foldr (\ (k, v) acc -> M.insert k v acc) M.empty
 -- Решение должно использовать свёртку по входному списку в один проход. Использовать fromList нельзя.
 
 nubOrd :: Ord a => [a] -> [a]
-nubOrd = reverse . snd . foldl processElement (Set.empty, [])
+nubOrd = reverse . snd . foldl' processElement (Set.empty, [])
     where
         processElement :: Ord a => (Set.Set a, [a]) -> a -> (Set.Set a, [a])
         processElement (set, list) element
