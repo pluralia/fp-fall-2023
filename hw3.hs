@@ -4,6 +4,7 @@ import Data.Ix (inRange)
 
 -- 1. Числа Черча и `Ix` (1 балл)
 --    Напишите инстансы `Eq`, `Ord`, `Num` и `Ix` для чисел Черча
+
 data ChurchNumber = Zero | Succ ChurchNumber
   deriving (Show, Eq)
 
@@ -184,12 +185,12 @@ data Pair a b = Pair a b
 
 ------------------------------------------------------------------------------------------------
 
--- 7. Класс типов `Bifunctor` (0,5 балла)
+-- 7. Класс типов Bifunctor (0,5 балла)
 
 -- Вы реализовывали функцию mapEither -- она аналочна функции bimap из Bifunctor
 -- https://hackage.haskell.org/package/base-4.19.0.0/docs/Data-Bifunctor.html#t:Bifunctor
 
--- Реализуйте инстанс Functor для Either и пары
+-- Реализуйте инстанс Bifunctor для Either и пары
 
 ------------------------------------------------------------------------------------------------
 
