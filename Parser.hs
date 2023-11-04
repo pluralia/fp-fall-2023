@@ -1,21 +1,23 @@
+module Parser where
+
 import Data.Char           (digitToInt, isAlphaNum, isSpace, isDigit)
 import Control.Applicative (Alternative (..))
 
-newtype ParserS a = Parser { runParser :: String -> Maybe (a, String) }
+newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
 
-instance Functor ParserS where
-    fmap :: (a -> b) -> ParserS a -> ParserS b
+instance Functor Parser where
+    fmap :: (a -> b) -> Parser a -> Parser b
     fmap g aP = Parser f
       where
         f s = case runParser aP s of
             Nothing      -> Nothing
             Just (a, s') -> Just (g a, s')
 
-instance Applicative ParserS where 
-  pure :: a -> ParserS a
+instance Applicative Parser where 
+  pure :: a -> Parser a
   pure a = Parser $ \s -> Just (a, s)
 
-  (<*>) :: ParserS (a -> b) -> ParserS a -> ParserS b
+  (<*>) :: Parser (a -> b) -> Parser a -> Parser b
   fP <*> aP = Parser f
     where
       f s = case runParser fP s of
@@ -24,18 +26,18 @@ instance Applicative ParserS where
           Nothing       -> Nothing
           Just (a, s'') -> Just (g a, s'')
 
-instance Alternative ParserS where 
-  empty :: ParserS a
-  empty = Parser $ \_ -> Nothing
+instance Alternative Parser where 
+  empty :: Parser a
+  empty = Parser $ const Nothing
 
-  (<|>) :: ParserS a -> ParserS a -> ParserS a
+  (<|>) :: Parser a -> Parser a -> Parser a
   pA <|> pA' = Parser f
     where
       f s = case runParser pA s of
         Nothing -> runParser pA' s
         x       -> x
 
-satisfyP :: (Char -> Bool) -> ParserS Char
+satisfyP :: (Char -> Bool) -> Parser Char
 satisfyP p = Parser f
   where
     f :: String -> Maybe (Char, String)
@@ -43,20 +45,26 @@ satisfyP p = Parser f
     f (x : xs) | p x       = Just (x, xs)
                | otherwise = Nothing
 
-symbolP :: ParserS Char
+symbolP :: Parser Char
 symbolP = satisfyP isAlphaNum
 
-oneSpaceP :: ParserS Char
+symbolsP :: Parser String
+symbolsP = some symbolP
+
+oneSpaceP :: Parser Char
 oneSpaceP = satisfyP isSpace
 
-digitP :: ParserS Int
-digitP = digitToInt <$> satisfyP isDigit
-
-digitsP :: ParserS [Int]
-digitsP = some digitP
-
-spaceP :: ParserS String
+spaceP :: Parser String
 spaceP = many oneSpaceP
 
-test :: Maybe ([Int], String)
-test = runParser digitsP "123 23 AB"
+digitP :: Parser Int
+digitP = digitToInt <$> satisfyP isDigit
+
+digitsP :: Parser [Int]
+digitsP = some digitP
+
+
+-- | Как использовать парсер
+--
+parseNumber :: Maybe ([Int], String)
+parseNumber = runParser digitsP "123 23 AB" -- Just ([1,2,3], " 23 AB")
