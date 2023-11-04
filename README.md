@@ -6,6 +6,7 @@
     - make sure you answer yes to installing HLS using GHCup
     - VSCode may ask you which HLS to use in a pop-up window -- select the one from GHCup
 2. Do your homework in the `hw1.hs` file from this branch
+3. Tests in this hw do not require any additional frameworks: use comparison
 
 ### Selected commands
 
