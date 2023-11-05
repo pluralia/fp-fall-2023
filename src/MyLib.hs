@@ -166,6 +166,25 @@ thisApple tree colors weightRange =
     lowerBound = fst weightRange
     upperBound = snd weightRange
 
+-- Прямая реализация:
+-- thisApple :: Tree Apple -> [String] -> (Float, Float) -> Maybe Apple
+-- thisApple tree colors weightRange = 
+--   foldr findDesiredApple Nothing tree
+--   where
+--     findDesiredApple :: Apple -> Maybe Apple -> Maybe Apple
+--     findDesiredApple apple acc =
+--       if isDesiredApple apple then Just apple else acc
+
+--     isDesiredApple :: Apple -> Bool
+--     isDesiredApple (Apple appleColor appleWeight) =
+--       appleColor `elem` colors && appleWeight >= lowerBound weightRange && appleWeight <= upperBound weightRange
+
+--     lowerBound :: (Float, Float) -> Float
+--     lowerBound = fst
+
+--     upperBound :: (Float, Float) -> Float
+--     upperBound = snd
+
 -- 4.d Считает сумму весов всех яблок в дереве (0,25 балла)
 --
 
@@ -462,7 +481,7 @@ instance Semigroup Size' where
 
 instance Monoid Size' where
   mempty :: Size'
-  mempty = Size' 1
+  mempty = Size' 0
 
 -- Законы для Monoid
 
@@ -470,8 +489,8 @@ instance Monoid Size' where
 -- (Size' x `mappend` Size' y) `mappend` Size' z = Size' x `mappend` (Size' y `mappend` Size' z)
 
 -- Наличие нейтрального элемента
--- Size' 1 `mappend` Size' x = Size' x
--- Size' x `mappend` Size' 1 = Size' x
+-- Size' 0 `mappend` Size' x = Size' x
+-- Size' x `mappend` Size' 0 = Size' x
 
 newtype Priority' = Priority' Int 
   deriving (Eq, Show)
