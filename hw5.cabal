@@ -10,9 +10,6 @@ extra-source-files: CHANGELOG.md
 library
     exposed-modules:  MyLib
     ghc-options:      -Wall 
-                      -fno-warn-name-shadowing 
-                      -fno-warn-unused-imports
-                      -fno-warn-missing-signatures
     build-depends:    base ^>=4.18.0.0
                  ,    containers
     hs-source-dirs:   src
@@ -21,9 +18,6 @@ library
 test-suite hw5-test
     default-language: Haskell2010
     ghc-options:      -Wall 
-                      -fno-warn-name-shadowing 
-                      -fno-warn-unused-imports
-                      -fno-warn-missing-signatures
     type:             exitcode-stdio-1.0
     hs-source-dirs:   test
     main-is:          MyLibTest.hs
