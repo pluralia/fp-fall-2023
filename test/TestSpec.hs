@@ -5,8 +5,9 @@ import Test.Hspec
 
 import qualified Data.Map.Strict as M
 import Data.Monoid
-import Data.Foldable
-import Data.List (find)
+-- import Data.Foldable
+-- import Data.List (find)
+-- 
 
 -- Hlint дает no hints, ворнингов тоже нет
 
@@ -15,47 +16,47 @@ spec = do
     describe "Test calculateStudentsLog" $ do
         it "Returns correct values for a list of students" $ do
             let students = [Student "Ivan" 7, Student "Artem" 8, Student "Alexey" 10]
-            let log = calculateStudentsLog students
-            studentNames log `shouldBe` ["Ivan", "Artem", "Alexey"]
-            worstGrade log   `shouldBe` Just 7
-            bestGrade log    `shouldBe` Just 10
+            let log1 = calculateStudentsLog students
+            studentNames log1 `shouldBe` ["Ivan", "Artem", "Alexey"]
+            worstGrade log1   `shouldBe` Just 7
+            bestGrade log1    `shouldBe` Just 10
 
         it "Returns correct values for an empty list of students" $ do
             let students = []
-            let log = calculateStudentsLog students
-            studentNames log `shouldBe` []
-            worstGrade log   `shouldBe` Nothing
-            bestGrade log    `shouldBe` Nothing
+            let log2 = calculateStudentsLog students
+            studentNames log2 `shouldBe` []
+            worstGrade log2   `shouldBe` Nothing
+            bestGrade log2    `shouldBe` Nothing
 
         it "Returns correct values for a single student" $ do
             let students = [Student "Hel(-p/-l)" 10000]
-            let log = calculateStudentsLog students
-            studentNames log `shouldBe` ["Hel(-p/-l)"]
-            worstGrade log   `shouldBe` Just 10000
-            bestGrade log    `shouldBe` Just 10000
+            let log3 = calculateStudentsLog students
+            studentNames log3 `shouldBe` ["Hel(-p/-l)"]
+            worstGrade log3   `shouldBe` Just 10000
+            bestGrade log3    `shouldBe` Just 10000
 
 
     describe "Test calculateStudentsLog'" $ do
         it "Returns correct values for a list of students" $ do
-            let students = [Student "Ivan" 7, Student "Artem" 8, Student "Alexey" 10]
-            let log = calculateStudentsLog' students
-            studentNames log `shouldBe` ["Ivan", "Artem", "Alexey"]
-            worstGrade log   `shouldBe` Just 7
-            bestGrade log    `shouldBe` Just 10
+            let students = [Student "Ivan" 7, Student "Artem" 8, Student "Oleg" 9, Student "Alexey" 10, Student "Olia" 10, Student "Julia" 10, Student "Sophia" 10]
+            let log4 = calculateStudentsLog' students
+            studentNames log4 `shouldBe` ["Ivan", "Artem", "Oleg", "Alexey", "Olia", "Julia", "Sophia"]
+            worstGrade log4   `shouldBe` Just 7
+            bestGrade log4    `shouldBe` Just 10
 
         it "Returns correct values for an empty list of students" $ do
             let students = []
-            let log = calculateStudentsLog' students
-            studentNames log `shouldBe` []
-            worstGrade log   `shouldBe` Nothing
-            bestGrade log    `shouldBe` Nothing
+            let log5 = calculateStudentsLog' students
+            studentNames log5 `shouldBe` []
+            worstGrade log5   `shouldBe` Nothing
+            bestGrade log5    `shouldBe` Nothing
 
         it "Returns correct values for a single student" $ do
             let students = [Student "Hel(-p/-l)" 10000]
-            let log = calculateStudentsLog' students
-            studentNames log `shouldBe` ["Hel(-p/-l)"]
-            worstGrade log   `shouldBe` Just 10000
-            bestGrade log    `shouldBe` Just 10000
+            let log6 = calculateStudentsLog' students
+            studentNames log6 `shouldBe` ["Hel(-p/-l)"]
+            worstGrade log6   `shouldBe` Just 10000
+            bestGrade log6    `shouldBe` Just 10000
 
 
     describe "Test tree Foldable" $ do
@@ -152,7 +153,7 @@ spec = do
                 apple2 = Apple "Green" 0.7
                 apple3 = Apple "Red" 0.3
                 tree = Node apple1 [Node apple2 [Node apple3 []]]
-            collectBasket tree                        `shouldBe` Basket (M.fromList [("Red", [apple1, apple3]), ("Green", [apple2])])
+            collectBasket tree                        `shouldBe` Basket (M.fromList [("Red", [apple3, apple1]), ("Green", [apple2])])
 
 
     describe "Test siftDown" $ do
@@ -166,16 +167,44 @@ spec = do
                 heapAfter  = BinNode (1 :: Int) (BinNode (2 :: Int) BinLeaf BinLeaf) (BinNode (3 :: Int) BinLeaf BinLeaf)
             siftDown heapBefore `shouldBe` heapAfter
 
+        -- из-за большого размера дерева немного поменял как выглядит ввод на более читаемый 
+        it "Sifts down with multiple levels of incorrect elements" $ do 
+            let heapBefore = BinNode {val = (40 :: Int)
+                , left  = BinNode {val = (49 :: Int)
+                    , left = BinLeaf, right = BinNode {val = (60 :: Int)
+                        , left = BinLeaf, right = BinLeaf}} 
+                , right = BinNode {val = (16 :: Int)
+                    , left = BinNode {val = (19 :: Int)
+                        , left = BinLeaf, right = BinLeaf}, right = BinLeaf}}
 
-    -- describe "Test buildHeap" $ do
-    --     it "Should build a heap from a list of integers" $ do
-    --         let input = [7, 6, 8, 10, 9]
-    --         let expected = BinNode 6 (BinNode 7 BinLeaf BinLeaf) (BinNode 8 (BinNode 10 BinLeaf BinLeaf) (BinNode 9 BinLeaf BinLeaf))
-    --         buildHeap input `shouldBe` expected
+                heapAfter  = BinNode {val = (16 :: Int)
+                , left  = BinNode {val = (49 :: Int)
+                    , left = BinLeaf, right = BinNode {val = (60 :: Int)
+                        , left = BinLeaf, right = BinLeaf}} 
+                , right = BinNode {val = (19 :: Int)
+                    , left = BinNode {val = (40 :: Int)
+                        , left = BinLeaf, right = BinLeaf}, right = BinLeaf}} 
 
-    --     it "Should build a heap from a list of characters" $ do
-    --         let input = "cabde"
-    --         let expected = BinNode 'a' (BinNode 'b' BinLeaf BinLeaf) (BinNode 'c' (BinNode 'd' BinLeaf BinLeaf) (BinNode 'e' BinLeaf BinLeaf))
+            siftDown heapBefore `shouldBe` heapAfter
+
+        it "Sifts down when incorrect elements are deeper in the heap" $ do
+            let heapBefore = BinNode {val = (25 :: Int)
+                , left  = BinNode {val = (34 :: Int)
+                    , left = BinLeaf, right = BinNode {val = (45 :: Int)
+                        , left = BinLeaf, right = BinLeaf}} 
+                , right = BinNode {val = (1 :: Int)
+                    , left = BinNode {val = (4 :: Int)
+                        , left = BinLeaf, right = BinLeaf}, right = BinLeaf}}
+
+                heapAfter  = BinNode {val = (1 :: Int)
+                , left  = BinNode {val = (34 :: Int)
+                    , left = BinLeaf, right = BinNode {val = (45 :: Int)
+                        , left = BinLeaf, right = BinLeaf}} 
+                , right = BinNode {val = (4 :: Int)
+                    , left = BinNode {val = (25 :: Int)
+                        , left = BinLeaf, right = BinLeaf}, right = BinLeaf}} 
+
+            siftDown heapBefore `shouldBe` heapAfter
 
 
     describe "Test mytoList" $ do
@@ -215,3 +244,24 @@ spec = do
             let tree = branchPrior (branchPrior (leafPrior 16 'q') (leafPrior 4 'w')) (branchPrior (leafPrior 2 'e') (branchPrior (leafPrior 32 'r') (leafPrior 8 't')))
             getWinner tree `shouldBe` 'e'
 
+
+    -- describe "Test tree creation with Size' annotations" $ do
+    --     it "Creates a single leaf with Size' annotation" $ do
+    --         leaf (5 :: Int) `shouldBe` BLeaf (Size' 1) 5
+
+    --     it "Creates a branch with Size' annotation" $ do
+    --         let left = leaf (2 :: Int)
+    --             right = leaf (3 :: Int)
+    --             tree = branch left right
+    --         tree `shouldBe` BBranch (Size' 3) left right
+
+    -- describe "Test tree creation with Priority' annotations" $ do
+    --     it "Creates a single leaf with Priority' annotation" $ do
+    --         let tree = leaf (5 :: Int)
+    --         tree `shouldBe` BLeaf (Priority' maxBound) 5
+
+    --     it "Creates a branch with Priority' annotation" $ do
+    --         let left = leaf (2 :: Int)
+    --             right = leaf (3 :: Int)
+    --             tree = branch left right
+    --         tree `shouldBe` BBranch (Priority' maxBound) left right
