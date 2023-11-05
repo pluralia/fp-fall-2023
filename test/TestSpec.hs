@@ -168,41 +168,35 @@ spec = do
             siftDown heapBefore `shouldBe` heapAfter
 
         -- из-за большого размера дерева немного поменял как выглядит ввод на более читаемый 
-        it "Sifts down with multiple levels of incorrect elements" $ do 
-            let heapBefore = BinNode {val = (40 :: Int)
-                , left  = BinNode {val = (49 :: Int)
-                    , left = BinLeaf, right = BinNode {val = (60 :: Int)
-                        , left = BinLeaf, right = BinLeaf}} 
-                , right = BinNode {val = (16 :: Int)
-                    , left = BinNode {val = (19 :: Int)
-                        , left = BinLeaf, right = BinLeaf}, right = BinLeaf}}
+        it "Sifts down with BIG TREE" $ do 
+            let heapBefore = BinNode {val = 40 :: Int
+                , left  = BinNode {val = 49 :: Int
+                    , left = BinNode {val = 50 :: Int, left = BinLeaf, right = BinLeaf} 
+                        , right = BinNode {val = 500 :: Int, left = BinLeaf, right = BinLeaf}} 
+                , right = BinNode {val = 16 :: Int, left = BinLeaf, right = BinLeaf}}
 
-                heapAfter  = BinNode {val = (16 :: Int)
-                , left  = BinNode {val = (49 :: Int)
-                    , left = BinLeaf, right = BinNode {val = (60 :: Int)
-                        , left = BinLeaf, right = BinLeaf}} 
-                , right = BinNode {val = (19 :: Int)
-                    , left = BinNode {val = (40 :: Int)
-                        , left = BinLeaf, right = BinLeaf}, right = BinLeaf}} 
+                heapAfter  = BinNode {val = 16 :: Int
+                , left  = BinNode {val = 49 :: Int
+                    , left = BinNode {val = 50 :: Int, left = BinLeaf, right = BinLeaf} 
+                        , right = BinNode {val = 500 :: Int, left = BinLeaf, right = BinLeaf}} 
+                , right = BinNode {val = 40 :: Int, left = BinLeaf, right = BinLeaf}} 
 
             siftDown heapBefore `shouldBe` heapAfter
 
-        it "Sifts down when incorrect elements are deeper in the heap" $ do
-            let heapBefore = BinNode {val = (25 :: Int)
-                , left  = BinNode {val = (34 :: Int)
-                    , left = BinLeaf, right = BinNode {val = (45 :: Int)
-                        , left = BinLeaf, right = BinLeaf}} 
-                , right = BinNode {val = (1 :: Int)
-                    , left = BinNode {val = (4 :: Int)
-                        , left = BinLeaf, right = BinLeaf}, right = BinLeaf}}
+        it "Sifts down on a GIG TREE AGAIN" $ do
+            let heapBefore = BinNode {val = 26 :: Int
+                , left  = BinNode {val = 1 :: Int
+                    , left = BinNode {val = 37 :: Int, left = BinLeaf, right = BinLeaf} 
+                        , right = BinNode {val = 500 :: Int, left = BinLeaf, right = BinLeaf}} 
+                , right = BinNode {val = 30 :: Int
+                    , left = BinNode {val = 66 :: Int, left = BinLeaf, right = BinLeaf}, right = BinLeaf}}
 
-                heapAfter  = BinNode {val = (1 :: Int)
-                , left  = BinNode {val = (34 :: Int)
-                    , left = BinLeaf, right = BinNode {val = (45 :: Int)
-                        , left = BinLeaf, right = BinLeaf}} 
-                , right = BinNode {val = (4 :: Int)
-                    , left = BinNode {val = (25 :: Int)
-                        , left = BinLeaf, right = BinLeaf}, right = BinLeaf}} 
+                heapAfter  = BinNode {val = 1 :: Int
+                , left  = BinNode {val = 26 :: Int
+                    , left = BinNode {val = 37 :: Int, left = BinLeaf, right = BinLeaf} 
+                        , right = BinNode {val = 500 :: Int, left = BinLeaf, right = BinLeaf}} 
+                , right = BinNode {val = 30 :: Int
+                    , left = BinNode {val = 66 :: Int, left = BinLeaf, right = BinLeaf}, right = BinLeaf}}
 
             siftDown heapBefore `shouldBe` heapAfter
 
@@ -257,8 +251,7 @@ spec = do
 
     -- describe "Test tree creation with Priority' annotations" $ do
     --     it "Creates a single leaf with Priority' annotation" $ do
-    --         let tree = leaf (5 :: Int)
-    --         tree `shouldBe` BLeaf (Priority' maxBound) 5
+    --         leaf (5 :: Int) `shouldBe` BLeaf (Priority' maxBound) 5
 
     --     it "Creates a branch with Priority' annotation" $ do
     --         let left = leaf (2 :: Int)
