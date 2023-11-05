@@ -7,7 +7,7 @@ module MyLib where
 import qualified Data.Map.Strict as M
 import Data.Monoid
 import Data.Foldable
-import Data.List (find)
+import Data.List (sort)
 
 -- Во всех заданиях с инстансами укажите сигнатуры функций
 
@@ -88,15 +88,7 @@ instance Semigroup StudentsLog where
 
 instance Monoid StudentsLog where
   mempty :: StudentsLog
-  mappend :: StudentsLog -> StudentsLog -> StudentsLog
-  -- (<>)   :: StudentsLog -> StudentsLog -> StudentsLog
-  -- mappend = (<>)
-  -- Тут компилятор ругается на неканоничное определение функции mappend, но это никак не мешает
   mempty = StudentsLog [] Nothing Nothing  -- нейтральный элемент
-  mappend (StudentsLog names1 worst1 best1) (StudentsLog names2 worst2 best2) =  -- операция объединения двух логов, т.е. (<>)
-    StudentsLog (names1 ++ names2)
-                (minMaybe worst1 worst2)
-                (maxMaybe best1 best2)
 
 -- Вспомогательная функция для вычисления минимума, учитывая Nothing
 minMaybe :: Ord a => Maybe a -> Maybe a -> Maybe a
@@ -138,7 +130,7 @@ data Apple = Apple
     { color  :: String -- цвет яблока
     , weight :: Float  -- вес яблока
     }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Ord)
 
 -- С помощью функций из 'Data.Foldable' реализуйте следующие функции:
 
@@ -158,7 +150,7 @@ heaviestApple :: Tree Apple -> Maybe Apple
 heaviestApple tree = maximumByWeight $ foldMap (: []) tree
   where
     maximumByWeight [] = Nothing
-    maximumByWeight apples = Just $ maximumBy (\a b -> compare (weight a) (weight b)) apples
+    maximumByWeight appless = Just $ maximumBy (\a b -> compare (weight a) (weight b)) appless
 
 -- 4.c Находит яблоко с цветом из заданного списка цветов и весом,
 --     находящимся в заданном диапазоне весов (0,25 балла)
@@ -204,7 +196,11 @@ collectBasket tree = foldr collectApple emptyBasket (flattenTree tree) -- foldr 
     collectApple :: Apple -> Basket -> Basket
     collectApple apple (Basket basket) = Basket updatedBasket
       where
-        updatedBasket = M.insertWith (++) (color apple) [apple] basket
+        updatedBasket = M.insertWith updateColor (color apple) [apple] basket
+
+    -- функция для обновления весов 
+    updateColor :: [Apple] -> [Apple] -> [Apple]
+    updateColor newApples existingApples = sort (existingApples ++ newApples)
 
 -- функция для выравнивания дерева в список яблок
 flattenTree :: Tree Apple -> [Apple]
@@ -230,16 +226,13 @@ data BinaryHeap a
 siftDown :: Ord a => BinaryHeap a -> BinaryHeap a
 siftDown BinLeaf = BinLeaf  -- в листе и делать нечего
 siftDown (BinNode x BinLeaf BinLeaf) = BinNode x BinLeaf BinLeaf -- предлистовое состояние, все ок
-siftDown (BinNode x left BinLeaf) -- справа лист, слева что-то есть
-                               | x < val left = BinNode x left BinLeaf  -- Порядок не нарушен
-                               | otherwise = BinNode (val left) (siftDown (left {val = x})) BinLeaf  -- Порядок нарушен
-siftDown (BinNode x BinLeaf right) -- слева лист, справа что-то есть
-                               | x < val right = BinNode x BinLeaf right  -- Порядок не нарушен
-                               | otherwise = BinNode (val right) BinLeaf (siftDown (right {val = x}))  -- Порядок нарушен
-siftDown (BinNode x left right)  -- классическая нода, слева справа что-то есть
-                               | x < min (val left) (val right) = BinNode x left right   -- Порядок не нарушен
-                               | val left < val right = BinNode (val left) (siftDown (left {val = x})) right  -- слева < справа
-                               | otherwise = BinNode (val right) left (siftDown (right {val = x})) -- справа > слева
+siftDown (BinNode x leftt BinLeaf) -- справа лист, слева что-то есть
+                               | x < val leftt = BinNode x leftt BinLeaf  -- Порядок не нарушен
+                               | otherwise = BinNode (val leftt) (siftDown (leftt {val = x})) BinLeaf  -- Порядок нарушен
+siftDown (BinNode x lleft rright)  -- классическая нода, слева справа что-то есть
+                               | x < min (val lleft) (val rright) = BinNode x lleft rright   -- Порядок не нарушен
+                               | val lleft < val rright = BinNode (val lleft) (siftDown (lleft {val = x})) rright  -- слева < справа
+                               | otherwise = BinNode (val rright) lleft (siftDown (rright {val = x})) -- справа > слева
 
 
 -- 6.b Реализуйте с помощью свёртки функцию buildHeap,
@@ -248,14 +241,14 @@ siftDown (BinNode x left right)  -- классическая нода, слев�
 --     Считайте, что изменение элемента 'Data.Array' происходит за константу (хотя это не так!)
 --     (1 балл)
 --       
-buildHeap :: Ord a => [a] -> BinaryHeap a
-buildHeap = foldr insertValue BinLeaf
-  where
-    insertValue :: Ord a => a -> BinaryHeap a -> BinaryHeap a
-    insertValue val BinLeaf = BinNode val BinLeaf BinLeaf
-    insertValue val (BinNode nodeVal left right)
-      | val <= nodeVal = BinNode val (insertValue nodeVal left) right
-      | otherwise      = BinNode nodeVal (insertValue val left) right
+-- buildHeap :: Ord a => [a] -> BinaryHeap a
+-- buildHeap = foldr insertValue BinLeaf
+--   where
+--     insertValue :: Ord a => a -> BinaryHeap a -> BinaryHeap a
+--     insertValue val BinLeaf = BinNode val BinLeaf BinLeaf
+--     insertValue val (BinNode nodeVal left right)
+--       | val <= nodeVal = BinNode val (insertValue nodeVal left) right
+--       | otherwise      = BinNode nodeVal (insertValue val left) right
 
 -- Не могу понять, почему эта функция строит косячную кучу, вроде бы делаю все правильно
 -- По крайней мере я прописал тесты, как мне кажется, правильно, и они не выполняются :с
@@ -292,7 +285,7 @@ data BinaryTree v a = BLeaf v a | BBranch v (BinaryTree v a) (BinaryTree v a)
 --
 mytoList :: BinaryTree v a -> [a]
 mytoList (BLeaf _ a) = [a] -- Если это лист, возвращаем его значение в виде списка
-mytoList (BBranch _ left right) = mytoList left ++ mytoList right -- Рекурсивно обходим левое и правое поддерево и объединяем списки
+mytoList (BBranch _ leftt rightt) = mytoList leftt ++ mytoList rightt -- Рекурсивно обходим левое и правое поддерево и объединяем списки
 
 -- 7.b Реализуйте tag, возвращающую текущий тег дерева (0,25 балла)
 --
@@ -304,7 +297,7 @@ tag (BBranch tagValue _ _) = tagValue -- Если это ветвь, возвр�
 --
 myhead :: BinaryTree v a -> a
 myhead (BLeaf _ a) = a -- Если это лист, возвращаем его значение
-myhead (BBranch _ left _) = myhead left -- Если это ветвь, переходим к левой ветви
+myhead (BBranch _ leftt _) = myhead leftt -- Если это ветвь, переходим к левой ветви
 
 -- Итак, доступ к первому листу был прост, а как быть со вторым, третьим, n-ым листом?
 -- Решение состоит в том, чтобы аннотировать каждое поддерево его размером.
@@ -336,6 +329,11 @@ branchSize x y = BBranch (tag x + tag y) x y
 -- 7.d Создайте дерево типа `BinaryTree Size a`, используя leafSize и branchSize (0,25 балла)
 
 -- Создаем листья с аннотациями размера 1
+leaf1 :: BinaryTree Size Int
+leaf2 :: BinaryTree Size Int
+leaf3 :: BinaryTree Size Int
+leaf4 :: BinaryTree Size Int
+leaf5 :: BinaryTree Size Int
 leaf1 = leafSize (1 :: Int)
 leaf2 = leafSize (1 :: Int)
 leaf3 = leafSize (1 :: Int)
@@ -343,6 +341,10 @@ leaf4 = leafSize (1 :: Int)
 leaf5 = leafSize (1 :: Int)
 
 -- Создаем ветви, комбинируя листья и аннотируя их размер
+branch1 :: BinaryTree Size Int
+branch2 :: BinaryTree Size Int
+branch3 :: BinaryTree Size Int
+branch4 :: BinaryTree Size Int
 branch1 = branchSize leaf1 leaf2
 branch2 = branchSize leaf4 leaf5
 branch3 = branchSize leaf3 branch2
@@ -357,12 +359,12 @@ annotatedTree = branch4
 getInd :: BinaryTree Size a -> Int -> a
 getInd (BLeaf _ a) 1 = a
 getInd (BLeaf _ _) _ = error "Wrong indx"
-getInd (BBranch _ left right) n
+getInd (BBranch _ leftt rightt) n
   | (n < 1) || (n > sizeOfLeft + 1) = error "Wrong indx"
-  | n <= sizeOfLeft = getInd left n
-  | otherwise = getInd right (n - sizeOfLeft)
+  | n <= sizeOfLeft = getInd leftt n
+  | otherwise = getInd rightt (n - sizeOfLeft)
   where
-    sizeOfLeft = tag left
+    sizeOfLeft = tag leftt
 
 
 -------------------------------------------------------------------------------
@@ -417,9 +419,9 @@ prioTree = branchPrior (branchPrior (leafPrior 16 'a') (leafPrior 4 'a')) (branc
 
 getWinner :: PriorTree a -> a
 getWinner (PrLeaf _ a) = a
-getWinner (PrBranch _ left right) = case compare (priority left) (priority right) of
-    LT -> getWinner left
-    _  -> getWinner right
+getWinner (PrBranch _ leftt rightt) = case compare (priority leftt) (priority rightt) of
+    LT -> getWinner leftt
+    _  -> getWinner rightt
 
 -------------------------------------------------------------------------------
 
@@ -461,6 +463,15 @@ instance Semigroup Size' where
 instance Monoid Size' where
   mempty :: Size'
   mempty = Size' 1
+
+-- Законы для Monoid
+
+-- Ассоциативность
+-- (Size' x `mappend` Size' y) `mappend` Size' z = Size' x `mappend` (Size' y `mappend` Size' z)
+
+-- Наличие нейтрального элемента
+-- Size' 1 `mappend` Size' x = Size' x
+-- Size' x `mappend` Size' 1 = Size' x
 
 newtype Priority' = Priority' Int 
   deriving (Eq, Show)
