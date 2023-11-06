@@ -6,9 +6,9 @@ import qualified Data.Map.Strict as M
 import qualified Data.Array      as A
 import Data.Monoid
     ( First(First, getFirst), All(All, getAll), Sum(Sum, getSum) )
-import           Data.Maybe           (isNothing)
 import           Data.Foldable        (foldl')
 import           Data.List            (sort)
+import Control.Applicative (Alternative((<|>)))
 
 -- Во всех заданиях с инстансами укажите сигнатуры функций
 
@@ -61,18 +61,14 @@ data StudentsLog = StudentsLog
 
 instance Semigroup StudentsLog where
     (<>) :: StudentsLog -> StudentsLog -> StudentsLog
-    log1 <> log2 = StudentsLog { studentNames = studentNames log1 <> studentNames log2
-                               , worstGrade   =
-                                    if isNothing (worstGrade log1) || isNothing (worstGrade log2)
-                                        then max (worstGrade log1) (worstGrade log2)
-                                        else min (worstGrade log1) (worstGrade log2)
-                               , bestGrade    = max (bestGrade log1) (bestGrade log2)}
+    StudentsLog n1 w1 b1 <> StudentsLog n2 w2 b2 =
+       StudentsLog { studentNames = n1 <> n2
+                   , worstGrade   = min <$> w1 <*> w2 <|> w1 <|> w2
+                   , bestGrade    = max <$> b1 <*> b2 <|> b1 <|> b2 }
 
 instance Monoid StudentsLog where
     mempty :: StudentsLog
-    mempty = StudentsLog { studentNames = [] :: [String]
-                         , worstGrade  = Nothing
-                         , bestGrade   = Nothing}
+    mempty = StudentsLog [] Nothing Nothing
 
 -- 2.a Функция, которая по списку студентов курса рассчитывает информацию по курсу (0,5 балла)
 --
@@ -90,10 +86,7 @@ calculateStudentsLog list | null list = StudentsLog { studentNames = [] :: [Stri
 --     В реализации нужно использовать то, что 'StudentsLog' — моноид. (0,5 балла)
 --
 calculateStudentsLog' :: [Student] -> StudentsLog
-calculateStudentsLog' = foldl' ( \ acc x ->
-                                    StudentsLog { studentNames = [name x]
-                                                , worstGrade   = Just $ grade x
-                                                , bestGrade    = Just $ grade x} <> acc) mempty
+calculateStudentsLog' = foldMap (\ x -> StudentsLog [name x] (pure $ grade x) (pure $ grade x))
 
 -------------------------------------------------------------------------------
 
@@ -249,7 +242,7 @@ buildHeap arr = foldl' insert emptyArr (reverse $ zip [1..] arr) A.! 1
 -- | Кроме того, каждый узел в этом дереве аннотируется значением типа v (tag)
 --
 data BinaryTree v a = BLeaf v a | BBranch v (BinaryTree v a) (BinaryTree v a)
-  deriving (Show)
+  deriving (Show, Eq)
 
 -- Тогда наше дерево будет выглядеть так
 --      v
@@ -316,7 +309,8 @@ myTree = branchSize (leafSize "a") (branchSize (branchSize (leafSize "b") (leafS
 -- 7.e Используя Size-аннотации, найдите n-й лист (1 балл)
 
 getInd :: BinaryTree Size a -> Int -> a
-getInd (BLeaf _ value)          _                              = value
+getInd (BLeaf _ value)                ind | ind /= 1 = error "Incorrect number of list!"
+                                          | otherwise          = value
 getInd (BBranch _ leftTree rightTree) ind | tag leftTree < ind = getInd rightTree (ind - tag leftTree)
                                           | otherwise          = getInd leftTree ind
 
@@ -394,8 +388,8 @@ getWinner (BBranch t leftTree rightTree) | t == tag leftTree = getWinner leftTre
 -- Что нужно изменить в определении Size и Priority?
 -- записать их как newtype:
 
-newtype MySize = MySize { getMySize :: Int }
-newtype MyPriority = MyPriority { getMyPriority :: Int }
+newtype MySize = MySize { getMySize :: Int } deriving (Show, Eq)
+newtype MyPriority = MyPriority { getMyPriority :: Int } deriving (Show, Eq)
 
 instance Semigroup MySize where
   (<>) :: MySize -> MySize -> MySize
@@ -403,7 +397,9 @@ instance Semigroup MySize where
 
 instance Monoid MySize where
   mempty :: MySize
-  mempty = MySize 1
+  mempty = MySize 0 -- поправила, раньше поставила 1 по аналогии с листами, 
+  -- но законы не выполнялись, так что исправила значение на 0
+  -- x <> mempty = MySize $ getMySize x + getMySize mempty = MySize $ getMySize x + 1 /= x
 
 instance Semigroup MyPriority where
   (<>) :: MyPriority -> MyPriority -> MyPriority
@@ -412,6 +408,26 @@ instance Semigroup MyPriority where
 instance Monoid MyPriority where
   mempty :: MyPriority
   mempty = MyPriority (maxBound :: Int)
+
+-- Right identity
+-- x <> mempty = MySize $ getMySize x + getMySize mempty = MySize $ getMySize x + 0 == x
+
+-- Left identity
+-- mempty <> x = MySize $ getMySize mempty + getMySize x = MySize $ 0 + getMySize x == x
+
+-- Associativity
+-- x <> (y <> z) = (x <> y) <> z (Semigroup law)
+
+-- MySize $ getMySize x + getMySize (MySize $ getMySize y + getMySize z) -- left  parth
+-- MySize $ getMySize (MySize $ getMySize x + getMySize y) + getMySize x -- right parth
+
+-- раскрываем скобки:   getMySize (MySize a) = a
+-- MySize $ getMySize x + getMySize y + getMySize x == MySize $ getMySize x + getMySize y + getMySize z
+
+-- Concatenation
+-- mconcat = foldr (<>) mempty
+-- mappend = (<>) -- по определению, мы это не меняли
+-- mconcat = foldr mappend mempty
 
 -- | Теперь branchSize и branchPrio могут быть заменены на branch
 --
@@ -442,8 +458,8 @@ instance Measured MySize a where
   measure :: a -> MySize
   measure _ = MySize {getMySize = 1}
 
-instance Measured MyPriority a where
-  measure :: a -> MyPriority
-  measure _ = MyPriority {getMyPriority = maxBound :: Int}
+instance (Enum a) => Measured MyPriority a where
+  measure :: (Enum a) => a -> MyPriority
+  measure priority = MyPriority $ fromEnum priority
 
 -------------------------------------------------------------------------------

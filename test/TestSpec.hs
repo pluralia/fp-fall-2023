@@ -5,6 +5,7 @@ module TestSpec where
 import           Test.Hspec
 import           MyLib
 import qualified Data.Map.Strict as M
+import Control.Exception (evaluate)
 
 spec :: Spec
 spec = do
@@ -42,13 +43,13 @@ spec = do
             calculateStudentsLog' [] `shouldBe` StudentsLog { studentNames = [] :: [String]
                                                             , worstGrade  = Nothing
                                                             , bestGrade   = Nothing}
-            calculateStudentsLog' [st1, st2, st3] `shouldBe` StudentsLog { studentNames = ["Kot", "Osa", "Lev"]
+            calculateStudentsLog' [st1, st2, st3] `shouldBe` StudentsLog { studentNames = ["Lev", "Osa", "Kot"]
                                                                          , worstGrade  = Just 3
                                                                          , bestGrade   = Just 5} 
-            calculateStudentsLog' [st2, st3, st4] `shouldBe` StudentsLog { studentNames = ["Kit", "Kot", "Osa"]
+            calculateStudentsLog' [st2, st3, st4] `shouldBe` StudentsLog { studentNames = ["Osa", "Kot", "Kit"]
                                                                          , worstGrade  = Just 3
                                                                          , bestGrade   = Just 4}
-            calculateStudentsLog' [st3, st4, st5] `shouldBe` StudentsLog { studentNames = ["Byk", "Kit", "Kot"]
+            calculateStudentsLog' [st3, st4, st5] `shouldBe` StudentsLog { studentNames = ["Kot", "Kit", "Byk"]
                                                                          , worstGrade  = Just 2
                                                                          , bestGrade   = Just 4}
 
@@ -110,6 +111,10 @@ spec = do
                 , left  = BinNode {val=12, left=BinLeaf, right = BinNode {val=15, left=BinLeaf, right=BinLeaf}} 
                 , right = BinNode {val=4, left = BinNode {val=5, left=BinLeaf, right=BinLeaf}, right=BinLeaf}
                 }
+    let heap4 = BinNode { val = 7
+                , left  = BinLeaf 
+                , right = BinNode {val=4, left = BinNode {val=5, left=BinLeaf, right=BinLeaf}, right=BinLeaf}
+                }
     let correctHeap1 = BinNode { val = 3
                 , left  = BinNode {val=4, left=BinLeaf, right = BinNode {val=5, left=BinLeaf, right=BinLeaf}} 
                 , right = BinNode {val=6, left = BinNode {val=7, left=BinLeaf, right=BinLeaf}, right=BinLeaf}
@@ -119,7 +124,10 @@ spec = do
                 , left  = BinNode {val=12, left=BinLeaf, right = BinNode {val=15, left=BinLeaf, right=BinLeaf}} 
                 , right = BinNode {val=5, left = BinNode {val=10, left=BinLeaf, right=BinLeaf}, right=BinLeaf}
                 } 
-
+    let correctHeap4 = BinNode { val = 4
+                , left  = BinLeaf 
+                , right = BinNode {val=5, left = BinNode {val=7, left=BinLeaf, right=BinLeaf}, right=BinLeaf}
+                }
     let smallHeap = BinNode 3 (BinNode 4 BinLeaf BinLeaf) (BinNode 5 BinLeaf BinLeaf)
 
     describe "6 - Binary Heap" $ do
@@ -127,6 +135,7 @@ spec = do
             siftDown heap1 `shouldBe` (correctHeap1 :: BinaryHeap Int)
             siftDown heap2 `shouldBe` (correctHeap2 :: BinaryHeap Int)
             siftDown heap3 `shouldBe` (correctHeap3 :: BinaryHeap Int)
+            siftDown heap4 `shouldBe` (correctHeap4 :: BinaryHeap Int)
         it "buildHeap" $ do
             buildHeap [1] `shouldBe` (BinNode 1 BinLeaf BinLeaf :: BinaryHeap Int)
             buildHeap [4, 3, 5] `shouldBe` (smallHeap :: BinaryHeap Int)
@@ -156,8 +165,7 @@ spec = do
         it "getInd" $ do
             getInd sizeTree 3 `shouldBe` ("c" :: String)
             getInd sizeTree 1 `shouldBe` ("a" :: String)
-            getInd sizeTree 9 `shouldBe` ("d" :: String) 
-            -- если номер больше количества листов, то выведется последний лист
+            evaluate (getInd sizeTree 9) `shouldThrow` errorCall "Incorrect number of list!" 
     
     let prioTree1 = branchPrio (leafPrio 5 "a") (branchPrio (branchPrio (leafPrio 11 "b") (leafPrio 3 "c")) (leafPrio 7 "d"))
     let prioTree2 = branchPrio (leafPrio 5 "winner") 
@@ -170,9 +178,9 @@ spec = do
             getWinner prioTree2 `shouldBe` ("|_|" :: String)
             getWinner prioTree3 `shouldBe` ("bad joke" :: String)
     
-    describe "9 - не очень понятно, что тестировать" $ do
+    describe "9 - модоиды и прочее" $ do
         it "тест на моноид для MySize" $ do
-            getMySize (mempty :: MySize)     `shouldBe` (1 :: Int)
+            getMySize (mempty :: MySize)     `shouldBe` (0 :: Int)
             getMySize (MySize 5)             `shouldBe` (5 :: Int)
             getMySize (MySize 5 <> MySize 3) `shouldBe` (8 :: Int)
         it "тест на моноид для MyPriority" $ do
@@ -181,5 +189,22 @@ spec = do
             getMyPriority (MyPriority 8 <> MyPriority 15) `shouldBe` (8 :: Int)
             getMyPriority (MyPriority 8 <> MyPriority 1)  `shouldBe` (1 :: Int)
         it "тест для measure" $ do
-            getMySize     (measure (5 :: Int) :: MySize)     `shouldBe` (1 :: Int)
-            getMyPriority (measure (5 :: Int) :: MyPriority) `shouldBe` (maxBound :: Int)
+            getMySize     (measure (5   :: Int)  :: MySize)     `shouldBe` (1  :: Int)
+            getMyPriority (measure (5   :: Int)  :: MyPriority) `shouldBe` (5  :: Int)
+            getMyPriority (measure ('5' :: Char) :: MyPriority) `shouldBe` (53 :: Int)
+
+        let leaf1 = leaf 5 :: BinaryTree MyPriority Int
+        let leaf2 = leaf 7 :: BinaryTree MyPriority Int
+        let leaf3 = leaf 5 :: BinaryTree MySize Int
+        let leaf4 = leaf 7 :: BinaryTree MySize Int
+        it "create tree" $ do
+            leaf3 `shouldBe` (BLeaf (MySize {getMySize = 1}) 5 :: BinaryTree MySize Int)
+            leaf1 `shouldBe` (BLeaf (MyPriority {getMyPriority = 5}) 5 :: BinaryTree MyPriority Int)
+            branch leaf1 leaf2 `shouldBe` 
+                (BBranch (MyPriority {getMyPriority = 5}) 
+                    (BLeaf (MyPriority {getMyPriority = 5}) 5)
+                    (BLeaf (MyPriority {getMyPriority = 7}) 7) :: BinaryTree MyPriority Int)
+            branch leaf3 leaf4 `shouldBe` 
+                (BBranch (MySize {getMySize = 2}) 
+                    (BLeaf (MySize {getMySize = 1}) 5) 
+                    (BLeaf (MySize {getMySize = 1}) 7) :: BinaryTree MySize Int)
