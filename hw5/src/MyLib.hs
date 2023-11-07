@@ -6,7 +6,7 @@ module MyLib where
 
 import qualified Data.Map.Strict as M
 import Data.Monoid
-
+import Data.List (sortBy)
 -- Во всех заданиях с инстансами укажите сигнатуры функций
 
 -- Бонус: запишите решения в стиле point free там где это возможно и __не портит читаемость__
@@ -190,12 +190,11 @@ newtype Basket = Basket { apples :: M.Map String [Apple] }
 -- инициализировать и модифицировать мапу
 --      
 collectBasket :: Tree Apple -> Basket
-collectBasket = Basket . foldr collectApple M.empty
+collectBasket = Basket . M.map (sortBy (\x y -> compare (weight x) (weight y))) . foldr collectApple M.empty -- использую sortBy
   where
     collectApple :: Apple -> M.Map String [Apple] -> M.Map String [Apple]
     collectApple apple = M.insertWith (++) (color apple) [apple]
 
--- в данной реализации изменился порядок сортировки (теперь сохраняем от большего к меньшему)
 -------------------------------------------------------------------------------
 
 -- 6. Двоичная куча и Foldable (1,5 балла)
@@ -485,7 +484,8 @@ instance Measured NewSize a where
 
 instance (Enum a) => Measured NewPriority a where
   measure :: (Enum a) => a -> NewPriority
-  measure priority = NewPriority (fromEnum priority)
+  measure priority = NewPriority (fromEnum priority) -- тут берем в  качестве приоритета то, что приходит, а не maxBound
+                                                     -- это отлично иллюстрирует тест branch l1 l3
 -------------------------------------------------------------------------------
     
 
