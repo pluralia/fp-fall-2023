@@ -53,13 +53,13 @@ spec = do
         collectBasket (Node (Apple "Red" 0.2) []) `shouldBe` Basket {apples = M.fromList [("Red",[Apple {color = "Red", weight = 0.2}])]}
         let apple1 = Apple "Red" 0.5
         let apple2 = Apple "Green" 0.3
-        let apple3 = Apple "Red" 0.25
+        let apple3 = Apple "Red" 0.15
         let apple4 = Apple "Green" 0.1
         let apple5 = Apple "Red" 0.22
         let tree1 = Node apple1 [Node apple2 [], Node apple3 []]
         let tree2 = Node apple1 [Node apple2 [], Node apple3 [Node apple4 [], Node apple5 []]]
-        collectBasket tree1 `shouldBe` Basket {apples = M.fromList [("Green",[Apple {color = "Green", weight = 0.3}]),("Red",[Apple {color = "Red", weight = 0.5},Apple {color = "Red", weight = 0.25}])]} 
-        collectBasket tree2 `shouldBe` Basket {apples = M.fromList [("Green",[Apple {color = "Green", weight = 0.3},Apple {color = "Green", weight = 0.1}]),("Red",[Apple {color = "Red", weight = 0.5},Apple {color = "Red", weight = 0.25},Apple {color = "Red", weight = 0.22}])]}
+        collectBasket tree1 `shouldBe` Basket {apples = M.fromList [("Green",[Apple {color = "Green", weight = 0.3}]),("Red",[Apple {color = "Red", weight = 0.15},Apple {color = "Red", weight = 0.5}])]} 
+        collectBasket tree2 `shouldBe` Basket {apples = M.fromList [("Green",[Apple {color = "Green", weight = 0.1},Apple {color = "Green", weight = 0.3}]),("Red",[Apple {color = "Red", weight = 0.15},Apple {color = "Red", weight = 0.22},Apple {color = "Red", weight = 0.5}])]}
       
       it "siftDown tests" $ do  
         siftDown (BinNode (42 :: Integer) BinLeaf BinLeaf)
