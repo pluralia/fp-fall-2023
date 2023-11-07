@@ -5,7 +5,6 @@
 module MyLib where
 
 import qualified Data.Map.Strict as M
-
 import Data.Monoid
 
 -- Во всех заданиях с инстансами укажите сигнатуры функций
@@ -92,6 +91,13 @@ instance Semigroup StudentsLog where
         maxMaybe Nothing (Just y) = Just y
         maxMaybe Nothing Nothing = Nothing
 
+-- Упрощенные версии функций minMaybe и maxMaybe
+-- minMaybe :: Maybe Int -> Maybe Int -> Maybe Int
+-- minMaybe x y = min <$> x <*> y
+--
+-- maxMaybe :: Maybe Int -> Maybe Int -> Maybe Int
+-- maxMaybe x y = max <$> x <*> y
+
 instance Monoid StudentsLog where
     mempty :: StudentsLog
     mempty = StudentsLog [] Nothing Nothing
@@ -144,16 +150,24 @@ heaviestApple = foldr (maxBy weight) Nothing
     maxBy f x (Just y) | f x >= f y = Just x
                        | otherwise   = Just y
 
+-- тут не увидел как упростить реализацию с помощью maximumBy
+-- кажется, можно придумать более элегантную реализацию, 
+-- но отдам предпочтение в пользу более "понятной"
+
 -- 4.c Находит яблоко с цветом из заданного списка цветов и весом,
 --     находящимся в заданном диапазоне весов (0,25 балла)
 --
 thisApple :: Tree Apple -> [String] -> (Float, Float) -> Maybe Apple
-thisApple tree colors weightRange =
+thisApple tree colors (minWeight, maxWeight) =
   foldr (\apple acc -> if isDesiredApple apple then Just apple else acc) Nothing tree
   where
     isDesiredApple :: Apple -> Bool
     isDesiredApple (Apple appleColor appleWeight) =
-      appleColor `elem` colors && appleWeight >= fst weightRange && appleWeight <= snd weightRange
+      appleColor `elem` colors && appleWeight >= minWeight && appleWeight <= maxWeight
+
+-- Заменил weightRange на (minWeight, maxWeight),
+-- и затем эти значения используются непосредственно в функции isDesiredApple.
+
 
 -- 4.d Считает сумму весов всех яблок в дереве (0,25 балла)
 --
@@ -179,7 +193,16 @@ collectBasket :: Tree Apple -> Basket
 collectBasket = Basket . foldr collectApple M.empty
   where
     collectApple :: Apple -> M.Map String [Apple] -> M.Map String [Apple]
-    collectApple apple = M.insertWith (++) (color apple) [apple]
+    collectApple apple  = M.insertWith insertSorted (color apple) [apple]
+      where
+        insertSorted = insertSorted'
+
+        insertSorted' :: [Apple] -> [Apple] -> [Apple]
+        insertSorted' [] xs = xs
+        insertSorted' xs [] = xs
+        insertSorted' (x:xs) (y:ys)
+          | weight x <= weight y = x : insertSorted' xs (y:ys)
+          | otherwise = y : insertSorted' (x:xs) ys
 
 -------------------------------------------------------------------------------
 
@@ -200,29 +223,16 @@ data BinaryHeap a
 siftDown :: Ord a => BinaryHeap a -> BinaryHeap a
 siftDown BinLeaf = BinLeaf
 siftDown (BinNode v BinLeaf BinLeaf) = BinNode v BinLeaf BinLeaf
-siftDown (BinNode v l BinLeaf) = if v < val l
-                                    then BinNode v l BinLeaf
-                                    else BinNode (val l) (siftDown (l {val = v})) BinLeaf
 siftDown (BinNode v BinLeaf r) = if v < val r
-                                     then BinNode v BinLeaf r
-                                     else BinNode (val r) BinLeaf (siftDown (r {val = v}))
+                                   then BinNode v BinLeaf r
+                                   else BinNode (val r) BinLeaf (siftDown (r {val = v}))
+siftDown (BinNode v l BinLeaf) = if v < val l
+                                   then BinNode v l BinLeaf
+                                   else BinNode (val l) (siftDown (l {val = v})) BinLeaf
 siftDown (BinNode v l r)
     | v < min (val l) (val r) = BinNode v l r
     | val l < val r = BinNode (val l) (siftDown (l {val = v})) r
     | otherwise = BinNode (val r) l (siftDown (r {val = v}))
-
-
-
--- 6.b Реализуйте с помощью свёртки функцию buildHeap,
---     которая за __линейное время__ конструирует на основе спиcка элементов бинарную кучу.
---     Соответствующий алогритм описан в статье на вики (ссылка выше).
---     Считайте, что изменение элемента 'Data.Array' происходит за константу (хотя это не так!)
---     (1 балл)
---       
-buildHeap :: Ord a => [a] -> BinaryHeap a
-buildHeap = foldr siftDownSingleTree BinLeaf
-  where
-    siftDownSingleTree x heap = siftDown (BinNode x BinLeaf heap)
 
 -------------------------------------------------------------------------------
 
@@ -412,24 +422,27 @@ getWinner (BBranch _ l r)
 -- Для исправления этого можно создать новый тип данных
 
 -- Определение нового типа данных NewSize для представления размера (целое число)
-newtype NewSize = NewSize Int
+newtype NewSize = NewSize{getNewSize :: Int}
  deriving (Eq, Show)
 
 -- Реализация операции (<>) для типа NewSize, которая сложит два размера
 instance Semigroup NewSize where
-  (<>) (NewSize a) (NewSize b) = NewSize (a + b)
+  (<>) a b = NewSize (getNewSize a + getNewSize b)
 
 -- Определение начального элемента моноида (единичного элемента) для NewSize
 instance Monoid NewSize where
   mempty = NewSize (0 :: Int)
 
+-- здесь руководствовался тем, что для NewSize требуется определить (<>) через операцию сложения,
+-- нейтральным элементом которой является 0
+
 -- Определение нового типа данных NewPriority для представления приоритета (целое число)
-newtype NewPriority = NewPriority Int
+newtype NewPriority = NewPriority{getNewPriority :: Int}
  deriving (Eq, Show)
 
 -- Реализация операции (<>) для типа NewPriority, которая выберет минимальный приоритет
 instance Semigroup NewPriority where
-  (<>) (NewPriority a) (NewPriority b) = NewPriority (min a b)
+  (<>) a b = NewPriority $ min (getNewPriority a) (getNewPriority b)
 
 -- Определение начального элемента моноида (единичного элемента) для NewPriority
 instance Monoid NewPriority where
@@ -445,6 +458,10 @@ branch x y = BBranch (tag x <> tag y) x y
 -- В случае листа нам требуется задать приоритет для NewPriority,
 -- но для NewSize размер задавать не нужно.
 -- Значит имеем коллизию типов данных для Leaf.
+--
+-- Если представить, что мы не принимаем приоритет в качестве аргумента и выводим его из самого значения,
+-- т.е. типы leaf для Size и Priority соответствуют друг другу. Мы все равно не сможем воспользоваться операцией Monoid,
+-- потому что для этого нам нужно определить mempty, которое по сути является пустым множеством, но лист им не является.
 
 -- leaf :: Monoid v => a -> BinaryTree v a
 -- leaf = BLeaf mempty
@@ -463,11 +480,10 @@ leaf x = BLeaf (measure x) x
 -- 10.b Напишите инстансы Measured для Size и Priority (0,5 балла)
 instance Measured NewSize a where
   measure :: a -> NewSize
-  measure _ = NewSize (1 :: Int)
+  measure _ = NewSize {getNewSize = 1 :: Int}
 
-instance Measured NewPriority a where
-  measure :: a -> NewPriority
-  measure _ = NewPriority (maxBound :: Int)
+instance (Enum a) => Measured NewPriority a where
+  measure :: (Enum a) => a -> NewPriority
+  measure priority = NewPriority (fromEnum priority) -- тут берем в  качестве приоритета то, что приходит, а не maxBound
+                                                     -- это отлично иллюстрирует тест branch l1 l3
 -------------------------------------------------------------------------------
-    
-
