@@ -287,7 +287,7 @@ siftDown (BinNode x lleft rright)  -- классическая нода, сле�
 -- | Кроме того, каждый узел в этом дереве аннотируется значением типа v (tag)
 --
 data BinaryTree v a = BLeaf v a | BBranch v (BinaryTree v a) (BinaryTree v a)
-  deriving (Show)
+  deriving (Eq, Show)
 
 -- Тогда наше дерево будет выглядеть так
 --      v
@@ -417,7 +417,7 @@ type Priority = Int
 --     быть уверенными в корректности аннотаций по аналогии с leafSize и branchSize (0,25 балла)
 
 data PriorTree a = PrLeaf Priority a | PrBranch Priority (PriorTree a) (PriorTree a)
-  deriving (Show)
+  deriving (Eq, Show)
 
 priority :: PriorTree a -> Priority
 priority (PrLeaf v _) = v
@@ -531,8 +531,8 @@ instance Measured Size' a where
   measure :: a -> Size'
   measure _ = Size' 1
 
-instance Measured Priority' a where
-  measure :: a -> Priority'
-  measure _ = Priority' maxBound
+instance (Enum a) => Measured Priority' a where
+  measure :: (Enum a) => a -> Priority'
+  measure ppriority = Priority' (fromEnum ppriority)
 
 -------------------------------------------------------------------------------
