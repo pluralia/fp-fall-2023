@@ -193,17 +193,9 @@ collectBasket :: Tree Apple -> Basket
 collectBasket = Basket . foldr collectApple M.empty
   where
     collectApple :: Apple -> M.Map String [Apple] -> M.Map String [Apple]
-    collectApple apple  = M.insertWith insertSorted (color apple) [apple]
-      where
-        insertSorted = insertSorted'
+    collectApple apple = M.insertWith (++) (color apple) [apple]
 
-        insertSorted' :: [Apple] -> [Apple] -> [Apple]
-        insertSorted' [] xs = xs
-        insertSorted' xs [] = xs
-        insertSorted' (x:xs) (y:ys)
-          | weight x <= weight y = x : insertSorted' xs (y:ys)
-          | otherwise = y : insertSorted' (x:xs) ys
-
+-- в данной реализации изменился порядок сортировки (теперь сохраняем от большего к меньшему)
 -------------------------------------------------------------------------------
 
 -- 6. Двоичная куча и Foldable (1,5 балла)
@@ -463,6 +455,15 @@ branch x y = BBranch (tag x <> tag y) x y
 -- т.е. типы leaf для Size и Priority соответствуют друг другу. Мы все равно не сможем воспользоваться операцией Monoid,
 -- потому что для этого нам нужно определить mempty, которое по сути является пустым множеством, но лист им не является.
 
+-- Допустим, у нас есть синонимы типов для описания расстояния в метрах и футах:
+-- type Meters = Double
+-- type Feet = Double
+--
+-- Теперь, если мы хотим создать инстансы класса типов Show для Meters и Feet,
+-- мы столкнемся с ошибкой "Duplicate instance declaration",
+-- потому что Haskell рассматривает их как один и тот же тип (в данном случае Double),
+-- даже если у нас есть разные синонимы для него.
+
 -- leaf :: Monoid v => a -> BinaryTree v a
 -- leaf = BLeaf mempty
 
@@ -484,6 +485,7 @@ instance Measured NewSize a where
 
 instance (Enum a) => Measured NewPriority a where
   measure :: (Enum a) => a -> NewPriority
-  measure priority = NewPriority (fromEnum priority) -- тут берем в  качестве приоритета то, что приходит, а не maxBound
-                                                     -- это отлично иллюстрирует тест branch l1 l3
+  measure priority = NewPriority (fromEnum priority)
 -------------------------------------------------------------------------------
+    
+
