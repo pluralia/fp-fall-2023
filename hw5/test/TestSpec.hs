@@ -11,6 +11,7 @@ import Test.Hspec
   , it
   , shouldBe
   , describe
+--  , shouldMatchList
   )
 
 spec :: Spec
@@ -57,8 +58,8 @@ spec = do
         let apple5 = Apple "Red" 0.22
         let tree1 = Node apple1 [Node apple2 [], Node apple3 []]
         let tree2 = Node apple1 [Node apple2 [], Node apple3 [Node apple4 [], Node apple5 []]]
-        collectBasket tree1 `shouldBe` Basket {apples = M.fromList [("Green",[Apple {color = "Green", weight = 0.3}]),("Red",[Apple {color = "Red", weight = 0.25},Apple {color = "Red", weight = 0.5}])]} 
-        collectBasket tree2 `shouldBe` Basket {apples = M.fromList [("Green",[Apple {color = "Green", weight = 0.1},Apple {color = "Green", weight = 0.3}]),("Red",[Apple {color = "Red", weight = 0.22},Apple {color = "Red", weight = 0.25},Apple {color = "Red", weight = 0.5}])]}
+        collectBasket tree1 `shouldBe` Basket {apples = M.fromList [("Green",[Apple {color = "Green", weight = 0.3}]),("Red",[Apple {color = "Red", weight = 0.5},Apple {color = "Red", weight = 0.25}])]} 
+        collectBasket tree2 `shouldBe` Basket {apples = M.fromList [("Green",[Apple {color = "Green", weight = 0.3},Apple {color = "Green", weight = 0.1}]),("Red",[Apple {color = "Red", weight = 0.5},Apple {color = "Red", weight = 0.25},Apple {color = "Red", weight = 0.22}])]}
       
       it "siftDown tests" $ do  
         siftDown (BinNode (42 :: Integer) BinLeaf BinLeaf)
