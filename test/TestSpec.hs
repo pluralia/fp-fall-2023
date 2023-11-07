@@ -239,22 +239,24 @@ spec = do
             getWinner tree `shouldBe` 'e'
 
 
-    -- describe "Test tree creation with Size' annotations" $ do
-    --     it "Creates a single leaf with Size' annotation" $ do
-    --         leaf (5 :: Int) `shouldBe` BLeaf (Size' 1) 5
+    describe "Test tree creation with Size' annotations" $ do
+        it "Creates a single leaf with Size' annotation" $ do
+            let l1 = leaf 5 :: BinaryTree Size' Int 
+            l1 `shouldBe` (BLeaf (Size' 1) 5 :: BinaryTree Size' Int)
 
-    --     it "Creates a branch with Size' annotation" $ do
-    --         let left = leaf (2 :: Int)
-    --             right = leaf (3 :: Int)
-    --             tree = branch left right
-    --         tree `shouldBe` BBranch (Size' 3) left right
+        it "Creates a branch with Size' annotation" $ do
+            let left1 = leaf 1 :: BinaryTree Size' Int 
+                right1 = leaf 3 :: BinaryTree Size' Int 
+                tree = branch left1 right1
+            tree `shouldBe` (BBranch (Size' 2) (BLeaf (Size' 1) 1 :: BinaryTree Size' Int) (BLeaf (Size' 1) 3 :: BinaryTree Size' Int) :: BinaryTree Size' Int) 
 
-    -- describe "Test tree creation with Priority' annotations" $ do
-    --     it "Creates a single leaf with Priority' annotation" $ do
-    --         leaf (5 :: Int) `shouldBe` BLeaf (Priority' maxBound) 5
+    describe "Test tree creation with Priority' annotations" $ do
+        it "Creates a single leaf with Priority' annotation" $ do
+            let l2 = leaf 5 :: BinaryTree Priority' Int 
+            l2 `shouldBe` (BLeaf (Priority' 5) 5 :: BinaryTree Priority' Int)
 
-    --     it "Creates a branch with Priority' annotation" $ do
-    --         let left = leaf (2 :: Int)
-    --             right = leaf (3 :: Int)
-    --             tree = branch left right
-    --         tree `shouldBe` BBranch (Priority' maxBound) left right
+        it "Creates a branch with Priority' annotation" $ do
+            let left2 = leaf 1 :: BinaryTree Priority' Int 
+                right2 = leaf 3 :: BinaryTree Priority' Int 
+                tree = branch left2 right2
+            tree `shouldBe` (BBranch (Priority' 1) (BLeaf (Priority' 1) 1 :: BinaryTree Priority' Int) (BLeaf (Priority' 3) 3 :: BinaryTree Priority' Int) :: BinaryTree Priority' Int)
