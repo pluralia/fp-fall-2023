@@ -3,7 +3,6 @@
 module MyLib where
 
 import           Data.List (foldl')
-import           Data.Monoid()
 import qualified Data.Map.Strict as M
 
 -- Во всех заданиях с инстансами укажите сигнатуры функций
@@ -26,8 +25,8 @@ instance Functor (Arrow a) where
   fmap f (Arrow g) = Arrow (f . g)
 
 -- Законы:
--- fmap id = id
--- fmap (f . g) (Arrow h) = fmap f (fmap g (Arrow h)) = fmap f . fmap g (Arrow h)
+-- fmap id (Arrow g) = Arrow (id . g) = Arrow g
+-- fmap (f . g) (Arrow h) = Arrow ((f . g) . h) = Arrow (f . (g . h)) = fmap f (fmap g (Arrow h))
 -------------------------------------------------------------------------------
 
 -- 2. Студенты и Moinoid (1 балл)
@@ -48,11 +47,11 @@ data StudentsLog = StudentsLog
 -- 2.a Функция, которая по списку студентов курса рассчитывает информацию по курсу (0,5 балла)
 --
 calculateStudentsLog :: [Student] -> StudentsLog
-calculateStudentsLog = foldr helper (StudentsLog [] Nothing Nothing)
+calculateStudentsLog = foldl' helper (StudentsLog [] Nothing Nothing)
   where
-    helper :: Student -> StudentsLog -> StudentsLog
-    helper (Student n g) (StudentsLog names worst best) = 
-      StudentsLog (n : names) (calcmin (Just g) worst) (max (Just g) best)
+    helper :: StudentsLog -> Student -> StudentsLog
+    helper (StudentsLog names worst best) (Student n g) = 
+      StudentsLog (n:names) (calcmin worst (Just g)) (max best (Just g))
 
     calcmin :: Maybe Int -> Maybe Int -> Maybe Int
     calcmin Nothing Nothing = Nothing
@@ -117,10 +116,7 @@ appleTree = Node (Apple "red" 0.3) [Node (Apple "green" 0.2) [Leaf], Node (Apple
 --     в заданном диапазоне весов (0,25 балла)
 --
 applesInRange :: Tree Apple -> (Float, Float) -> Bool
-applesInRange tree (minim, maxim) = foldr helper True tree
-  where
-    helper :: Apple -> Bool -> Bool
-    helper (Apple _ w) acc = acc && (w >= minim) && (w <= maxim)
+applesInRange tree (minim, maxim) = all (\(Apple _ w) -> w >= minim && w <= maxim) tree
 
 -- 4.b Находит яблоко с наибольшим весом (0,25 балла)
 --
@@ -146,7 +142,7 @@ thisApple tree colors (minim, maxim) = foldr helper Nothing tree
 -- 4.d Считает сумму весов всех яблок в дереве (0,25 балла)
 --
 sumOfApples :: Tree Apple -> Float
-sumOfApples = foldr (\(Apple _ w) acc -> w + acc) 0
+sumOfApples = sum . foldMap (\(Apple _ w) -> [w])
 
 -------------------------------------------------------------------------------
 
@@ -205,9 +201,8 @@ siftDown (BinNode v l BinLeaf) | v < val l = BinNode v l BinLeaf
 siftDown (BinNode v BinLeaf r) | v < val r = BinNode v BinLeaf r
                                | otherwise = BinNode (val r) BinLeaf (siftDown (r {val = v}))
 siftDown (BinNode v l r)       | v < min (val l) (val r) = BinNode v l r
-                               | val l < val r = BinNode (val l) (siftDown (l {val = v})) r
+                               | v > val l = BinNode (val l) (siftDown (l {val = v})) r
                                | otherwise = BinNode (val r) l (siftDown (r {val = v}))
-
 -- 6.b Реализуйте с помощью свёртки функцию buildHeap,
 --     которая за __линейное время__ конструирует на основе спиcка элементов бинарную кучу.
 --     Соответствующий алогритм описан в статье на вики (ссылка выше).
@@ -224,7 +219,6 @@ buildHeap = foldl' helper BinLeaf
                 | otherwise = BinNode y (helper r x) l
 -- Этот алгоритм работает за O(n log n). Я не понял как сделать за O(n)
   
-
 -------------------------------------------------------------------------------
 
 -- 7. A list with random access (2 балла)
@@ -238,7 +232,7 @@ buildHeap = foldl' helper BinLeaf
 -- | Кроме того, каждый узел в этом дереве аннотируется значением типа v (tag)
 --
 data BinaryTree v a = BLeaf v a | BBranch v (BinaryTree v a) (BinaryTree v a)
-  deriving (Show)
+  deriving (Show, Eq)
 
 -- Тогда наше дерево будет выглядеть так
 --      v
@@ -404,7 +398,14 @@ instance Semigroup Size' where
 
 instance Monoid Size' where
   mempty :: Size'
-  mempty = Size' 1
+  mempty = Size' 0 -- чтобы законы выполнялись
+
+-- Законы:
+-- mempty <> mempty = mempty
+-- mempty <> x = x
+-- x <> mempty = x
+-- (x <> y) <> z = x <> (y <> z)
+
 
 newtype Priority' = Priority' Int deriving (Eq, Show)
 
@@ -414,7 +415,13 @@ instance Semigroup Priority' where
 
 instance Monoid Priority' where
   mempty :: Priority'
-  mempty = Priority' maxBound
+  mempty = Priority' maxBound -- чтобы законы выполнялись
+
+-- Законы:
+-- mempty <> mempty = mempty
+-- mempty <> x = x
+-- x <> mempty = x
+-- (x <> y) <> z = x <> (y <> z)
 
 -- | Теперь branchSize и branchPrio могут быть заменены на branch
 --
@@ -426,14 +433,14 @@ branch x y = BBranch (tag x <> tag y) x y
 -- leaf :: Monoid v => a -> BinaryTree v a
 -- leaf = BLeaf mempty
 
--- Ответ: нам нужно задавать приоритет листа, а размер не нужно. 
--- Разные типы данных для leaf получаются 
+-- Ответ: size у leaf == 0. Значит size у branch == 0. Но это не так.
 
 newBinTree :: BinaryTree Size' Char
 newBinTree = branch (branch (leaf 'a') (leaf 'b')) (branch (leaf 'c') (branch (leaf 'd') (leaf 'e')))
 
--- veryNewBinTree :: BinaryTree Priority' Char
--- veryNewBinTree = branch (branch (leaf 16 'a') (leaf 4 'b')) (branch (leaf 2 'c') (branch (leaf 32 'd') (leaf 8 'e')))
+
+newPrioTree :: BinaryTree Priority' Char
+newPrioTree = branch (branch (leaf 'a') (leaf 'b')) (branch (leaf 'c') (branch (leaf 'd') (leaf 'e')))
 
 
 -- Чтобы задать leaf унифицированным способом аналогично branch, давайте создадим класс типов Measured
@@ -447,16 +454,15 @@ class Monoid v => Measured v a where
 leaf :: Measured v a => a -> BinaryTree v a
 leaf x = BLeaf (measure x) x
 
--- Мы не можем задавать приоритет:
--- veryNewBinTree :: BinaryTree Priority' Char
--- veryNewBinTree = branch (branch (leaf 16 'a') (leaf 4 'b')) (branch (leaf 2 'c') (branch (leaf 32 'd') (leaf 8 'e')))
-
 -- 10.b Напишите инстансы Measured для Size и Priority (0,5 балла)
 
 instance Measured Size' a where
   measure :: a -> Size'
   measure _ = Size' 1
 
+instance Enum a => Measured Priority' a where
+  measure :: a -> Priority'
+  measure = Priority' . fromEnum
 -------------------------------------------------------------------------------
 
 
