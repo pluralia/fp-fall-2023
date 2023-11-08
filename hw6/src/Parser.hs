@@ -1,3 +1,5 @@
+{-# LANGUAGE InstanceSigs, FlexibleInstances #-}
+
 module Parser where
 
 import Data.Char           (digitToInt, isAlphaNum, isSpace, isDigit)
@@ -6,12 +8,12 @@ import Control.Applicative (Alternative (..))
 newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
 
 instance Functor Parser where
-    fmap :: (a -> b) -> Parser a -> Parser b
-    fmap g aP = Parser f
-      where
-        f s = case runParser aP s of
-            Nothing      -> Nothing
-            Just (a, s') -> Just (g a, s')
+  fmap :: (a -> b) -> Parser a -> Parser b
+  fmap g aP = Parser f
+    where
+      f s = case runParser aP s of
+        Nothing      -> Nothing
+        Just (a, s') -> Just (g a, s')
 
 instance Applicative Parser where 
   pure :: a -> Parser a
