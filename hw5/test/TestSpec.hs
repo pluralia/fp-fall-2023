@@ -6,6 +6,7 @@ import Data.Monoid ()
 import qualified Data.Map.Strict as M
 import Data.Array ()
 
+
 spec :: Spec
 spec = do
     -- Task2
@@ -114,6 +115,28 @@ spec = do
 
         it "returns an empty basket for an empty tree" $ do
             collectBasket Leaf `shouldBe` Basket M.empty
+
+        it "collects apples into a basket grouped by color and sorted by weight with more interesting trees" $ do
+            let apple1 = Apple "red" 1.0
+            let apple2 = Apple "green" 2.0
+            let apple3 = Apple "red" 3.0
+            let apple4 = Apple "yellow" 4.0
+            let apple5 = Apple "red" 5.0
+
+            let tree = Node apple1 [Node apple2 [Node apple3 []], Node apple4 [Node apple5 []]]
+            let expectedBasket = Basket $ M.fromList [("red", [apple1, apple3, apple5]), ("green", [apple2]), ("yellow", [apple4])]
+            collectBasket tree `shouldBe` expectedBasket
+
+        it "collects apples into a basket grouped by color and sorted by weight with interesting unbalanced trees" $ do
+            let apple1 = Apple "red" 1.0
+            let apple2 = Apple "green" 2.0
+            let apple3 = Apple "red" 3.0
+            let apple4 = Apple "yellow" 4.0
+            let apple5 = Apple "red" 5.0
+
+            let tree = Node apple1 [Node apple2 [], Node apple3 [Node apple4 [Node apple5 []]]]
+            let expectedBasket = Basket $ M.fromList [("red", [apple1, apple3, apple5]), ("green", [apple2]), ("yellow", [apple4])]
+            collectBasket tree `shouldBe` expectedBasket
     
 -- Task6 a
     describe "siftDown" $ do
@@ -172,11 +195,23 @@ spec = do
                         (branchSize (leafSize (1 :: Integer)) (leafSize (2 :: Integer)))
                         (branchSize (leafSize (3 :: Integer)) (branchSize (leafSize (4 :: Integer)) (leafSize (5 :: Integer))))
 
-            getInd tree 1 `shouldBe` 1
-            getInd tree 2 `shouldBe` 2
-            getInd tree 3 `shouldBe` 3
-            getInd tree 4 `shouldBe` 4
-            getInd tree 5 `shouldBe` 5
+            getInd tree 0 `shouldBe` Just 1
+            getInd tree 1 `shouldBe` Just 2
+            getInd tree 2 `shouldBe` Just 3
+            getInd tree 3 `shouldBe` Just 4
+            getInd tree 4 `shouldBe` Just 5
+
+        it "returns Nothing if n is negative" $ do
+            let tree = branchSize 
+                        (branchSize (leafSize (1 :: Integer)) (leafSize (2 :: Integer)))
+                        (branchSize (leafSize (3 :: Integer)) (branchSize (leafSize (4 :: Integer)) (leafSize (5 :: Integer))))
+            getInd tree (-1) `shouldBe` Nothing
+
+        it "returns Nothing if n is greater than the number of elements in the tree" $ do
+            let tree = branchSize 
+                        (branchSize (leafSize (1 :: Integer)) (leafSize (2 :: Integer)))
+                        (branchSize (leafSize (3 :: Integer)) (branchSize (leafSize (4 :: Integer)) (leafSize (5 :: Integer))))
+            getInd tree 5 `shouldBe` Nothing
 
 -- Task8
     describe "getWinner" $ do
@@ -205,3 +240,20 @@ spec = do
             let branch3 = branchPrio leaf4 leaf5
             let root = branchPrio branch2 branch3
             getWinner root `shouldBe` 'c'
+-- Task10
+    describe "BinaryTree" $ do
+        it "creates Size tree correctly" $ do
+            let tree = branch (leaf 'a') (branch (leaf 'b') (leaf 'c'))
+            tag tree `shouldBe` Size' 3
+
+        it "creates Size tree correctly with multiple branches" $ do
+            let tree = branch (branch (leaf 'a') (leaf 'b')) (branch (leaf 'c') (leaf 'd'))
+            tag tree `shouldBe` Size' 4
+
+        it "creates Priority tree correctly" $ do
+            let tree = branch (leaf 'a') (branch (leaf 'b') (leaf 'c'))
+            tag tree `shouldBe` Priority' (fromEnum 'a')
+
+        it "creates Priority tree correctly with multiple branches" $ do
+            let tree = branch (branch (leaf 'a') (leaf 'b')) (branch (leaf 'c') (leaf 'd'))
+            tag tree `shouldBe` Priority' (fromEnum 'a')

@@ -7,8 +7,8 @@ module MyLib where
 
 import qualified Data.Map.Strict as M
 import Data.List (sortOn)
-import Data.Monoid ()
-import Data.Array ( (!), listArray, Array )
+import Data.Monoid (All(..), getAll, Sum(..),  getSum)
+import Data.Array ()
 -- Во всех заданиях с инстансами укажите сигнатуры функций
 
 -- Бонус: запишите решения в стиле point free там где это возможно и __не портит читаемость__
@@ -41,13 +41,13 @@ instance Functor (Arrow a) where
 data Student = Student 
     { name  :: String -- имя студента
     , grade :: Int    -- оценка студента по нашему предмету
-    }
+    } deriving(Eq, Show)
 
 data StudentsLog = StudentsLog
     { studentNames :: [String]  -- список имён студентов
     , worstGrade   :: Maybe Int -- наименьшая оценка по курсу
     , bestGrade    :: Maybe Int -- наибольшая оценка по курсу
-    }
+    } deriving(Eq, Show)
 
 -- 2.a Функция, которая по списку студентов курса рассчитывает информацию по курсу (0,5 балла)
 --
@@ -87,14 +87,6 @@ calculateStudentsLog' :: [Student] -> StudentsLog
 calculateStudentsLog' = mconcat . map (\s -> StudentsLog [name s] (Just $ grade s) (Just $ grade s))
 
 -- чтобы тесты работали нужны инстансы Show и Eq
-instance Show StudentsLog where
-    show :: StudentsLog -> String
-    show (StudentsLog names worst best) = "StudentsLog {studentNames = " ++ show names ++ ", worstGrade = " ++ show worst ++ ", bestGrade = " ++ show best ++ "}"
-    
-instance Eq StudentsLog where
-    (==) :: StudentsLog -> StudentsLog -> Bool
-    (StudentsLog names1 worst1 best1) == (StudentsLog names2 worst2 best2) = names1 == names2 && worst1 == worst2 && best1 == best2
-
 -------------------------------------------------------------------------------
 
 -- 3. Дерево и Foldable (1 балл)
@@ -125,9 +117,7 @@ data Apple = Apple
 --     в заданном диапазоне весов (0,25 балла)
 --
 applesInRange :: Tree Apple -> (Float, Float) -> Bool
-applesInRange tree (low, high) = all inRange (foldMap (\apple -> [weight apple]) tree)
-  where
-    inRange x = x >= low && x <= high
+applesInRange tree (low, high) = getAll $ foldMap (\apple -> All $ weight apple >= low && weight apple <= high) tree
 
 -- 4.b Находит яблоко с наибольшим весом (0,25 балла)
 --
@@ -151,7 +141,7 @@ thisApple tree colors (low, high) = foldr matchApple Nothing tree
 -- 4.d Считает сумму весов всех яблок в дереве (0,25 балла)
 --
 sumOfApples :: Tree Apple -> Float
-sumOfApples = foldr (\apple acc -> weight apple + acc) 0.0
+sumOfApples = getSum . foldMap (Sum . weight)
 
 -------------------------------------------------------------------------------
 
@@ -306,10 +296,12 @@ createTree =
 
 -- 7.e Используя Size-аннотации, найдите n-й лист (1 балл)
 
-getInd :: BinaryTree Size a -> Int -> a
-getInd (BLeaf _ a) _ = a
+getInd :: BinaryTree Size a -> Int -> Maybe a
+getInd (BLeaf _ a) n
+  | n == 0 = Just a
+  | otherwise = Nothing
 getInd (BBranch _ left' right') n
-  | n <= sizeLeft = getInd left' n
+  | n < sizeLeft = getInd left' n
   | otherwise     = getInd right' (n - sizeLeft)
   where sizeLeft = tag left'
 
@@ -397,7 +389,7 @@ getWinner (BBranch _ l r)
 -- Что нужно изменить в определении Size и Priority?  - переназвать их 
 
 newtype Size' = Size' Int
-  deriving (Show)
+  deriving (Show, Eq)
 
 instance Semigroup Size' where
   (<>) :: Size' -> Size' -> Size'
@@ -408,7 +400,7 @@ instance Monoid Size' where
   mempty = Size' 0
 
 newtype Priority' = Priority' Int
-  deriving (Show)
+  deriving (Show, Eq)
 
 instance Semigroup Priority' where
   (<>) :: Priority' -> Priority' -> Priority'
