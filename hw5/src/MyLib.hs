@@ -66,20 +66,14 @@ instance Semigroup StudentsLog where
     (<>) :: StudentsLog -> StudentsLog -> StudentsLog
     a <> b = StudentsLog
         { studentNames = studentNames a ++ studentNames b
-        , worstGrade   = case (worstGrade a, worstGrade b) of
-                            (Nothing, x) -> x
-                            (x, Nothing) -> x
-                            (Just x, Just y) -> Just (min x y)
-        , bestGrade    = case (bestGrade a, bestGrade b) of
-                            (Nothing, x) -> x
-                            (x, Nothing) -> x
-                            (Just x, Just y) -> Just (max x y)
+        , worstGrade   = min <$> worstGrade a <*> worstGrade b
+        , bestGrade    = max <$> bestGrade a <*> bestGrade b
         }
 
 
 instance Monoid StudentsLog where
     mempty :: StudentsLog
-    mempty = StudentsLog [] Nothing Nothing
+    mempty = StudentsLog [] (Just maxBound) (Just minBound)
     mappend :: StudentsLog -> StudentsLog -> StudentsLog
     mappend = (<>)
 
