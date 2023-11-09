@@ -72,7 +72,16 @@ spec = do
 
     it "Task 6. Heap" $ do
         siftDown (BinNode (3 :: Integer) (BinNode (2 :: Integer) BinLeaf BinLeaf) (BinNode (1 :: Integer) BinLeaf BinLeaf)) `shouldBe` BinNode (1 :: Integer) (BinNode (2 :: Integer) BinLeaf BinLeaf) (BinNode (3 :: Integer) BinLeaf BinLeaf)
-    
+        let myheap = BinNode { val = 5
+                , left  = BinNode {val=3, left=BinNode {val=4, left=BinLeaf, right=BinLeaf}, right = BinLeaf} 
+                , right = BinNode {val=6, left = BinLeaf, right=BinLeaf}
+                }
+            correctmyheap = BinNode { val = 3
+                , left  = BinNode {val=4, left=BinNode {val=5, left=BinLeaf, right=BinLeaf}, right = BinLeaf} 
+                , right = BinNode {val=6, left = BinLeaf, right=BinLeaf}
+                }
+        siftDown myheap `shouldBe` correctmyheap
+
     it "Task 7. A list with random access " $ do
         let tree = BBranch "root" (BBranch "left" (BLeaf "l1" "H") (BLeaf "l2" "S")) (BBranch "right" (BLeaf "r1" "E") (BLeaf "r2" "!"))
         
