@@ -47,17 +47,11 @@ data StudentsLog = StudentsLog
 -- 2.a Функция, которая по списку студентов курса рассчитывает информацию по курсу (0,5 балла)
 --
 calculateStudentsLog :: [Student] -> StudentsLog
-calculateStudentsLog = foldl' helper (StudentsLog [] Nothing Nothing)
+calculateStudentsLog = foldl' helper (StudentsLog [] (Just maxBound) (Just minBound))
   where
     helper :: StudentsLog -> Student -> StudentsLog
     helper (StudentsLog names worst best) (Student n g) = 
-      StudentsLog (n:names) (calcmin worst (Just g)) (max best (Just g))
-
-    calcmin :: Maybe Int -> Maybe Int -> Maybe Int
-    calcmin Nothing Nothing = Nothing
-    calcmin Nothing (Just x) = Just x
-    calcmin (Just x) Nothing = Just x
-    calcmin (Just x) (Just y) = Just $ min x y
+      StudentsLog (n:names) (min <$> worst <*> Just g) (max <$> best <*> Just g)
 
 -- 2.b Сделайте 'StudentsLog' представителем класса типов 'Monoid' и реализуйте
 --     calculateStudentsLog', которая делает то же самое, что и calculateStudentsLog
@@ -67,18 +61,12 @@ calculateStudentsLog = foldl' helper (StudentsLog [] Nothing Nothing)
 instance Semigroup StudentsLog where
   (<>) :: StudentsLog -> StudentsLog -> StudentsLog
   (<>) (StudentsLog names1 worst1 best1) (StudentsLog names2 worst2 best2) = 
-    StudentsLog (names1 ++ names2) (calcmin worst1 worst2) (max best1 best2)
-    where
-      calcmin :: Maybe Int -> Maybe Int -> Maybe Int
-      calcmin Nothing Nothing = Nothing
-      calcmin Nothing (Just x) = Just x
-      calcmin (Just x) Nothing = Just x
-      calcmin (Just x) (Just y) = Just $ min x y
+    StudentsLog (names1 ++ names2) (min <$> worst1 <*> worst2) (max <$> best1 <*> best2)
 
 
 instance Monoid StudentsLog where
   mempty :: StudentsLog
-  mempty = StudentsLog [] Nothing Nothing
+  mempty = StudentsLog [] (Just maxBound) (Just minBound)
 
 calculateStudentsLog' :: [Student] -> StudentsLog
 calculateStudentsLog' = foldMap (\(Student n g) -> StudentsLog [n] (Just g) (Just g))
@@ -193,16 +181,20 @@ binHeap = BinNode 3 (BinNode 2 BinLeaf BinLeaf) (BinNode 4 BinLeaf BinLeaf)
         
 -- 6.a Реализуйте функцию siftDown, восстанавливающую свойство кучи в куче (0,5 балла)
 --     
-siftDown :: Ord a => BinaryHeap a -> BinaryHeap a
-siftDown BinLeaf = BinLeaf
-siftDown (BinNode v BinLeaf BinLeaf) = BinNode v BinLeaf BinLeaf
-siftDown (BinNode v l BinLeaf) | v < val l = BinNode v l BinLeaf
-                               | otherwise = BinNode (val l) (siftDown (l {val = v})) BinLeaf
-siftDown (BinNode v BinLeaf r) | v < val r = BinNode v BinLeaf r
-                               | otherwise = BinNode (val r) BinLeaf (siftDown (r {val = v}))
-siftDown (BinNode v l r)       | v < min (val l) (val r) = BinNode v l r
-                               | v > val l = BinNode (val l) (siftDown (l {val = v})) r
-                               | otherwise = BinNode (val r) l (siftDown (r {val = v}))
+siftDown :: Ord a => BinaryHeap a -> Maybe (BinaryHeap a)
+siftDown BinLeaf = Just BinLeaf
+siftDown (BinNode v BinLeaf BinLeaf) = Just $ BinNode v BinLeaf BinLeaf
+siftDown (BinNode v l BinLeaf) | v < val l = Just $ BinNode v l BinLeaf
+                               | otherwise = Just $ BinNode (val l) ((unpack . siftDown) (l {val = v})) BinLeaf
+siftDown (BinNode _ BinLeaf _) = Nothing
+siftDown (BinNode v l r)       | v < min (val l) (val r) = Just $ BinNode v l r
+                               | v > val l = Just $ BinNode (val l) ((unpack . siftDown) (l {val = v})) r
+                               | otherwise = Just $ BinNode (val r) l ((unpack . siftDown) (r {val = v}))
+
+unpack:: Maybe (BinaryHeap a) -> BinaryHeap a
+unpack (Just x) = x
+unpack Nothing = error "siftDown returned Nothing"
+
 -- 6.b Реализуйте с помощью свёртки функцию buildHeap,
 --     которая за __линейное время__ конструирует на основе спиcка элементов бинарную кучу.
 --     Соответствующий алогритм описан в статье на вики (ссылка выше).

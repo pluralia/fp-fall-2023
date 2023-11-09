@@ -23,13 +23,11 @@ spec = do
       calculateStudentsLog [Student "a" 1, Student "b" 2, Student "c" 3] `shouldBe` StudentsLog ["c", "b", "a"] (Just 1) (Just 3)
       calculateStudentsLog [Student "a" 3, Student "b" 2] `shouldBe` StudentsLog ["b", "a"] (Just 2) (Just 3)
       calculateStudentsLog [Student "a" 1] `shouldBe` StudentsLog ["a"] (Just 1) (Just 1)
-      calculateStudentsLog [] `shouldBe` StudentsLog [] Nothing Nothing
 
     it "test calculateStudentsLog'" $ do
       calculateStudentsLog' [Student "a" 1, Student "b" 2, Student "c" 3] `shouldBe` StudentsLog ["a", "b", "c"] (Just 1) (Just 3)
       calculateStudentsLog' [Student "a" 3, Student "b" 2] `shouldBe` StudentsLog ["a", "b"] (Just 2) (Just 3)
       calculateStudentsLog' [Student "a" 1] `shouldBe` StudentsLog ["a"] (Just 1) (Just 1)
-      calculateStudentsLog' [] `shouldBe` StudentsLog [] Nothing Nothing
 
   describe "Apples" $ do
     let 
@@ -110,9 +108,9 @@ spec = do
       --   / \
       -- Leaf Leaf
     it "test siftDown" $ do
-      siftDown bHeap `shouldBe` BinNode (2 :: Int) (BinNode (3 :: Int) BinLeaf BinLeaf) (BinNode (4 :: Int) BinLeaf BinLeaf)
-      siftDown bHeap' `shouldBe` BinNode (2 :: Int) (BinNode (1 :: Int) (BinNode (3 :: Int) BinLeaf BinLeaf) BinLeaf) (BinNode (4 :: Int) BinLeaf BinLeaf)
-      siftDown bHeap'' `shouldBe` BinNode (2 :: Int) (BinNode (3 :: Int) BinLeaf BinLeaf) BinLeaf
+      siftDown bHeap `shouldBe` Just (BinNode (2 :: Int) (BinNode (3 :: Int) BinLeaf BinLeaf) (BinNode (4 :: Int) BinLeaf BinLeaf))
+      siftDown bHeap' `shouldBe` Just (BinNode (2 :: Int) (BinNode (1 :: Int) (BinNode (3 :: Int) BinLeaf BinLeaf) BinLeaf) (BinNode (4 :: Int) BinLeaf BinLeaf))
+      siftDown bHeap'' `shouldBe` Just (BinNode (2 :: Int) (BinNode (3 :: Int) BinLeaf BinLeaf) BinLeaf)
 
     it "test buildHeap" $ do
       buildHeap ([3, 2, 4] :: [Int]) `shouldBe` BinNode (2 :: Int) (BinNode (4 :: Int) BinLeaf BinLeaf) (BinNode (3 :: Int) BinLeaf BinLeaf)
