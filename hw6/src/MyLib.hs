@@ -108,7 +108,6 @@ floatP = (+)
   <$> (fromIntegral <$> intP)
   <* satisfyP (== '.') 
   <*> (toDecimal <$> intP)
-  <|> fromIntegral <$> intP -- вдруг не будет точки
   where
     toDecimal :: Int -> Float
     toDecimal x = fromIntegral x / 10 ^ length (show x)
@@ -366,8 +365,8 @@ intOrFloatP = Left <$> digitsP
 -- | Напишите парсер для 'Value' (0,5 балла)
 --
 valueP :: Parser Value
-valueP =  IntValue    <$> intP
-      <|> FloatValue  <$> floatP
+valueP =  FloatValue  <$> floatP
+      <|> IntValue    <$> intP
       <|> StringValue <$> symbolsP
 
 -- Example:
@@ -384,14 +383,14 @@ valueP =  IntValue    <$> intP
 data CSV = CSV {
     colNames :: [String] -- названия колонок в файле
   , rows     :: [Row]    -- список строк со значениями из файла
-  }
+  }deriving (Show, Eq)
 
 -- | Строка CSV представляет собой отображение названий колонок
 --   в их значения в данной строке. Будем считать, что в каждой колонке
 --   в данной строке гарантировано есть значение
 --
 newtype Row = Row (Map String Value)
-  deriving (Show)
+  deriving (Show, Eq)
 
 ---------------------------------------
 
@@ -415,4 +414,9 @@ rowP cNames = Row . fromList . zip cNames <$> abstractRowP ',' valueP
 -- Example:
 -- runParser (rowP ["a", "b", "c"]) "1,2,3" == Just (Row (fromList [("a", IntValue 1), ("b", IntValue 2), ("c", IntValue 3)]), "")
 
+
 -------------------------------------------------------------------------------
+
+
+
+  
