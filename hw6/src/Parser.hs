@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs, FlexibleInstances #-}
 module Parser where
 
 import Data.Char           (digitToInt, isAlphaNum, isSpace, isDigit)
