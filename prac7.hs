@@ -32,7 +32,7 @@ csvP = Parser f
     f :: String -> Maybe (CSV, String)
     f s = case runParser colNamesP s of
         Nothing             -> Nothing
-        Just (colNames, s') -> case runParser (rowsP colNames) s' of
+        Just (colNames, s') -> case runParser (rowsP colNames <|> pure []) s' of
             Nothing -> Nothing
             Just (rows, s'') -> Just (CSV colNames rows, s'')
 
@@ -40,7 +40,7 @@ csvP = Parser f
     colNamesP = sepBy (satisfyP (== ',')) symbolsP
 
     rowsP :: [String] -> Parser [Row]
-    rowsP cNames = sepBy (satisfyP (== '\n')) (rowP cNames)
+    rowsP cNames = many (satisfyP (== '\n') *> rowP cNames)
 
 -------------------------------------------------------------------------------
 
