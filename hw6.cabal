@@ -1,0 +1,35 @@
+cabal-version:      2.4
+name:               hw6
+version:            0.1.0.0
+license:            MIT
+license-file:       LICENSE
+author:             Ivan
+maintainer:         shchukin.global@gmail.com
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:  MyLib
+                   ,  Parser
+    build-depends:    base ^>=4.18.0.0
+                 ,    containers
+                 ,    text
+    hs-source-dirs:   lib
+    default-language: Haskell2010
+
+test-suite hw6-test
+    import:           warnings
+    default-language: Haskell2010
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          MyLibTest.hs
+    build-depends:    base ^>=4.18.0.0
+                 ,    hw6
+                 ,    hspec
+                 ,    containers
+                 ,    text
+    other-modules:    TestSpec
