@@ -82,6 +82,68 @@ spec = do
                 }
         siftDown myheap `shouldBe` correctmyheap
 
+        let myheap2 = BinNode { val = 5
+                , left  = BinNode {val=3, 
+                                    left = BinNode {val=1, 
+                                                     left=BinNode {val=4, 
+                                                                    left=BinLeaf, 
+                                                                    right=BinLeaf},
+                                                     right = BinNode {val=7, 
+                                                                    left=BinLeaf,
+                                                                    right=BinLeaf}
+                                                    },
+                                    right = BinNode {val=13, 
+                                                     left=BinNode {val=11, 
+                                                                    left=BinLeaf, 
+                                                                    right=BinLeaf},
+                                                     right = BinNode {val=8, 
+                                                                    left=BinLeaf,
+                                                                    right=BinLeaf}
+                                                    }
+                                    } 
+                , right = BinNode {val=6, 
+                                    left = BinNode {val=2, 
+                                                     left = BinLeaf,
+                                                     right = BinLeaf
+                                                     }, 
+                                    right = BinNode {val=9, 
+                                                     left=BinLeaf,
+                                                     right=BinLeaf
+                                                     }
+                                    }
+                }
+            correctmyheap2 = BinNode { val = 3
+                , left  = BinNode {val=1, 
+                                    left = BinNode {val=4, 
+                                                     left=BinNode {val=5, 
+                                                                    left=BinLeaf, 
+                                                                    right=BinLeaf},
+                                                     right = BinNode {val=7, 
+                                                                    left=BinLeaf,
+                                                                    right=BinLeaf}
+                                                    },
+                                    right = BinNode {val=13, 
+                                                     left=BinNode {val=11, 
+                                                                    left=BinLeaf, 
+                                                                    right=BinLeaf},
+                                                     right = BinNode {val=8, 
+                                                                    left=BinLeaf,
+                                                                    right=BinLeaf}
+                                                    }
+                                    } 
+                , right = BinNode {val=6, 
+                                    left = BinNode {val=2, 
+                                                     left = BinLeaf,
+                                                     right = BinLeaf
+                                                     }, 
+                                    right = BinNode {val=9, 
+                                                     left=BinLeaf,
+                                                     right=BinLeaf
+                                                     }
+                                    }
+                }
+        siftDown myheap2 `shouldBe` correctmyheap2
+
     it "Task 7. A list with random access " $ do
         let tree = BBranch "root" (BBranch "left" (BLeaf "l1" "H") (BLeaf "l2" "S")) (BBranch "right" (BLeaf "r1" "E") (BLeaf "r2" "!"))
         
