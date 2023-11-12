@@ -5,6 +5,7 @@ module MyLib where
 import           Control.Applicative (Alternative (..))
 import           Data.Map.Strict     (Map, fromList)
 import qualified Data.Text           as T
+import           Data.Foldable       (foldl')
 import           Parser
 
 -------------------------------------------------------------------------------
@@ -26,7 +27,8 @@ intP :: Parser Int
 intP = fmap listToNumber digitsP
   where
     listToNumber :: [Int] -> Int
-    listToNumber = foldl (\acc x -> acc * 10 + x) 0
+    listToNumber = foldl' (\acc x -> acc * 10 + x) 0 -- конечно тут должен быть foldl', потому что он эффективнее,
+                                                     -- а ленивость тут не пригодится 
 
 -- ---------------------------------------
 
@@ -86,15 +88,11 @@ runMultIntsP' = runParser multDigitsP "33 * 6" -- Nothing
 -- 
 multIntsP :: Parser Int
 multIntsP = (*)
-  <$> (convertToNumber <$> digitsP)
-  <* spaceP
-  <* satisfyP (== '*')
-  <* spaceP
-  <*> (convertToNumber <$> digitsP)
-
-convertToNumber :: [Int] -> Int
-convertToNumber = foldl (\acc digit -> acc * 10 + digit) 0
-
+  <$> intP
+  <* spaceP 
+  <* satisfyP (== '*') 
+  <* spaceP 
+  <*> intP
 
 -- ---------------------------------------
 
@@ -104,13 +102,14 @@ convertToNumber = foldl (\acc digit -> acc * 10 + digit) 0
 -- --
 floatP :: Parser Float
 floatP = toFloat
-  <$> (convertToNumber <$> digitsP)
+  <$> intP
   <* satisfyP (== ',')
-  <*> (convertToNumber <$> digitsP)
-    where
-      toFloat :: Int -> Int -> Float
-      toFloat integerPart fractionalPart = fromIntegral integerPart + (fromIntegral fractionalPart / (10 ^ length (show fractionalPart)))
+  <*> intP
+  where
+    toFloat :: Int -> Int -> Float
+    toFloat integerPart fractionalPart = fromIntegral integerPart + (fromIntegral fractionalPart / (10 ^ length (show fractionalPart)))
 
+-- эту функцию тоже перепишем за компанию
 
 -- -- | Парсит 2 вещественных числа и перемножает их (0,25 балла)
 -- -- 
@@ -236,6 +235,17 @@ fmap4 f fa fb fc fe = f <$> fa <*> fb <*> fc <*> fe
 --
 -- Такая конструкция оказывается очень удобной в контексте парсеров. 
 -- Она улучшает читабельность функций и упрощает их написание.
+
+-- В данном случае, fmap принимает парсер aP и функцию g,
+-- и возвращает новый парсер, который применяет функцию g к результату парсера aP.
+-- В данном контексте, f будет функцией, которая принимает строку ввода и возвращает пару (b, String),
+-- где b - это результат применения функции g к результату парсера aP,
+-- и String - оставшаяся часть строки ввода после парсинга.
+-- 
+-- Тогда вот как выглядит тип f в определении fmap для Parser:
+-- f :: String -> Maybe (b, String)
+-- Этот тип подразумевает, что f принимает строку ввода и возвращает Maybe,
+-- где Just содержит пару с результатом парсинга типа b и оставшейся частью строки ввода, или Nothing, если парсинг не удался.
 ---------------------------------------
 
 -- 3.c* Почему код функции `gcContent` работает (1,5 балла)
@@ -269,9 +279,9 @@ gcContent = (/)
 -- b = Double -> Double
 
 -- С учетом последнего перепишем:
--- <$> == fmap :: (Double -> (Double -> Double)) -> (T.Text -> Double) -> (T.Text -> Double)
+-- <$> == fmap :: (Double -> (Double -> Double)) -> (T.Text -> Double) -> (T.Text -> (Double -> Double)) - написал неправильный тип для b
 --                                                  --левый T.length--     --результат <$>--
--- (<*>) ::  f (T.Text -> -> (Double -> Double)) -> (T.Text -> Double) -> (T.Text -> Double)
+-- (<*>) ::  f (T.Text -> (Double -> Double)) -> (T.Text -> Double) -> (T.Text -> Double)
                --сюда отправляем результат <$>--   -- правый T.length--  --получили gcContent--
 
 -------------------------------------------------------------------------------
@@ -315,18 +325,17 @@ inBetweenP lBorder rBorder p = stringP lBorder *> p <* stringP rBorder
 -- --       Функция принимает парсер, которым парсятся элементы списка (1 балл)
 -- --
 listP :: Parser a -> Parser [a]
-listP elP = inBetweenP "[" "]" (elementListP elP)
+listP elP = inBetweenP "[" "]" (moreElementsParser elP <|> zeroElementsParser)
   where
-    elementListP :: Parser a -> Parser [a]
-    elementListP p'        = moreElementsParser p' <|> zeroElementsParser
-
     -- Парсер для строки с несколькими элементами
+    moreElementsParser :: Parser a -> Parser [a]
     moreElementsParser p'' = (:) <$> p'' <*> many (spaceP *> satisfyP (== ',') *> spaceP *> p'')
     
     -- Парсер для строки без элементов
+    zeroElementsParser :: Parser [a]
     zeroElementsParser     = pure []
 
-
+-- так правда лучше, бонусом добавил типы 
 
 
 
@@ -417,7 +426,7 @@ abstractRowP sep p = moreElementsParser p <|> zeroElementsParser
 --       Названия колонок файла передаются аргументом (0,5 балла)
 --
 rowP :: [String] -> Parser Row
-rowP colN = Row <$> valuesMapP
-  where
-    valuesMapP = fromList . zip colN <$> abstractRowP ',' valueP
+rowP colN = Row . fromList . zip colN <$> abstractRowP ',' valueP -- сейчас понял, что это решение не будет работать для float,
+                                                                    -- потому что определенный для них разделитель ',' совпадает с разделителем csv файла,
+                                                                    -- можно заменить разделитель на точку в функции floatP, тогда все заработает
 -------------------------------------------------------------------------------
