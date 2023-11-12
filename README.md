@@ -187,7 +187,7 @@ Haskell course homework
 - `Applicative`
 - The meaning of `f <$> x <*> y <*> z`
 
-#### Applicative parsers
+#### Applicative parsers I
 
 - Parser definition
     ```haskell
@@ -196,14 +196,29 @@ Haskell course homework
     ```
 - `Functor` for `Parser`
 - `Applicative` for `Parser`
-- Examples of parsers
+- Examples of simple parsers
 
 ---
 
 ## 7 lecture
 
-- `Alternative`
-- `Applicative` for `Parser`
-- ...
+#### Applicative parsers II
+
+- `Alternative` for `Parser`
+- Parser for CSV 
+
+#### Monads I
+
+- Random generation in Haskell
+- `Monad`
+- Evaluation context
+  - Maybe, List, Either, Reader, Writer
+  - Kleisli arrow
+
+---
+
+## 8 lecture
+
+#### Monads II
 
 ---

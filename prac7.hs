@@ -19,7 +19,7 @@ newtype Row = Row (M.Map String Value)
   deriving (Show)
 
 rowP :: [String] -> Parser Row
-rowP cNames = Row . M.fromList . zip cNames <$> listP valueP
+rowP cNames = Row . M.fromList . zip cNames <$> sepBy (satisfyP (== ',')) valueP
 
 data CSV = CSV {
     colNames :: [String] -- названия колонок в файле
@@ -27,10 +27,20 @@ data CSV = CSV {
   } deriving (Show)
 
 csvP :: Parser CSV
-csvP = undefined
+csvP = Parser f
   where
+    f :: String -> Maybe (CSV, String)
+    f s = case runParser colNamesP s of
+        Nothing             -> Nothing
+        Just (colNames, s') -> case runParser (rowsP colNames <|> pure []) s' of
+            Nothing -> Nothing
+            Just (rows, s'') -> Just (CSV colNames rows, s'')
+
     colNamesP :: Parser [String]
-    colNamesP = listP symbolsP
+    colNamesP = sepBy (satisfyP (== ',')) symbolsP
+
+    rowsP :: [String] -> Parser [Row]
+    rowsP cNames = many (satisfyP (== '\n') *> rowP cNames)
 
 -------------------------------------------------------------------------------
 

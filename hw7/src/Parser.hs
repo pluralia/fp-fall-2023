@@ -1,3 +1,6 @@
+{-# LANGUAGE InstanceSigs, MultiParamTypeClasses, FlexibleInstances #-}
+
+
 module Parser where
 
 import Data.Char           (digitToInt, isAlphaNum, isSpace, isDigit)
@@ -7,12 +10,12 @@ import Data.Foldable       (foldl')
 newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
 
 instance Functor Parser where
-    fmap :: (a -> b) -> Parser a -> Parser b
-    fmap g aP = Parser f
-      where
-        f s = case runParser aP s of
-            Nothing      -> Nothing
-            Just (a, s') -> Just (g a, s')
+  fmap :: (a -> b) -> Parser a -> Parser b
+  fmap g aP = Parser f
+    where
+      f s = case runParser aP s of
+        Nothing      -> Nothing
+        Just (a, s') -> Just (g a, s')
 
 instance Applicative Parser where 
   pure :: a -> Parser a
@@ -38,6 +41,16 @@ instance Alternative Parser where
         Nothing -> runParser pA' s
         x       -> x
 
+--- MONAD FOR PARSER
+instance Monad Parser where
+  (>>=) :: Parser a -> (a -> Parser b) -> Parser b
+  (>>=) aP f = Parser $ \s -> case runParser aP s of
+    Nothing -> Nothing
+    Just (result, rest) -> runParser (f result) rest
+
+  return :: a -> Parser a
+  return = pure
+
 satisfyP :: (Char -> Bool) -> Parser Char
 satisfyP p = Parser f
   where
@@ -48,6 +61,9 @@ satisfyP p = Parser f
 
 symbolP :: Parser Char
 symbolP = satisfyP isAlphaNum
+
+stringP :: String -> Parser String
+stringP = traverse (satisfyP . (==))
 
 symbolsP :: Parser String
 symbolsP = some symbolP
@@ -66,26 +82,29 @@ digitsP = some digitP
 
 
 intP :: Parser Int
-intP = foldl' (\acc x -> acc * 10 + x) 0 <$> some digitP
+intP = satisfyP (== '-') *> (negate <$> helper) <|> helper
+  where
+    helper :: Parser Int
+    helper = foldl' (\ acc x -> 10 * acc + x) 0 <$> digitsP
 
 floatP :: Parser Float
-floatP = (+) . fromIntegral
-  <$> intP
-  <* satisfyP (== ',')
-  <*> helper
+floatP = satisfyP (== '-') *> (negate <$> helper) <|> helper
   where
     helper :: Parser Float
-    helper = foldl' (\ acc x -> 0.1 * (acc + fromIntegral x)) 0.0 . reverse <$> digitsP
+    helper = do
+      intPart <- fromIntegral . foldl' (\ acc x -> 10 * acc + x) 0 <$> digitsP
+      _ <- satisfyP (== '.')
+      floatPart <- foldr (\ x acc -> (acc + fromIntegral x) / 10) 0 <$> digitsP
+      return $ intPart + floatPart
 
-listP :: Parser a -> Parser [a]
-listP = sepBy (satisfyP (== ','))
-  where
-    sepBy :: Parser a -> Parser b -> Parser [b]
-    sepBy sep element = (:)
-      <$> element
-      <*> many (sep *> element)
-      <|> pure []
+sepBy :: Parser a -> Parser b -> Parser [b]
+sepBy sep element = (:)
+  <$> element
+  <*> many (sep *> element)
+  <|> pure []
 
+newLineP :: Parser Char
+newLineP = satisfyP (== '\n')
 
 -- | Как использовать парсер
 --
