@@ -21,11 +21,11 @@ testAll = and [
 --
 myAnd :: Bool -> Bool -> Bool
 myAnd True True = True
-myAnd _ _ = False
+myAnd _ _       = False
 
 (&) :: Bool -> Bool -> Bool
 (&) True True = True
-(&) _ _ = False
+(&) _ _       = False
 infixr 3 &
 -------------------------------------------------------------------------------
 
@@ -34,24 +34,22 @@ infixr 3 &
 -- | без хвостовой рекурсии
 --
 fib :: Int -> Int
-fib 0 = 0
-fib 1 = 1
-fib (-1) = 1
-fib (-2) = -1
-fib n | n >= 0 = fib(n - 1) + fib(n - 2)
-fib n | n < 0 = fib(n + 2) - fib(n + 1)
+fib n | n == 0    = 0
+      | n == 1    = 1
+      | n >= 0    = fib(n - 1) + fib(n - 2)
+      | otherwise = (-1)^(-n + 1) * fib (-n)
 
 -- | c хвостовой рекурсией
 --
 fibTail :: Integer -> Integer
-fibTail n | n > 1 = helper 0 1 n
-fibTail n | n < 0 = helper 0 1 n
-fibTail n = n
-
-helper n1 n2 1 = n2
-helper n1 n2 (-1) = n2
-helper n1 n2 n | n > 0 = helper n2 (n1 + n2) (n - 1) 
-helper n1 n2 n | n < 0 = helper n2 (n1 - n2) (n + 1)
+fibTail n | n > 1     = helper 0 1 n
+          | n < 0     = helper 0 1 n
+          | otherwise = n
+  where 
+    helper :: Integer -> Integer -> Integer -> Integer
+    helper n1 n2 n | (n == 1) || (n == -1) = n2
+                   | n > 0                 = helper n2 (n1 + n2) (n - 1) 
+                   | n < 0                 = helper n2 (n1 - n2) (n + 1)
 
 -- Позапускайте обе функции на больших числах (> 1000). Какой результат вы получили и почему?
 -- fib 1000 я не дождался. fibTail 100000 ждал результат пару секунд. Проблема в том, что при обычной рекурсии в Фибоначчи
@@ -83,50 +81,52 @@ myUncurry f (a, b) = f a b
 -- | возвращает длину списка
 --
 myLength :: [a] -> Int
-myLength [] = 0
-myLength n = lenHelper 0 n
-
-lenHelper :: Int -> [a] -> Int
-lenHelper n [] = n
-lenHelper n (_:xs) = lenHelper (n + 1) xs
+myLength n | null n    = 0
+           | otherwise = lenHelper 0 n
+  where 
+    lenHelper :: Int -> [a] -> Int
+    lenHelper n []     = n
+    lenHelper n (_:xs) = lenHelper (n + 1) xs
 
 -- | возвращает хвост списка
 --
 myTail :: [a] -> Maybe [a]
-myTail [] = Nothing
+myTail []       = Nothing
 myTail (_ : xs) = Just xs
 
 -- | возвращает список без последнего элемента
 --
 myInit :: [a] -> Maybe [a]
-myInit [x] = Just []
-myInit (x:xs) = Just (x : myInit' xs)
-myInit [] = Nothing
-
-myInit' :: [a] -> [a]
-myInit' [x] = []
-myInit' (x:xs) = x : myInit' xs
+myInit [x]    = Just []
+myInit []     = Nothing
+myInit (x:xs) = Just (x : initHelper xs)
+  where 
+    initHelper :: [a] -> [a]
+    initHelper [x]    = []
+    initHelper (x:xs) = x : initHelper xs
 -- | объединяет 2 списка
 --
 myAppend :: [a] -> [a] -> [a]
-myAppend [] xs = xs
-myAppend xs [] = xs
+myAppend [] xs     = xs
+myAppend xs []     = xs
 myAppend (x:xs) ys = x : myAppend xs ys
 
 -- | разворачивает список
 --
 myReverse :: [a] -> [a]
-myReverse [] = []
-myReverse [x] = [x]
-myReverse (x:xs) = myAppend (myReverse xs) [x]
-
+myReverse []     = []
+myReverse (x:xs) = reverseHelper xs [x]
+  where 
+    reverseHelper :: [a] -> [a] -> [a]
+    reverseHelper [] list     = list
+    reverseHelper (x:xs) list = reverseHelper xs (x:list)
 -- | выдаёт элемент списка по индексу
 --
 elemByIndex :: [a] -> Int -> Maybe a
-elemByIndex [] _ = Nothing
+elemByIndex [] _                             = Nothing
 elemByIndex xs n | n < 0 || n >= myLength xs = Nothing
-elemByIndex (x:xs) 0 = Just x
-elemByIndex (x:xs) n = elemByIndex xs (n - 1)
+elemByIndex (x:_) 0                          = Just x
+elemByIndex (_:xs) n                         = elemByIndex xs (n - 1)
 
 -- Tests for arrays
 -- test MyLength
@@ -209,15 +209,15 @@ testArrays = and [
 -- 5. Реализуйте map для разных типов.
 
 mapEither :: (a -> c) -> (b -> d) -> Either a b -> Either c d 
-mapEither f _ (Left x) = Left (f x)
+mapEither f _ (Left x)  = Left (f x)
 mapEither _ g (Right y) = Right (g y)
 
 mapMaybe :: (a -> b) -> Maybe a -> Maybe b
-mapMaybe _ Nothing = Nothing
+mapMaybe _ Nothing  = Nothing
 mapMaybe f (Just x) = Just (f x)
 
 mapList :: (a -> b) -> [a] -> [b]
-mapList _ [] = []
+mapList _ []     = []
 mapList f (x:xs) = f x : mapList f xs
 
 -------------------------------------------------------------------------------
@@ -241,19 +241,19 @@ chSucc :: ChurchNumber -> ChurchNumber
 chSucc = Succ
 
 chAdd :: ChurchNumber -> ChurchNumber -> ChurchNumber
-chAdd n Zero = n
+chAdd n Zero     = n
 chAdd n (Succ m) = chAdd (Succ n) m
 
 chMult :: ChurchNumber -> ChurchNumber -> ChurchNumber
-chMult _ Zero = Zero
+chMult _ Zero     = Zero
 chMult n (Succ m) = chAdd n (chMult n m)
 
 chPow :: ChurchNumber -> ChurchNumber -> ChurchNumber
-chPow _ Zero = Succ Zero
+chPow _ Zero     = Succ Zero
 chPow n (Succ m) = chMult n (chPow n m)
 
 chPrev :: ChurchNumber -> ChurchNumber
-chPrev Zero = Zero
+chPrev Zero     = Zero
 chPrev (Succ n) = n
 
 -- | Тесты могут выглядеть так
@@ -263,6 +263,9 @@ testChSucc = chSucc churchTwo == churchThree
   where
     churchTwo :: ChurchNumber
     churchTwo = Succ (Succ Zero)
+
+testChSucc0 :: Bool
+testChSucc0 = chSucc Zero == Succ Zero
 
 -- Тест для функции chAdd
 testChAdd :: Bool
@@ -277,6 +280,12 @@ testChAdd = chAdd churchTwo churchThree == churchFive
     churchFive :: ChurchNumber
     churchFive = Succ (Succ (Succ (Succ (Succ Zero))))
 
+testChAdd0 :: Bool
+testChAdd0 = chAdd Zero Zero == Zero
+
+testChAdd0_2 :: Bool
+testChAdd0_2 = chAdd Zero (Succ (Succ Zero)) == Succ (Succ Zero)
+
 -- chMult
 testChMult :: Bool
 testChMult = chMult churchThree churchTwo == churchSix
@@ -289,6 +298,12 @@ testChMult = chMult churchThree churchTwo == churchSix
 
     churchSix :: ChurchNumber
     churchSix = Succ (Succ (Succ (Succ (Succ (Succ Zero)))))
+
+testChMult0 :: Bool
+testChMult0 = chMult Zero (Succ Zero) == Zero
+
+testChMult1 :: Bool
+testChMult1 = chMult (Succ (Succ (Succ Zero))) (Succ Zero) == Succ (Succ (Succ Zero))
 
 -- chPow
 testChPow :: Bool
@@ -303,6 +318,15 @@ testChPow = chPow churchTwo churchThree == churchEight
     churchEight :: ChurchNumber
     churchEight = Succ (Succ (Succ (Succ (Succ (Succ (Succ (Succ Zero)))))))
 
+testChPow0 :: Bool
+testChPow0 = chPow (Succ (Succ Zero)) Zero == Succ Zero
+
+testChPow0_2 :: Bool
+testChPow0_2 = chPow Zero (Succ (Succ Zero)) == Zero
+
+testChPow1 :: Bool
+testChPow1 = chPow (Succ (Succ Zero)) (Succ Zero) == Succ (Succ Zero)
+
 -- chPrev
 testChPrev :: Bool
 testChPrev = chPrev churchThree == churchTwo
@@ -313,8 +337,26 @@ testChPrev = chPrev churchThree == churchTwo
     churchTwo :: ChurchNumber
     churchTwo = Succ (Succ Zero)
 
+testChPrev0 :: Bool
+testChPrev0 = chPrev Zero == Zero
+
 testsChurch :: Bool
-testsChurch = testChSucc & testChAdd & testChMult & testChPow & testChPrev
+testsChurch = and [
+    testChSucc,
+    testChSucc0,
+    testChAdd,
+    testChAdd0,
+    testChAdd0_2,
+    testChMult,
+    testChMult0,
+    testChMult1,
+    testChPow,
+    testChPow0,
+    testChPow1,
+    testChPow0_2,
+    testChPrev,
+    testChPrev0
+  ]
 
 -------------------------------------------------------------------------------
 
