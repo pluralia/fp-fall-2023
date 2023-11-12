@@ -1,4 +1,4 @@
-{-# LANGUAGE InstanceSigs, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE InstanceSigs #-} -- добавил все скопом и забыл удалить ненужные
 
 module Parser where
 
