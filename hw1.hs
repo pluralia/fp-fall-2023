@@ -4,7 +4,7 @@ testFib1 :: Bool
 testFib1 = fib 8 == 21
 
 testFib2 :: Bool
-testFib2 = fibTail 1000 == 817770325994397771
+testFib2 = fibTail 100 == 354224848179261915075
 
 testOper1 :: Bool
 testOper1 = myAnd True True == True
@@ -25,7 +25,7 @@ testReverse :: Bool
 testReverse = myReverse [1,2,3,4] == [4,3,2,1]
 
 testByIndex :: Bool
-testByIndex = elemByIndex [1,2,3,4] 1 == Just 2
+testByIndex = elemByIndex [1,2,3,4] 2 == Just 2
 
 
 -- | Вызвать из все разом можно так:
@@ -40,6 +40,10 @@ testAll = and [
   , testAppend
   , testReverse
   , testByIndex
+  , testChAdd
+  , testChMult
+  , testChPow
+  , testChPrev
   ]
 
 -------------------------------------------------------------------------------
@@ -50,9 +54,10 @@ myAnd :: Bool -> Bool -> Bool
 myAnd True True = True
 myAnd _ _ = False
 
-infix 3 &&&
+infixr 3 &&&
 (&&&) :: Bool -> Bool -> Bool
-a &&& b = a && b
+(&&&) True True = True
+(&&&) _ _ = False
 
 -------------------------------------------------------------------------------
 
@@ -67,7 +72,7 @@ fib n = fib (n-1) + fib (n-2)
 
 -- | c хвостовой рекурсией
 --
-fibTail :: Int -> Int
+fibTail :: Int -> Integer
 fibTail n = go n (0,1)
   where
     go !n (!a, !b) | n==0      = a
@@ -124,9 +129,13 @@ myAppend (x:xs) join = x : myAppend xs join
 
 -- | разворачивает список
 --
-myReverse :: [a] ->  [a]
-myReverse [] = []
-myReverse (x:xs) = myReverse xs ++ [x]
+myReverse :: [a] -> [a]
+myReverse list = rev list []
+
+rev :: [a] -> [a] -> [a]
+rev [] acc = acc
+rev (x:xs) acc = rev xs (x:acc)
+
 
 -- | выдаёт элемент списка по индексу
 --
@@ -187,7 +196,6 @@ chPow m n = case n of
 chPrev :: ChurchNumber -> ChurchNumber
 chPrev n = case n of
   Zero       -> Zero
-  Succ Zero  -> Zero
   Succ x     -> x
 
 -- Тесты
@@ -207,6 +215,15 @@ testChMult = chMult churchTwo churchThree == churchSix
   where
     churchSix :: ChurchNumber
     churchSix = Succ (Succ (Succ (Succ (Succ (Succ Zero)))))
+
+testChPow :: Bool
+testChPow = chPow churchTwo churchThree == churchSeven
+  where
+    churchSeven :: ChurchNumber
+    churchSeven = Succ (Succ (Succ (Succ (Succ (Succ (Succ (Succ Zero)))))))
+
+testChPrev :: Bool
+testChPrev = chPrev churchThree == churchTwo
 
 
 -------------------------------------------------------------------------------
@@ -297,8 +314,7 @@ binTreeOfInts =
 isPresented :: Int -> IntTree -> Bool
 isPresented _ Leaf = False
 isPresented target (Node value left right)
-  | target == value = True
-  | target < value  = isPresented target left
+  -- | target == value = True
   | otherwise       = isPresented target right
 
 testIsPresented :: Bool
