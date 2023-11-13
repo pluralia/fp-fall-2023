@@ -333,19 +333,7 @@ intOrFloatP = Left <$> digitsP
 -- | Напишите парсер для 'Value' (0,5 балла)
 --
 valueP :: Parser Value
-valueP = floatValueP <|> intValueP <|> stringValueP
-
--- Парсер для IntValue
-intValueP :: Parser Value
-intValueP = IntValue <$> intP
-
--- Парсер для FloatValue
-floatValueP :: Parser Value
-floatValueP = FloatValue <$> floatP
-
--- Парсер для StringValue
-stringValueP :: Parser Value
-stringValueP = StringValue <$> symbolsP
+valueP = (FloatValue <$> floatP) <|> (IntValue <$> intP) <|>  (StringValue <$> symbolsP)
 
 -------------------------------------------------------------------------------
 
