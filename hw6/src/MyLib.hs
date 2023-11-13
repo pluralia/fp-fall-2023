@@ -6,6 +6,7 @@ import           Data.Map.Strict     (Map, fromList)
 import qualified Data.Text           as T
 import           Parser
 import           Data.List
+import Data.Char
 -------------------------------------------------------------------------------
 
 -- 1. Простые парсеры (1,25 балла)
@@ -101,8 +102,11 @@ multIntsP = (*)
 floatP :: Parser Float
 floatP = read . concat <$> sequenceA [intPart, pure ".", fracPart]
   where
-    intPart = concatMap show <$> digitsP
-    fracPart = satisfyP (== ',') *> (concatMap show <$> digitsP)
+    intPart :: Parser [Char]
+    intPart = some (satisfyP isDigit)
+
+    fracPart :: Parser[Char]
+    fracPart = satisfyP (== ',') *> intPart
 
 -- | Парсит 2 вещественных числа и перемножает их (0,25 балла)
 -- 
@@ -288,17 +292,12 @@ inBetweenP lBorder rBorder p = stringP lBorder *> p <* stringP rBorder
 listP :: Parser a -> Parser [a]
 listP p = inBetweenP "[" "]" (sepBy p commaSep)
 
-commaP :: Parser String
-commaP = fmap pure (satisfyP (== ','))
-
 commaSep :: Parser String
-commaSep = spaceP *> commaP <* spaceP
+commaSep = spaceP *> fmap pure (satisfyP (== ',')) <* spaceP
 
 sepBy :: Parser a -> Parser b -> Parser [a]
-sepBy p sep = sepBy' p sep <|> pure []
+sepBy p sep = ((:) <$> p <*> many (sep *> p)) <|> pure []
 
-sepBy' :: Parser a -> Parser b -> Parser [a]
-sepBy' p sep = (:) <$> p <*> many (sep *> p)
 -------------------------------------------------------------------------------
 
 -- 5. Парсим Value (0,5 баллa)
@@ -385,3 +384,15 @@ rowP :: [String] -> Parser Row
 rowP colNames' = Row . fromList . zip colNames' <$> abstractRowP ',' valueP
 
 -------------------------------------------------------------------------------
+-- csvP :: Parser CSV
+-- csvP = CSV <$> colNamesP <*> many (rowP <$> colNamesP)
+--   where
+--     colNamesP :: Parser [String]
+--     colNamesP = listP symbolsP
+
+-- -------------------------------------------------------------------------------
+
+-- testIO :: IO (Maybe (CSV, String))
+-- testIO = do
+--     content <- readFile "test.csv"
+--     return $ runParser csvP content

@@ -59,4 +59,4 @@ test-suite hw6-test
                       hspec, array
     ghc-options:      -Wall 
     
-    other-modules:    TestSpec, MyLib
+    other-modules:    TestSpec, MyLib, Parser
