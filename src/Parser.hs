@@ -1,4 +1,4 @@
-{-# LANGUAGE InstanceSigs, FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module Parser where
 

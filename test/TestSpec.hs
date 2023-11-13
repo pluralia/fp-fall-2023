@@ -119,10 +119,10 @@ spec = do
                 (Just (Row (fromList [("Age",    IntValue 14),
                                       ("Height", FloatValue 162.5),
                                       ("Name",   StringValue "Ksenya"),
-                                      ("Sex",    StringValue "Female")] ), "") :: Maybe (Row, String))
+                                      ("Sex",    StringValue "Female")] ), "    ") :: Maybe (Row, String))
             runParser (rowP colName) "" `shouldBe` (Just (Row empty, "") :: Maybe (Row, String))
-            runParser (rowP colName) "Tihon,16,5,Male,170,brother" `shouldBe`
+            runParser (rowP colName) "Tihon,16,5,Male,170brother" `shouldBe`
                 (Just (Row (fromList [("Age",    FloatValue 16.5),
                                       ("Height", IntValue 170),
                                       ("Name",   StringValue "Tihon"),
-                                      ("Sex",    StringValue "Male")] ), "")  :: Maybe (Row, String))
+                                      ("Sex",    StringValue "Male")] ), "brother")  :: Maybe (Row, String))

@@ -29,10 +29,10 @@ intP :: Parser Int
 intP = foldl' (\ acc x -> acc * 10 + x) 0 <$> digitsP
 
 intP2 :: Parser Int         -- парсит числа формата [1...9][0...9]+
-intP2 = foldl' (\ acc x -> acc * 10 + x) 0 <$> ((<>) <$> firstDigitP <*> digitsP)
+intP2 = foldl' (\ acc x -> acc * 10 + x) 0 <$> ((:) <$> firstDigitP <*> digitsP)
   where
-    firstDigitP :: Parser [Int]
-    firstDigitP = singleton . digitToInt <$> satisfyP (`elem` "123456789")
+    firstDigitP :: Parser Int
+    firstDigitP = digitToInt <$> satisfyP (`elem` ['1'..'9'])
 
 ---------------------------------------
 
@@ -59,11 +59,8 @@ dnaSeqP = some dnaP
 -- | 1.d Парсит заданную строку (0,25 балла)
 --
 stringP :: String -> Parser String
-stringP str = Parser go
+stringP str = Parser (helper str)
   where
-    go :: String -> Maybe (String, String)
-    go = helper str
-
     helper :: String -> String -> Maybe (String, String)
     helper []     x      = Just (str, x)
     helper _      []     = Nothing
@@ -98,7 +95,12 @@ runMultIntsP' = runParser multDigitsP "33 * 6" -- Nothing
 -- | Реализуйте парсер, который умеет парсить 2 числа и перемножать их
 -- 
 multIntsP :: Parser Int
-multIntsP = (*) <$> intP <* spaceP <* satisfyP (== '*') <* spaceP <*> intP
+multIntsP = (*)
+  <$> intP
+  <* spaceP
+  <* satisfyP (== '*')
+  <* spaceP
+  <*> intP
 
 ---------------------------------------
 
@@ -212,7 +214,7 @@ fmap4 f fa fb fc fd = f <$> fa <*> fb <*> fc <*> fd
 -- 3.b Сравните реализацию fmap4 и multDigitsP/simpleExprP/exprP -- видите похожий паттерн?
 --     Поделитесь своими мыслями / наблюдениями на этот счет (0,25 балла)
 
--- мы работаем над чем-то __в контексте__: в случае парсеров "обёрткой" выступает Maybe,
+-- мы работаем над чем-то __в контексте__: в случае парсеров "обёрткой" выступает Maybe и Parser,
 -- а в случае fmap4 обёрткой может служить любой контекст 'f' 
 -- так что и там, и там мы преобразовываем что-то, завёрнутое в контекст, поэтому их реализации так похожи.
 
@@ -296,13 +298,16 @@ inBetweenP lBorder rBorder p = stringP lBorder *> p <* stringP rBorder
 listP :: Parser a -> Parser [a]
 listP p = inBetweenP "[" "]" (moreElemP p <|> zeroElemP p)
   where
-    -- костыль для корерктного определения типов
-    singletonP :: Parser a -> Parser [a]
-    singletonP = (<$>) singleton
     zeroElemP :: Parser a -> Parser [a]
     zeroElemP _ = [] <$ spaceP
     moreElemP :: Parser a -> Parser [a]
-    moreElemP p' = (<>) <$ spaceP <*> singletonP p' <*> many (spaceP *> satisfyP (== ',') *> spaceP *> p' <* spaceP)
+    moreElemP p' = (:) 
+      <$ spaceP 
+      <*> p' 
+      <*> many (spaceP 
+                *> satisfyP (== ',') 
+                *> spaceP 
+                *> p')
 
 -------------------------------------------------------------------------------
 
@@ -369,12 +374,16 @@ newtype Row = Row (Map String Value)
 abstractRowP :: Char -> Parser a -> Parser [a]
 abstractRowP sep p = moreElemP p <|> zeroElemP p
   where
-    singletonP :: Parser a -> Parser [a]
-    singletonP = (<$>) singleton
-    moreElemP :: Parser a -> Parser [a]
-    moreElemP p' = (<>) <$ spaceP <*> singletonP p' <*> many (spaceP *> satisfyP (==sep) *> spaceP *> p' <* spaceP)
     zeroElemP :: Parser a -> Parser [a]
     zeroElemP _ = [] <$ spaceP
+    moreElemP :: Parser a -> Parser [a]
+    moreElemP p' = (:) 
+      <$ spaceP 
+      <*> p' 
+      <*> many (spaceP 
+                *> satisfyP (==sep) 
+                *> spaceP 
+                *> p')
 
 ---------------------------------------
 
@@ -383,6 +392,6 @@ abstractRowP sep p = moreElemP p <|> zeroElemP p
 --
 -- по умолчанию считаем, что разделитель ',' как в стандартных csv-файлах
 rowP :: [String] -> Parser Row
-rowP colnames = Row . fromList <$> (zip colnames <$> abstractRowP ',' valueP)
+rowP colnames = Row . fromList . zip colnames <$> abstractRowP ',' valueP
 
 -------------------------------------------------------------------------------
