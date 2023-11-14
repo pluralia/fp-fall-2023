@@ -1,4 +1,4 @@
-{-# LANGUAGE InstanceSigs, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module MyLib where
 import           Control.Applicative (Alternative (..))
@@ -54,6 +54,12 @@ dnaSeqP = many dnaP
 --
 stringP :: String -> Parser String
 stringP = traverse (satisfyP . (==)) 
+-- типы: 
+-- (==) :: Char -> (Char -> Bool) (оно не ограничивается только Char, но для нашего случая подойдет)
+-- satisfyP :: (Char -> Bool) -> Parser Char
+-- satisfyP . (==) :: Char -> Parser Char
+-- traverse :: (Char -> Parser Char) -> String -> Parser String
+-- traverse (satisfyP . (==)) :: String -> Parser String
 
 -- Example:
 -- runParser (stringP "abc") "abcdef" == Just ("abc", "def")
@@ -224,8 +230,14 @@ fmap4 f fa fb fc fd = f <$> fa <*> fb <*> fc <*> fd
 
 ---------------------------------------
 
+-- g :: a -> b
+-- aP :: Parser a
+-- fmap g aP :: Parser b
+
 -- 3.b Сравните реализацию fmap4 и multDigitsP/simpleExprP/exprP -- видите похожий паттерн?
 --     Поделитесь своими мыслями / наблюдениями на этот счет (0,25 балла)
+
+-- Я забыл написать (
 
 ---------------------------------------
 
@@ -253,21 +265,11 @@ gcContent = (/)
 -- Подсказка: пусть (<$>) :: (a -> b) -> f a -> f b; f для gcContent -- это (-> T.Text)
 
 -- gcContent = (/) <$> fa <*> fb
--- (/) :: a -> b -> c = (a -> (b -> c))
--- <$> :: (x -> y) -> f x -> f y
--- x = a
--- y = (b -> c)
--- (/) <$> :: f a -> f (b -> c)
--- fa :: T.Text -> a
--- (/) <$> fa :: f (b -> c)
--- <*> :: f (x -> y) -> f x -> f y
--- x = b
--- y = c
--- (/) <$> fa <*> :: f b -> f c
--- fb :: T.Text -> b
--- (/) <$> fa <*> fb :: f c
--- f c = T.Text -> c
--- (/) <$> fa <*> fb :: T.Text -> c
+-- fa :: T.Text -> Double
+-- fb :: T.Text -> Double
+-- (/) :: Double -> Double -> Double
+-- (/) <$> fa :: f (Double -> Double)
+-- (/) <$> fa <*> fb :: f Double
 
 
 -------------------------------------------------------------------------------
