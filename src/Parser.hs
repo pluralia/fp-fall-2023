@@ -1,8 +1,11 @@
+{-# LANGUAGE InstanceSigs #-}
+
 module Parser where
 
 import Data.Char           (digitToInt, isAlphaNum, isSpace, isDigit)
 import Control.Applicative (Alternative (..))
 import Data.Foldable       (foldl')
+import Data.Functor        (($>))
 
 newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
 
@@ -14,7 +17,7 @@ instance Functor Parser where
             Nothing      -> Nothing
             Just (a, s') -> Just (g a, s')
 
-instance Applicative Parser where 
+instance Applicative Parser where
   pure :: a -> Parser a
   pure a = Parser $ \s -> Just (a, s)
 
@@ -27,7 +30,7 @@ instance Applicative Parser where
           Nothing       -> Nothing
           Just (a, s'') -> Just (g a, s'')
 
-instance Alternative Parser where 
+instance Alternative Parser where
   empty :: Parser a
   empty = Parser $ const Nothing
 
@@ -64,14 +67,17 @@ digitP = digitToInt <$> satisfyP isDigit
 digitsP :: Parser [Int]
 digitsP = some digitP
 
-
 intP :: Parser Int
 intP = foldl' (\acc x -> acc * 10 + x) 0 <$> some digitP
 
-floatP :: Parser Float
-floatP = (+) . fromIntegral
-  <$> intP
-  <* satisfyP (== ',')
+signP :: Num a => Parser (a -> a)
+signP = (satisfyP (== '-') $> negate) <|> pure id
+
+floatP :: Char -> Parser Float
+floatP sign = (\ f a -> f . (+) (fromIntegral a))
+  <$> signP
+  <*> intP
+  <* satisfyP (== sign)
   <*> helper
   where
     helper :: Parser Float

@@ -1,30 +1,10 @@
+module MyLib where
+
 import           Control.Applicative
-import qualified Data.Map.Strict as M
+import           Control.Monad (void)
+import           Data.Char (isAlpha)
 import           Data.Maybe (isJust)
 import           Parser
-
--------------------------------------------------------------------------------
-
--- 1. Парсер строки CSV формата with Maybe (0,5 балла)
-
-data Value
-  = IntValue Int
-  | FloatValue Float
-  | StringValue String
-  deriving (Eq, Show)
-
-valueP :: Parser Value
-valueP = IntValue <$> intP
-  <|> FloatValue <$> floatP
-  <|> StringValue <$> symbolsP
-
-newtype Row = Row (M.Map String (Maybe Value))
-  deriving (Show)
-
--- | напишите парсер строки: заметьте, что теперь строка -- Map в `Maybe Value`
---
-rowP :: [String] -> Parser Row
-rowP cNames = undefined
 
 -------------------------------------------------------------------------------
 
@@ -76,11 +56,34 @@ data Fasta = Fasta {
   , seq         :: [Acid]  -- последовательность
 } deriving (Eq, Show)
 
+eofP :: Parser ()
+eofP = Parser $ \s -> if null s then Just ((), s) else Nothing
+
+notNewLine :: Char -> Bool
+notNewLine = (/= '\n')
+
+takeWhileP :: (Char -> Bool) -> Parser String
+takeWhileP = many . satisfyP
+
+lineStartsWithP :: Char -> Parser String
+lineStartsWithP c = satisfyP (== c) *> takeWhileP (/= '\n')
+
 -- | В одном файле можно встретить несколько последовательностей, разделенных произвольным числом переводов строк
 --   Напишите парсер контента такого файла (Пример в файле `test.fasta`)
 --
+dropLinesP :: Parser ()
+dropLinesP = void . many $ (pure <$> newLineP) <|> lineStartsWithP ';'
+
+atLeastOneSeqP :: Parser a -> Parser b -> Parser [b]
+atLeastOneSeqP sep singleElement = (:) <$> singleElement <*> many (sep *> singleElement)
+
+fastaP :: Parser Fasta
+fastaP = Fasta
+  <$> lineStartsWithP '>' <* dropLinesP
+  <*> (concat <$> atLeastOneSeqP newLineP (some (satisfyP (\c -> isAlpha c || c == '*'))))
+
 fastaListP :: Parser [Fasta]
-fastaListP = undefined
+fastaListP = dropLinesP *> sepBy dropLinesP fastaP <* dropLinesP <* eofP
 
 -------------------------------------------------------------------------------
 
@@ -93,23 +96,112 @@ fastaListP = undefined
 
 -- | Тип, представляющий из себя ATOM
 --
-data PDBAtom = YourImplementationOfPDBAtom
+data PDBAtom
+  = PDBAtom 
+      { aserial :: Int
+      , name :: String
+      , altLoc :: Char
+      , resName :: String
+      , chainID :: Char
+      , resSeq :: Int
+      , iCode :: Char
+      , x :: Float
+      , y :: Float
+      , z :: Float
+      , occupancy :: Float
+      , tempFactor :: Float
+      , element :: String
+      , charge :: String
+      } deriving (Show, Eq)
+
+stringP :: String -> Parser String
+stringP = foldr (\c acc -> (:) <$> satisfyP (== c) <*> acc) (pure [])
+
+takeInLineP :: Int -> Parser String
+takeInLineP 0 = pure []
+takeInLineP c = (:) <$> satisfyP (/= '\n') <*> takeInLineP (c - 1)
+
+-- Apply parser to output of another parser
+infixl 6 >>>
+(>>>) :: Parser String -> Parser a -> Parser a
+(>>>) ps pa = Parser $ \s -> case runParser ps s of
+  Nothing      -> Nothing
+  Just (g, s') -> case runParser pa g of
+    Just (a, "") -> Just (a, s')
+    _            -> Nothing
+
+spacedP :: Parser a -> Parser a
+spacedP p = spaceP *> p <* spaceP
+
+atomP :: Parser PDBAtom
+atomP = PDBAtom
+  <$  stringP "ATOM  "
+  <*> takeInLineP 5 >>> spacedP intP
+  <* stringP " "
+  <*> takeInLineP 4
+  <*> satisfyP notNewLine
+  <*> takeInLineP 3
+  <* stringP " "
+  <*> satisfyP notNewLine
+  <*> takeInLineP 4 >>> spacedP intP
+  <*> satisfyP notNewLine
+  <* stringP "   "
+  <*> takeInLineP 8 >>> spacedP (floatP '.')
+  <*> takeInLineP 8 >>> spacedP (floatP '.')
+  <*> takeInLineP 8 >>> spacedP (floatP '.')
+  <*> takeInLineP 6 >>> spacedP (floatP '.')
+  <*> takeInLineP 6 >>> spacedP (floatP '.')
+  <* stringP "          "
+  <*> takeInLineP 2
+  <*> takeInLineP 2
 
 -- | Тип, представляющий из себя CONNECT
 --
-data PDBBond = YourImplementationOfPDBBond
+data PDBBond
+  = PDBBond 
+      { bserial1 :: Int
+      , bserial2 :: Int
+      , bserial3 :: Maybe Int
+      , bserial4 :: Maybe Int
+      , bserial5 :: Maybe Int
+      } deriving (Show, Eq)
+
+bondP :: Parser PDBBond
+bondP = PDBBond
+  <$  stringP "CONECT"
+  <*> takeInLineP 5 >>> spacedP intP
+  <*> takeInLineP 5 >>> spacedP intP
+  <*> optional (takeInLineP 5 >>> spacedP intP)
+  <*> optional (takeInLineP 5 >>> spacedP intP)
+  <*> optional (takeInLineP 5 >>> spacedP intP)
 
 -- | Тип, представляющий из себя MODEL
 --
 data PDBModel
   = PDBModel
-      { atoms :: [PDBAtom] -- атомы из секции ATOM
+      { mserial :: Int
+      , atoms :: [PDBAtom] -- атомы из секции ATOM
       , bonds :: [PDBBond] -- связи из секции CONNECT
-      }
+      } deriving (Show, Eq)
+
+modelP :: Parser PDBModel
+modelP = PDBModel
+  <$  stringP "MODEL "
+  <*  stringP "    "
+  <*> takeInLineP 4 >>> spacedP intP <* newLineP
+  <*> many (atomP <* newLineP)
+  <*> many (bondP <* newLineP)
+  <*  stringP "ENDMDL"
 
 -- | PDB-файл
 --
-newtype PDB = PDB [PDBModel]
+newtype PDB = PDB [PDBModel] deriving (Show, Eq)
+
+pdbP :: Parser PDB
+pdbP = PDB
+  <$> many (modelP <* newLineP)
+  <*  stringP "END"
+  <*  eofP
 
 -- 3.a Распарсите `only_atoms.pdb` (2,25 балла)
 --     Для выполнения задания фактически нужно научиться парсить только секцию MODEL, 
@@ -117,64 +209,3 @@ newtype PDB = PDB [PDBModel]
 
 -- 3.b Распарсите `atoms_and_bonds.pdb` (1,25 балл)
 --     Придётся научиться парсить секцию CONNECT.
-
--------------------------------------------------------------------------------
-
--- 4. Monad Parser (0,5 балла)
---    (можно без док-ва законов)
-
--- | Определен в файле Parser.hs
---   newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
-
-instance Monad Parser where
-    (>>=) :: Parser a -> (a -> Parser b) -> Parser b
-    (>>=) = undefined
-
--------------------------------------------------------------------------------
-
--- 5. Реализуйте инстансы Applicative и Monad для нескольких типов (2,75 балла)
-
---    Покажите выполнение законов класса Applicative и Monad для вашей реализации (Functor не нужно)
---    https://hackage.haskell.org/package/base-4.19.0.0/docs/Control-Monad.html#t:Monad
-
----------------------------------------
-
--- 5.a Maybe (0,75 балла)
-
-data Maybe' a = Nothing' | Just' a
-  deriving (Show, Eq)
-
--- Monad зависит от Applicative, Applicative -- от Functor,
--- поэтому нужно реализовывать и эти 2 класса при реализации Monad
-
-instance Functor Maybe' where
-  fmap :: (a -> b) -> Maybe' a -> Maybe' b
-  fmap = undefined
-
-instance Applicative Maybe' where
-  pure :: a -> Maybe' a
-  pure = undefined
-
-  (<*>) :: Maybe' (a -> b) -> Maybe' a -> Maybe' b
-  (<*>) = undefined
-
-instance Monad Maybe' where
-  (>>=) :: Maybe' a -> (a -> Maybe' b) -> Maybe' b
-  (>>=) = undefined
-
----------------------------------------
-
--- 5.b Список (1 балл)
---     Подумайте, как нужно матчить списки функций и элементов при реализации <*>:
---     zip или каждый с каждым?
-
----------------------------------------
-
--- 5.c Either (1 балл)
---     Подумайте, что делать с "экстра" типом-параметром
-
--------------------------------------------------------------------------------
-
--- 6. Что называется "стрелкой Клейсли"? (0,25 балла)
-
--------------------------------------------------------------------------------
