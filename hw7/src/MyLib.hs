@@ -230,7 +230,7 @@ bondP = do
   return $ PDBBond atom1' bondedAtoms'
 
 modelP :: Parser PDBModel
-modelP = PDBModel 
+modelP = PDBModel -- one parser to rule them all
   <$> (stringP "MODEL" *> spaceP *> intP <* newLineP) 
   <*> many atomP 
   <*> many bondP 
@@ -295,11 +295,56 @@ instance Applicative Maybe' where
   (<*>) _ Nothing' = Nothing'
   (<*>) (Just' f) (Just' a) = Just' $ f a
 
+-- доказательство законов методом перебора. А можно юзать Test.QuickCheck?)))
+--
+-- 1. pure id <*> v = v
+-- pure id <*> Nothing' = Nothing'
+-- pure id <*> Just' a = Just' $ id a = Just' a
+--
+-- 2. pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
+-- pure (.) <*> Nothing' <*> v <*> w = Nothing' = Nothing' <*> (v <*> w)
+-- pure (.) <*> u <*> Nothing' <*> w = Nothing' = u <*> Nothing' <*> w
+-- pure (.) <*> u <*> v <*> Nothing' = Nothing' = u <*> (v <*> Nothing')
+-- pure (.) <*> Just' f <*> Just' g <*> Just' a = 
+--  = Just' $ (.) f <*> Just' g <*> Just' a =
+--   = Just' $ f . g <*> Just' a =
+--    = Just' $ f (g a) =
+--     = Just' $ f <$> Just' (g a) =
+--      = Just' $ f <$> (Just' g <*> Just' a) =
+--       = Just' f <*> (Just' g <*> Just' a) 
+--
+-- 3. pure f <*> pure x = pure (f x)
+-- Just' f <*> Just' x = Just' $ f x = pure (f x)
+-- pure f <*> Nothing' = Nothing' = pure (f Nothing')
+-- pure Nothing' <*> Just' x = Nothing' = pure (Nothing' x)
+--
+-- 4. u <*> pure y = pure ($ y) <*> u 
+-- как я понял ($ y) - это функция, которая принимает функцию и возвращает ее применение к y
+-- Nothing' <*> pure y = Nothing' = pure ($ y) <*> Nothing'
+-- Just' f <*> pure y = Just' $ f y = pure ($ y) <*> Just' f
+
 
 instance Monad Maybe' where
   (>>=) :: Maybe' a -> (a -> Maybe' b) -> Maybe' b
   (>>=) Nothing' _ = Nothing'
   (>>=) (Just' a) f = f a
+
+  return :: a -> Maybe' a
+  return = pure
+
+-- 1. return a >>= f = f a
+-- return a >>= f = Just' a >>= f = f a
+--
+-- 2. m >>= return = m
+-- Nothing' >>= return = Nothing'
+-- Just' a >>= return = return a = Just' a
+--
+-- 3. m >>= (\x -> k x >>= h) = (m >>= k) >>= h
+-- k :: a -> Maybe' b
+-- h :: b -> Maybe' c
+-- \x -> (k x >>= h) :: a -> Maybe' c
+-- Nothing' >>= (\x -> k x >>= h) = Nothing' = (Nothing' >>= k) >>= h
+-- Just' a >>= (\x -> k x >>= h) = k a >>= h = (Just' a >>= k) >>= h
 
 ---------------------------------------
 
@@ -313,8 +358,8 @@ data List' a = Nil' | Cons' a (List' a)
 
 instance Semigroup (List' a) where
   (<>) :: List' a -> List' a -> List' a
-  Nil' <> as = as
-  (Cons' a as) <> bs = Cons' a (as <> bs)
+  (<>) Nil' as = as
+  (<>) (Cons' a as) bs = Cons' a (as <> bs)
 
 
 instance Functor List' where
@@ -332,11 +377,64 @@ instance Applicative List' where
   (<*>) _ Nil' = Nil'
   (<*>) (Cons' f fs) as = fmap f as <> (fs <*> as) -- матчим каждый с каждым
 
+-- 1. pure id <*> v = v
+-- pure id <*> Nil' = Nil'
+-- pure id <*> Cons' a as = 
+--  = Cons' (id a) (pure id <*> as) = Cons' a as 
+--
+-- 2. pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
+-- w :: List' a
+-- v :: List' (a -> b)
+-- u :: List' (b -> c)
+-- pure (.) :: List' ((b -> c) -> (a -> b) -> a -> c)
+-- pure (.) <*> u :: List' ((a -> b) -> a -> c)
+-- pure (.) <*> u <*> v :: List' (a -> c)
+-- pure (.) <*> u <*> v <*> w :: List' c  ----
+-- v <*> w :: List' b
+-- u <*> (v <*> w) :: List' c  ----
+-- я не знаю как это по другому доказать. перебором жуть
+--
+-- 3. pure f <*> pure x = pure (f x)
+-- pure f <*> pure x = Cons' f Nil' <*> Cons' x Nil' =
+--  = Cons' (f x) (Nil' <*> Cons' x Nil') =
+--   = Cons' (f x) Nil' = pure (f x)
+--
+-- 4. u <*> pure y = pure ($ y) <*> u
+-- y :: b
+-- u :: List' (b -> c)
+-- $ y :: (a -> b) -> b
+-- u <*> pure y :: List' c  ----
+-- pure ($ y) :: List' ((b -> c) -> c)
+-- pure ($ y) <*> u :: List' c  ----
+
 
 instance Monad List' where
   (>>=) :: List' a -> (a -> List' b) -> List' b
   (>>=) Nil' _ = Nil'
   (>>=) (Cons' a as) f = f a <> (as >>= f)
+
+  return :: a -> List' a
+  return = pure
+
+-- 1. return a >>= f = f a
+-- return a >>= f = Cons' a Nil' >>= f = f a
+--
+-- 2. m >>= return = m
+-- Nil' >>= return = Nil'
+-- Cons' a as >>= return = 
+--  = return a <> (as >>= return) =
+--   = Cons' a Nil' <> (as >>= return) =
+--    = Cons' a Nil' <> as =
+--     = Cons' a as
+--
+-- 3. m >>= (\x -> k x >>= h) = (m >>= k) >>= h
+-- k :: a -> List' b
+-- h :: b -> List' c
+-- m :: List' a
+-- \x -> (k x >>= h) :: a -> List' c
+-- m >>= (\x -> k x >>= h) :: List' c  ----
+-- m >>= k :: List' b
+-- (m >>= k) >>= h :: List' c  ----
 
 ---------------------------------------
 
@@ -362,11 +460,56 @@ instance Applicative (Either' a) where
   (<*>) _ (Left' a) = Left' a
   (<*>) (Right' f) (Right' b) = Right' $ f b
 
+-- 1. pure id <*> v = v
+-- pure id <*> Left' a = Left' a
+-- pure id <*> Right' b = Right' $ id b = Right' b
+
+-- 2. pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
+-- u :: Either' a (b -> c)
+-- v :: Either' a (a -> b)
+-- w :: Right' a
+-- pure (.) :: Either' a ((b -> c) -> (a -> b) -> a -> c)
+-- pure (.) <*> u :: Either' a ((a -> b) -> a -> c)
+-- pure (.) <*> u <*> v :: Either' a (a -> c)
+-- pure (.) <*> u <*> v <*> w :: Either' a c  ----
+-- v <*> w :: Either' a b
+-- u <*> (v <*> w) :: Either' a c  ----
+--
+-- 3. pure f <*> pure x = pure (f x)
+-- pure f <*> pure x = Right' f <*> Right' x = Right' $ f x = pure (f x)
+--
+-- 4. u <*> pure y = pure ($ y) <*> u
+-- u :: Either' a (b -> c)
+-- y :: b
+-- $ y :: (b -> c) -> c
+-- pure ($ y) :: Either' a ((b -> c) -> c)
+-- pure ($ y) <*> u :: Either' a c  ----
+-- u <*> pure y :: Either' a c  ----
+
 
 instance Monad (Either' a) where
   (>>=) :: Either' a b -> (b -> Either' a c) -> Either' a c
   (>>=) (Left' a) _ = Left' a
   (>>=) (Right' b) f = f b
+
+  return :: b -> Either' a b
+  return = pure
+
+-- 1. return a >>= f = f a
+-- return a >>= f = Right' a >>= f = f a
+--
+-- 2. m >>= return = m
+-- Left' a >>= return = Left' a
+-- Right' b >>= return = return b = Right' b
+--
+-- 3. m >>= (\x -> k x >>= h) = (m >>= k) >>= h
+-- k :: b -> Either' a c
+-- h :: c -> Either' a d
+-- m :: Either' a b
+-- \x -> (k x >>= h) :: b -> Either' a d
+-- m >>= (\x -> k x >>= h) :: Either' a d  ----
+-- m >>= k :: Either' a c
+-- (m >>= k) >>= h :: Either' a d  ----
 
 -------------------------------------------------------------------------------
 
