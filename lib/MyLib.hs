@@ -44,20 +44,20 @@ rowP = undefined
 -- Она читает содержимое файла из указанного пути и затем парсит его с помощью предоставленного парсера. 
 -- Результат будет либо Left с ошибкой парсинга, либо Right с успешно разобранными данными.
 
-testParserIO :: FilePath -> Parsec Void String a -> IO Bool
-testParserIO filePath parser = do
-  result <- Text.Megaparsec.runParser parser "" <$> readFile filePath
-  case result of
-    Left _ -> return False    -- Парсер вернул ошибку
-    Right _ -> return True    -- Парсер вернул успешный результат
-
--- чтобы проверить, какой результат выдает парсер прям в виде текста
--- testParserIO :: FilePath -> Parsec Void String [a] -> IO (Either String [a])
+-- testParserIO :: FilePath -> Parsec Void String a -> IO Bool
 -- testParserIO filePath parser = do
 --   result <- Text.Megaparsec.runParser parser "" <$> readFile filePath
 --   case result of
---     Left err     -> return (Left (show err))  -- Парсер вернул ошибку
---     Right a      -> return (Right a)      -- Парсер вернул успешный результат
+--     Left _ -> return False    -- Парсер вернул ошибку
+--     Right _ -> return True    -- Парсер вернул успешный результат
+
+-- чтобы проверить, какой результат выдает парсер прям в виде текста
+testParserIO :: FilePath -> Parsec Void String a -> IO (Either String a)
+testParserIO filePath parser = do
+  result <- Text.Megaparsec.runParser parser "" <$> readFile filePath
+  case result of
+    Left err     -> return (Left (show err))  -- Парсер вернул ошибку
+    Right a      -> return (Right a)      -- Парсер вернул успешный результат
 
 
 -- | Чтобы использовать файлы для тестов, воспользуйтесь этой функцией
@@ -116,6 +116,15 @@ fastaP = do
 fastaListP :: Parsec Void String [Fasta]
 fastaListP = Text.Megaparsec.some fastaP
 
+
+main :: IO ()
+main = do 
+  let testFilePath = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\smalltest.fasta"
+  
+  result <- testParserIO testFilePath fastaP
+  case result of
+    Left err -> putStrLn $ "Parsing failed with error: " ++ err
+    Right parsedData -> putStrLn $ "Parsing successful. Parsed data: " ++ show parsedData
 -------------------------------------------------------------------------------
 
 -- 3. Парсер PDB (3,5 балла)
