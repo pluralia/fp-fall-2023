@@ -46,13 +46,12 @@ dnaSeqP = many dnaP
 
 -- | 1.d Парсит заданную строку (0,25 балла)
 -- 
-{- видимо я как-то не так понимаю парсинг строки, мой код не работает
-stringP :: String -> Parser String
+{-
 stringP str = Parser go
   where
     go :: String -> Maybe (String, String)
-    go pattern | str == "" = Nothing
-               | otherwise = (:) <$> satisfyP (== pattern) <*> stringP
+    go input | input == "" = Nothing
+             | otherwise = (:) <$> satisfyP (== input) <*> stringP str
 -}
 -------------------------------------------------------------------------------
 
@@ -107,7 +106,7 @@ floatP = toFloat
   <*> intP
     where
       toFloat :: Int -> Int -> Float
-      toFloat whole fract = fromIntegral whole + (fromIntegral fract / (10 ^ length (show fract)))
+      toFloat integral fract = fromIntegral integral + (fromIntegral fract / (10 ^ length (show fract)))
 
 -- | Парсит 2 вещественных числа и перемножает их (0,25 балла)
 -- 
@@ -330,16 +329,9 @@ intOrFloatP = Left <$> digitsP
 -- | Напишите парсер для 'Value' (0,5 балла)
 --
 valueP :: Parser Value
-valueP = floatValueP <|> intValueP <|> stringValueP
-  where
-    intValueP :: Parser Value
-    intValueP = IntValue <$> intP
-
-    floatValueP :: Parser Value
-    floatValueP = FloatValue <$> floatP
-
-    stringValueP :: Parser Value
-    stringValueP = StringValue <$> symbolsP
+valueP = FloatValue <$> floatP 
+     <|> IntValue <$> intP 
+     <|>  StringValue <$> symbolsP
 
 -------------------------------------------------------------------------------
 
@@ -359,7 +351,7 @@ data CSV = CSV {
 --   в данной строке гарантировано есть значение
 --
 newtype Row = Row (Map String Value)
-  deriving (Show)
+  deriving (Show, Eq)
 
 ---------------------------------------
 
@@ -382,6 +374,6 @@ abstractRowP sep p = (:)
 --
 -- изменила, чтобы можно было передать другой разделитель
 rowP :: [String] -> Char -> Parser Row
-rowP colnames sep = Row . fromList <$> (zip colnames <$> abstractRowP sep valueP)
+rowP colnames sep = Row . fromList . zip colnames <$> abstractRowP sep valueP
 
 -------------------------------------------------------------------------------
