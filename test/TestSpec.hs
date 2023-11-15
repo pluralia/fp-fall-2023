@@ -46,11 +46,8 @@ spec = do
       runParser simpleExprP "3,14 * 36,6"  `shouldBe` (Just (SimpleExpr 3.14 '*' 36.6,"") :: Maybe (SimpleExpr, String))
       runParser simpleExprP ""             `shouldBe` Nothing
 
-      -- у меня какие-то странные числа выдает, не ожидаемые значения, допускаю, что это округления и точность, но не понятно почему отдельно работает
-      {-
-      runParser sumMultFloatsP "3,14 + 36,6" `shouldBe` (Just (39.74, "")   :: Maybe (Float, String))
-      runParser sumMultFloatsP "3,14 * 36,6" `shouldBe` (Just (114.924, "") :: Maybe (Float, String))
-      -}
+      (\(x, s) -> (abs (x - 39.74) < 1e-5, s)) <$> runParser sumMultFloatsP "3,14 + 36,6" `shouldBe` (Just (True, "")   :: Maybe (Bool, String))
+      (\(x, s) -> (abs (x - 114.924) < 1e-5, s)) <$> runParser sumMultFloatsP "3,14 * 36,6" `shouldBe` (Just (True, "")   :: Maybe (Bool, String))
 
     it "Task 4. Difficult Parcers" $ do
       runParser (takeWhileP isDigit) "123JMK" `shouldBe` (Just ("123","JMK") :: Maybe (String, String))
@@ -69,10 +66,9 @@ spec = do
       runParser (abstractRowP ',' intP) "1, 2, 3, end" `shouldBe` (Just ([1,2,3],", end") :: Maybe ([Int], String))
       runParser (abstractRowP ':' symbolsP) "I:5:like:7:haskell!" `shouldBe` (Just (["I","5","like","7","haskell"],"!") :: Maybe ([String], String))
 
-{- не понимаю ошибку этого теста
+
       let colName = ["Name", "Surname", "Course", "Grade"]
       runParser (rowP colName ',') "Julia, Kostina, Haskell, 5,5" `shouldBe` (Just (Row (fromList [("Course",StringValue "Haskell"),
                                                                                                    ("Grade",FloatValue 5.5),
                                                                                                    ("Name",StringValue "Julia"),
                                                                                                    ("Surname",StringValue "Kostina")]),"") :: Maybe (Row, String))
--}
