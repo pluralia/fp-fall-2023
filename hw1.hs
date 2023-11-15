@@ -314,8 +314,9 @@ binTreeOfInts =
 isPresented :: Int -> IntTree -> Bool
 isPresented _ Leaf = False
 isPresented target (Node value left right)
-  -- | target == value = True
-  | otherwise       = isPresented target right
+  | target == value = True
+  | target < value   = isPresented target left
+  | otherwise       = isPresented target right 
 
 testIsPresented :: Bool
 testIsPresented =
