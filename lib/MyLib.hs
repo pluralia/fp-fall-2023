@@ -221,26 +221,6 @@ pdbParser' = do
   models <- Text.Megaparsec.many modelParser' <* string "END"
   return $ PDB' models
 
--- Функция для тестирования парсера чтобы он выводил прямо в процессе работы результат
--- testAtomParser :: String -> IO ()
--- testAtomParser input = do
---   case Text.Megaparsec.runParser atomParser "" input of
---     Left err -> putStrLn $ "Error: " ++ errorBundlePretty err
---     Right result -> do
---       putStrLn "Parsed result:"
---       putStrLn $ "  atomType: " ++ atomType result
---       putStrLn $ "  atomNumber: " ++ show (atomNumber result)
---       putStrLn $ "  atomName: " ++ atomName result
---       putStrLn $ "  aminoAcid: " ++ aminoAcid result
---       putStrLn $ "  chainId: " ++ [chainId result]
---       putStrLn $ "  residueNumber: " ++ show (residueNumber result)
---       putStrLn $ "  xCoord: " ++ show (xCoord result)
---       putStrLn $ "  yCoord: " ++ show (yCoord result)
---       putStrLn $ "  zCoord: " ++ show (zCoord result)
---       putStrLn $ "  occupancy: " ++ show (occupancy result)
---       putStrLn $ "  temperatureFactor: " ++ show (temperatureFactor result)
---       putStrLn $ "  element: " ++ element result
-
 
 -- 3.b Распарсите `atoms_and_bonds.pdb` (1,25 балл)
 --     Придётся научиться парсить секцию CONNECT.
