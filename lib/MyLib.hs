@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, InstanceSigs #-}
 module MyLib where
 
 
@@ -7,7 +7,7 @@ import qualified Data.Map.Strict as M
 import           Parser
 import           Text.Megaparsec 
 import           Text.Megaparsec.Char
-import           Text.Megaparsec.Char.Lexer
+import qualified Text.Megaparsec.Char.Lexer as L
 import           Data.Void (Void)
 import           Data.Char (isSpace)
 
@@ -34,7 +34,7 @@ newtype Row = Row (M.Map String (Maybe Value))
 
 -- Парсер для строки Row
 rowP :: [String] -> Parser Row
-rowP = undefined
+rowP columns = Row . M.fromList . zip columns <$> Parser.sepBy (satisfyP (== '.')) (optional valueP)
 
 -------------------------------------------------------------------------------
 
@@ -44,20 +44,20 @@ rowP = undefined
 -- Она читает содержимое файла из указанного пути и затем парсит его с помощью предоставленного парсера. 
 -- Результат будет либо Left с ошибкой парсинга, либо Right с успешно разобранными данными.
 
--- testParserIO :: FilePath -> Parsec Void String a -> IO Bool
--- testParserIO filePath parser = do
---   result <- Text.Megaparsec.runParser parser "" <$> readFile filePath
---   case result of
---     Left _ -> return False    -- Парсер вернул ошибку
---     Right _ -> return True    -- Парсер вернул успешный результат
-
--- чтобы проверить, какой результат выдает парсер прям в виде текста
-testParserIO :: FilePath -> Parsec Void String a -> IO (Either String a)
+testParserIO :: FilePath -> Parsec Void String a -> IO Bool
 testParserIO filePath parser = do
   result <- Text.Megaparsec.runParser parser "" <$> readFile filePath
   case result of
-    Left err     -> return (Left (show err))  -- Парсер вернул ошибку
-    Right a      -> return (Right a)      -- Парсер вернул успешный результат
+    Left _ -> return False    -- Парсер вернул ошибку
+    Right _ -> return True    -- Парсер вернул успешный результат
+
+-- чтобы проверить, какой результат выдает парсер прям в виде текста
+-- testParserIO :: FilePath -> Parsec Void String a -> IO (Either String a)
+-- testParserIO filePath parser = do
+--   result <- Text.Megaparsec.runParser parser "" <$> readFile filePath
+--   case result of
+--     Left err     -> return (Left (show err))  -- Парсер вернул ошибку
+--     Right a      -> return (Right a)      -- Парсер вернул успешный результат
 
 
 -- | Чтобы использовать файлы для тестов, воспользуйтесь этой функцией
@@ -117,14 +117,14 @@ fastaListP :: Parsec Void String [Fasta]
 fastaListP = Text.Megaparsec.some fastaP
 
 
-main :: IO ()
-main = do 
-  let testFilePath = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\smalltest.fasta"
+-- main :: IO ()
+-- main = do 
+--   let testFilePath = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\smalltest.fasta"
   
-  result <- testParserIO testFilePath fastaP
-  case result of
-    Left err -> putStrLn $ "Parsing failed with error: " ++ err
-    Right parsedData -> putStrLn $ "Parsing successful. Parsed data: " ++ show parsedData
+--   result <- testParserIO testFilePath fastaP
+--   case result of
+--     Left err -> putStrLn $ "Parsing failed with error: " ++ err
+--     Right parsedData -> putStrLn $ "Parsing successful. Parsed data: " ++ show parsedData
 -------------------------------------------------------------------------------
 
 -- 3. Парсер PDB (3,5 балла)
@@ -182,19 +182,19 @@ newtype PDB' = PDB' [PDBModel']
 -- Парсер для строки ATOM
 atomParser :: Parsec Void String PDBAtom
 atomParser = do
-  aatomType <- string "ATOM" 
-  aatomNumber <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.Char.Lexer.decimal
-  aatomName <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.some alphaNumChar
-  aaminoAcid <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.some alphaNumChar
-  cchainId <- Text.Megaparsec.many Text.Megaparsec.Char.space *> anySingle
-  rresidueNumber <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.Char.Lexer.decimal
-  xxCoord <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.Char.Lexer.float
-  yyCoord <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.Char.Lexer.float
-  zzCoord <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.Char.Lexer.float
-  ooccupancy <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.Char.Lexer.float
-  ttemperatureFactor <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.Char.Lexer.float
-  eelement <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.some (alphaNumChar <|> char '-' <|> char '+') <* eol
-  return $ PDBAtom
+  aatomType <- string "ATOM" <* space1
+  aatomNumber <- L.decimal <* space1
+  aatomName <-  Text.Megaparsec.some alphaNumChar <* space1
+  aaminoAcid <- Text.Megaparsec.some alphaNumChar <* space1
+  cchainId <-  symbolChar <* space1
+  rresidueNumber <- L.decimal <* space1
+  xxCoord <- L.float <* space1
+  yyCoord <- L.float <* space1
+  zzCoord <- L.float <* space1
+  ooccupancy <- L.float <* space1
+  ttemperatureFactor <- L.float <* space1
+  eelement <- Text.Megaparsec.some (alphaNumChar <|> symbolChar) <* newline
+  return $ PDBAtom  
     aatomType
     aatomNumber
     aatomName
@@ -211,17 +211,14 @@ atomParser = do
 -- Парсер для секции MODEL, содержащей только ATOM
 modelParser' :: Parsec Void String PDBModel'
 modelParser' = do
-  _ <- string "MODEL" 
-  _ <- Text.Megaparsec.many Text.Megaparsec.Char.space *> (Text.Megaparsec.Char.Lexer.decimal :: Parsec Void String Int)  <* eol
-  atomss <- Text.Megaparsec.some (Text.Megaparsec.many Text.Megaparsec.Char.space *> atomParser <* eol)
-  _ <- string "ENDMDL"  <* eol
+  _ <- string "MODEL"  <* Text.Megaparsec.Char.space *> (L.decimal :: Parsec Void String Int)  <* newline
+  atomss <- Text.Megaparsec.many (atomParser <* newline) <* string "ENDMDL"  
   return $ PDBModel' atomss
 
 -- Парсер для всего файла PDB
 pdbParser' :: Parsec Void String PDB'
 pdbParser' = do
-  models <- Text.Megaparsec.some modelParser'
-  _ <- string "END" <* eol
+  models <- Text.Megaparsec.many modelParser' <* string "END"
   return $ PDB' models
 
 -- Функция для тестирования парсера чтобы он выводил прямо в процессе работы результат
@@ -251,17 +248,16 @@ pdbParser' = do
 connectParser :: Parsec Void String PDBBond
 connectParser= do
   _ <- string "CONNECT"
-  bond1 <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.Char.Lexer.decimal
-  bond2 <- Text.Megaparsec.many Text.Megaparsec.Char.space *> Text.Megaparsec.Char.Lexer.decimal <* eol
+  bond1 <- Text.Megaparsec.Char.space *> L.decimal
+  bond2 <- Text.Megaparsec.Char.space *> L.decimal <* eol
   return $ PDBBond bond1 bond2
 
 -- Парсер для секции MODEL, содержащей ATOM и CONNECT
 modelParser :: Parsec Void String PDBModel
 modelParser = do
-  _ <- string "MODEL" 
-  _ <- Text.Megaparsec.many Text.Megaparsec.Char.space *> (Text.Megaparsec.Char.Lexer.decimal :: Parsec Void String Int)  <* eol
-  atomss <- Text.Megaparsec.some (Text.Megaparsec.many Text.Megaparsec.Char.space *> atomParser <* eol)
-  cconect <- Text.Megaparsec.many (Text.Megaparsec.Char.space *> connectParser <* eol)
+  _ <- string "MODEL" <* Text.Megaparsec.Char.space *> (L.decimal :: Parsec Void String Int)  <* eol
+  atomss <- Text.Megaparsec.some (Text.Megaparsec.Char.space *> atomParser <* eol)
+  cconect <- Text.Megaparsec.some (Text.Megaparsec.Char.space *> connectParser <* eol)
   _ <- string "ENDMDL"  <* eol
   return $ PDBModel atomss cconect
 
@@ -293,29 +289,67 @@ pdbParser = do
 
 -- 5.a Maybe (0,75 балла)
 
--- data Maybe' a = Nothing' | Just' a
---   deriving (Show, Eq)
+data Maybe' a = Nothing' | Just' a
+  deriving (Show, Eq)
 
 -- Monad зависит от Applicative, Applicative -- от Functor,
 -- поэтому нужно реализовывать и эти 2 класса при реализации Monad
 
--- instance Functor Maybe' where
---   fmap :: (a -> b) -> Maybe' a -> Maybe' b
---   fmap f (Just' x) = Just' (f x)
---   fmap _ Nothing'  = Nothing'
+instance Functor Maybe' where
+  fmap :: (a -> b) -> Maybe' a -> Maybe' b
+  fmap f (Just' x) = Just' (f x)
+  fmap _ Nothing'  = Nothing'
 
--- instance Applicative Maybe' where
---   pure :: a -> Maybe' a
---   pure = Just'
+instance Applicative Maybe' where
+  pure :: a -> Maybe' a
+  pure = Just'
 
---   (<*>) :: Maybe' (a -> b) -> Maybe' a -> Maybe' b
---   Just' f <*> m = f <$> m
---   Nothing' <*> _ = Nothing'
+  (<*>) :: Maybe' (a -> b) -> Maybe' a -> Maybe' b
+  Just' f <*> m = f <$> m
+  Nothing' <*> _ = Nothing'
 
--- instance Monad Maybe' where
---   (>>=) :: Maybe' a -> (a -> Maybe' b) -> Maybe' b
---   Just' x >>= f = f x
---   Nothing' >>= _ = Nothing'
+-- -- Проверяем выполнение законов:
+-- -- Проверка для Just' a
+-- pure id <*> Just' a == Just' (id a) == Just' a
+
+-- -- Проверка для Nothing'
+-- pure id <*> Nothing' == Nothing'
+
+-- -- Проверка для Just' f <*> pure y
+-- Just' f <*> pure y == Just' (f y)
+
+-- -- Проверка для pure ($ y) <*> Just' f
+-- pure ($ y) <*> Just' f == Just' ($ y) <*> Just' f == Just' (f y)
+
+-- -- Проверка для Nothing' <*> pure y
+-- Nothing' <*> pure y == Nothing'
+
+-- -- Проверка для pure ($ y) <*> Nothing'
+-- pure ($ y) <*> Nothing' == Nothing'
+
+-- -- Проверка для Just' (.)
+-- pure (.) <*> Just' f <*> Just' g <*> Just' a == Just' (f . g) <*> Just' a == Just' (f (g a)) == Just' ((f . g) a)
+-- Just' f <*> (Just' g <*> Just' a) == Just' f <*> Just' (g a) == Just' (f (g a)) == Just' ((f . g) a)
+
+-- -- Проверка для Nothing' <*> Just' g <*> Just' a
+-- Nothing' <*> Just' g <*> Just' a == Nothing'
+
+-- -- Проверка для Just' f <*> Nothing' <*> Just' a
+-- Just' f <*> Nothing' <*> Just' a == Nothing'
+
+-- -- Проверка для Just' f <*> Just' g <*> Nothing'
+-- Just' f <*> Just' g <*> Nothing' == Nothing'
+
+instance Monad Maybe' where
+  (>>=) :: Maybe' a -> (a -> Maybe' b) -> Maybe' b
+  Just' x >>= f = f x
+  Nothing' >>= _ = Nothing'
+
+-- -- Проверяем выполнение законов:
+-- leftIdentity a f = Just' a >>= f == f a
+-- rightIdentity m = (m >>= Just') == m
+-- associativity m f g = ((m >>= f) >>= g) == (m >>= (\x -> f x >>= g))
+
 
 ---------------------------------------
 
@@ -324,13 +358,21 @@ pdbParser = do
 --     zip или каждый с каждым?
 
 {-
-Рассмотрим пример: если у нас есть fs :: Maybe' (a -> b) и xs :: Maybe' a, 
-то кажется логичным применить каждую функцию из fs к соответствующему значению из xs. 
-Таким образом, если у нас есть два списка значений, мы хотим применить первую функцию к первому значению, 
-вторую к второму и так далее.
+Рассмотрим на примере, пусть у нас есть список функций fs и список значений xs
+fs = [(+1), (*2), (^2)]
+xs = [1, 2, 3]
 
-Для этого лучше использовать операцию zip. Операция zip берет два списка и объединяет их в список пар по позициям. 
-Это идеально подходит для применения каждой функции к соответствующему значению, сохраняя структуру данных.
+Если мы используем zip для применения каждой функции к каждому значению, результат будет выглядеть так:
+zipWith ($) fs xs = [(+1) 1, (*2) 2, (^2) 3] = [2, 4, 9]
+
+Однако, если мы используем оператор <*> для списков, результат будет:
+fs <*> xs = [(+1) 1, (+1) 2, (+1) 3, (*2) 1, (*2) 2, (*2) 3, (^2) 1, (^2) 2, (^2) 3] = [2, 3, 4, 2, 4, 6, 1, 4, 9]
+
+Таким образом, оператор <*> применяет каждую функцию из списка fs ко всем значениям списка xs, создавая новый список результатов. 
+Это соответствует идее комбинирования каждого элемента первого списка с каждым элементом второго списка.
+
+Я не совсем понял, это чисто теоретический вопрос или нужно прям реализовать код, поэтому
+привел тут теорию, как я ее понял, без реализации <*> для списка
 -}
 
 ---------------------------------------
@@ -338,7 +380,23 @@ pdbParser = do
 -- 5.c Either (1 балл)
 --     Подумайте, что делать с "экстра" типом-параметром
 
--- ??? додумать надо
+-- Если я правильно понял, то под "экстра" типом-параметром подразумевается следующее:
+data Either' a b = Left' a | Right' b
+  deriving (Show, Eq)
+
+instance Functor (Either' a) where
+    fmap :: (b -> c) -> Either' a b -> Either' a c
+    fmap _ (Left' e) = Left' e   -- Если внутри Left, оставляем его неизменным
+    fmap f (Right' r) = Right' (f r) -- Применяем функцию к значению внутри Right
+
+-- Тогда реализация Applicative для Either' будет выглядеть следующим образом:
+instance Applicative (Either' a) where
+    pure :: b -> Either' a b
+    pure = Right'
+    
+    (<*>) :: Either' a (c -> d) -> Either' a c -> Either' a d
+    Left' e <*> _ = Left' e       -- Если первый аргумент - Left, оставляем его неизменным
+    Right' f <*> r = fmap f r     -- Применяем функцию из Right к значению внутри Right
 
 -------------------------------------------------------------------------------
 
