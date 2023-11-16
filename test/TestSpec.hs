@@ -3,9 +3,6 @@ module TestSpec where
 
 import Test.Hspec
 import MyLib
-import Parser
-import Data.Char       (isUpper)
-import Data.Map.Strict (fromList, empty)
 
 spec :: Spec
 spec = do
@@ -14,7 +11,11 @@ spec = do
             let testFilePath1 = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\test.fasta"
             testParserIO testFilePath1 fastaListP `shouldReturn` True
         
-    describe "3. Парсер PDB" $ do -- не советую запускать - уйдет в бесконечный цикл :с
-        it "My test PDB" $ do
-            let testFilePath2 = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\atoms_with_bonds.pdb"
-            testParserIO testFilePath2 pdbParser `shouldReturn` True
+    describe "3. Парсер PDB" $ do 
+        it "My test only_atoms" $ do
+            let testFilePath2 = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\only_atoms.pdb"
+            testParserIO testFilePath2 pdbParser' `shouldReturn` True
+
+        it "My test atoms_with_bonds" $ do
+            let testFilePath3 = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\atoms_with_bonds.pdb"
+            testParserIO testFilePath3 pdbParser `shouldReturn` True
