@@ -10,8 +10,9 @@ spec = do
         it "My test FASTA" $ do
             let testFilePath1 = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\test.fasta"
             testParserIO testFilePath1 fastaListP `shouldReturn` True
-        
-    describe "3. Парсер PDB" $ do 
+
+    -- дает False и я не знаю почему, у меня закончились идеи
+    describe "3. Парсер PDB" $ do  
         it "My test only_atoms" $ do
             let testFilePath2 = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\only_atoms.pdb"
             testParserIO testFilePath2 pdbParser' `shouldReturn` True
