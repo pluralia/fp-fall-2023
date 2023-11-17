@@ -221,4 +221,23 @@ Haskell course homework
 
 #### Monads II
 
+- Генератор псевдослучайных чисел
+- `Traversable`
+- `Identity` monad
+- do-notation
+- `MonadFail`
+- `Maybe`, `[]`
+- `Writer`, `Reader`
+
+---
+
+## 9 lecture
+
+### Monads III
+
+- `State`
+- `IO`
+
+### Monad Transformers
+
 ---
