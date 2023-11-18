@@ -29,12 +29,15 @@ testAll =
 -------------------------------------------------------------------------------
 
 -- | 1. Реализуйте логическое И как функцию и как оператор (выберите произвольные символы для вашего оператора).
---
--- myAnd :: Bool -> Bool -> Bool
-myAnd a b = a /= b
+myAnd :: Bool -> Bool -> Bool
+myAnd True True = True
+myAnd _ _ = False
+
+infixl 0 <=>
 
 (<=>) :: Bool -> Bool -> Bool
-a <=> b = a /= b
+(<=>) True True = True
+(<=>) _ _ = False
 
 -------------------------------------------------------------------------------
 -- costraint on types of a and b
@@ -102,34 +105,47 @@ myUncurry f p = f (fstArg p) (scdArg p)
 --    - напишите тесты
 
 -- | возвращает длину списка
+myLength1 :: [Int] -> Int
+myLength1 (_ : xs) = 1 + myLength xs
+
 myLength :: [Int] -> Int
-myLength (_ : xs) = 1 + myLength xs
-myLength [] = 0
+myLength (x : xs) = helper 1 xs
+  where
+    helper acc [] = acc
+    helper acc (x : xs) = helper (acc + 1) xs
+-- вот так по идее мы будем аккумулировать сумму в acc
 
 -- | возвращает хвост списка
 myTail :: [Int] -> Either String Int
-myTail [] = Left "Error"
+myTail [] = Left "Empty List"
 myTail [x] = Right x
 myTail (_ : xs) = myTail xs
 
 -- | возвращает список без последнего элемента
 myInit :: [a] -> [a]
 myInit [] = []
-myInit [a] = []
 myInit (x : xs) = x : myInit xs
 
--- myAppend :: a -> [a] -> [a]
--- myAppend a [] = [a]
--- myAppend a (x:xs) = x : myAppend a xs
+myAppend :: a -> [a] -> [a]
+myAppend a [] = [a]
+myAppend a (x:xs) = x : myAppend a xs
 
 -- | объединяет 2 списка
-myAppend :: [a] -> [a] -> [a]
-myAppend a b = a ++ b
+-- myAppend :: [a] -> [a] -> [a]
+-- myAppend a b = a ++ b
 
 -- | разворачивает список
+-- myReverse :: [a] -> [a]
+-- myReverse [] = []
+-- myReverse (x : xs) = myReverse xs ++ [x]
+
 myReverse :: [a] -> [a]
-myReverse (x : xs) = myReverse xs ++ [x]
 myReverse [] = []
+myReverse arr = helper [] arr
+  where
+    helper acc [] = acc
+    helper acc [x] = x : acc
+    helper acc (x: xs) = helper (x : acc) xs
 
 -- | выдаёт элемент списка по индексу
 elemByIndex :: Int -> [Int] -> Maybe Int
@@ -324,7 +340,6 @@ binTreeOfInts =
 
 -- честно списано у Артемия (сам долго мучался)
 isPresented :: Int -> IntTree -> Bool
-
 isPresented _ Leaf = False
 isPresented x (Node val left right) = x == val || isPresented x left || isPresented x right
 
