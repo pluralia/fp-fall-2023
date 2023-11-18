@@ -22,6 +22,9 @@ newtype Row = Row (M.Map String (Maybe Value))
   deriving (Show)
 
 -- | напишите парсер строки: заметьте, что теперь строка -- Map в `Maybe Value`
+--   значения разделены запятыми; если значения между запятыми нет, используйте Nothing
+--   x,y --> [Just x, Just y]
+--   x,,y  --> [Just x, Nothing, Just y]
 --
 rowP :: [String] -> Parser Row
 rowP cNames = undefined
