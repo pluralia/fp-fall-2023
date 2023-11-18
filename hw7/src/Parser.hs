@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 module Parser where
 
 import Data.Char           (digitToInt, isAlphaNum, isSpace, isDigit)
@@ -63,7 +64,6 @@ digitP = digitToInt <$> satisfyP isDigit
 
 digitsP :: Parser [Int]
 digitsP = some digitP
-
 
 intP :: Parser Int
 intP = foldl' (\acc x -> acc * 10 + x) 0 <$> some digitP
