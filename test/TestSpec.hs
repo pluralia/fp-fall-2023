@@ -29,14 +29,3 @@ spec = do
         it "transposes a rectangular matrix" $ do
             let matrix = ([[1, 2, 3], [4, 5, 6]] :: [[Int]])
             transpose matrix          `shouldBe` ([[1, 4], [2, 5], [3, 6]]          :: [[Int]])
-
-    -- describe "9.c Реализуйте обход (любой) бинарного дерева и суммируйте элементы в вершинах с помощью Writer'" $ do
-    --     it "returns an empty list and sum 0 for an empty tree" $
-    --         runWriter' (sumAndTraceInOrder Leaf) `shouldBe` Writer' (Identity [], Sum (0 :: Int))
-
-    --     it "sums elements in order for a simple tree" $
-    --         runWriter' (sumAndTraceInOrder (Node 1 Leaf Leaf)) `shouldBe` Writer' (Identity [1], Sum (1 :: Int))
-
-    --     it "sums elements in order for a more complex tree" $
-    --         let tree = Node 5 (Node 3 Leaf Leaf) (Node 7 Leaf (Node 9 Leaf Leaf))
-    --         in runWriter' (sumAndTraceInOrder tree) `shouldBe` Writer' (Identity [3, 5, 7, 9], Sum (24 :: Int))
