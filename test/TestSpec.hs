@@ -48,6 +48,9 @@ spec = do
     it "list with multiple values" $ do
       maximum' (list123 ++ list123) `shouldBe` Just 3
 
+    it "long list" $ do
+      maximum' ([1, 3..100000] :: [Int]) `shouldBe` Just 99999
+
   describe "reverse'" $ do
     it "empty list" $ do
       reverse' emptyIntList `shouldBe` emptyIntList
@@ -57,6 +60,9 @@ spec = do
 
     it "list with multiple values" $ do
       reverse' list123 `shouldBe` ([3, 2, 1] :: [Int])
+
+    it "long list" $ do
+      reverse' ([1..100000] :: [Int]) `shouldBe` (reverse [1..100000] :: [Int])
 
   describe "filter'" $ do
     it "empty list" $ do
@@ -68,12 +74,18 @@ spec = do
     it "list with multiple values 2" $ do
       filter' odd ([1, 2, 3, 4, 5] :: [Int]) `shouldBe` ([1, 3, 5] :: [Int])
 
+    it "long list" $ do
+      filter' (>100) ([1..100000] :: [Int]) `shouldBe` ([101..100000] :: [Int])
+
   describe "map'" $ do
     it "empty list" $ do
       map' succ emptyIntList `shouldBe` emptyIntList
 
     it "list with multiple values" $ do
       map' succ list123 `shouldBe` ([2, 3, 4] :: [Int])
+
+    it "long list" $ do
+      map' pred ([1..100000] :: [Int]) `shouldBe` ([0..99999] :: [Int])
 
   describe "head'" $ do
     it "empty list" $ do
@@ -82,6 +94,9 @@ spec = do
     it "list with multiple values" $ do
       head' list123 `shouldBe` Just 1
 
+    it "long list" $ do
+      head' ([1..100000] :: [Int]) `shouldBe` Just 1
+
   describe "last'" $ do
     it "empty list" $ do
       last' emptyIntList `shouldBe` Nothing
@@ -89,6 +104,8 @@ spec = do
     it "list with multiple values" $ do
       last' list123 `shouldBe` Just 3
 
+    it "long list" $ do
+      last' ([1..100000] :: [Int]) `shouldBe` Just 100000
 
 -- Task 3
   describe "quicksort" $ do
@@ -114,6 +131,9 @@ spec = do
 
     it "list with multiple values" $ do
       insertionSort ([3, -1, 2, 0, 4, 1] :: [Int]) `shouldBe` ([-1, 0, 1, 2, 3, 4] :: [Int])
+
+    it "another list" $ do
+      insertionSort (reverse [1..10000] :: [Int]) `shouldBe` ([1..10000] :: [Int])
 
 -- Task 4
   describe "myZipWith" $ do

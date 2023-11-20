@@ -14,6 +14,7 @@ import qualified Data.List as L (foldl')
 --   Поэтому её можно воткнуть в любое место в программе.
 --
 import Debug.Trace (traceShow)
+import Data.Maybe (isNothing)
 
 -- Пример
 traceFoldr :: Show b => (a -> b -> b) -> b -> [a] -> b
@@ -54,8 +55,7 @@ length' = L.foldl' (\acc _ -> succ acc) 0
 
 -- Используем более быструю - foldl', на длинных списках foldr приводит к stack overflow
 maximum' :: [Int] -> Maybe Int
-maximum' []     = Nothing
-maximum' (x:xs) = Just (L.foldl' max x xs)
+maximum' = L.foldl' (\acc x -> if isNothing acc then Just x else max acc (Just x)) Nothing 
 
 -- Используем более быструю - foldl'
 reverse' :: [a] -> [a]
@@ -64,7 +64,8 @@ reverse' = L.foldl' (flip (:)) []
 -- Используем foldr, foldl' работает медленнее, видимо из-за того, что нужно делать (++)
 filter' :: (a -> Bool) -> [a] -> [a]
 filter' cond = foldr (\x acc -> if cond x then x : acc else acc) []
---filter' cond = L.foldl' (\acc x -> if cond x then acc ++ [x] else acc) []
+--filter' cond lst = reverse (L.foldl' (\acc x -> if cond x then x : acc else acc) [] lst)
+
 
 -- Используем foldr, потому что работает быстрее
 map' :: (a -> b) -> [a] -> [b]
@@ -81,11 +82,11 @@ last' = L.foldl' (\_ x -> Just x) Nothing
 
 -- используйте L.foldl'
 takeL :: Int -> [a] -> [a]
-takeL l = L.foldl' (\ini x -> if length ini < l then ini ++ [x] else ini) []
+takeL l = L.foldl' (\acc x -> if length acc < l then acc ++ [x] else acc) []
 
 -- используйте foldr
 takeR :: Int -> [a] -> [a]
-takeR r = foldr (\x ini -> if length ini < r then x : ini else ini) []
+takeR r = foldr (\x acc -> if length acc < r then x : acc else acc) []
 
 ------------------------------------------------------------------------------------------------
 
@@ -182,13 +183,16 @@ bfs :: Tree a -> [a]
 bfs tree = helper [tree]
   where
    helper :: [Tree a] -> [a]
-   helper treeList = if null onlyNodes then [] else map nodeValue onlyNodes ++ helper (concatMap nodeChildren onlyNodes)
+   helper treeList = 
+      if null onlyNodes
+        then []
+        else map nodeValue onlyNodes ++ helper (concatMap nodeChildren onlyNodes)
     where 
       onlyNodes = filter isNode treeList
-
-isNode :: Tree a -> Bool
-isNode Leaf = False
-isNode _    = True
+        where 
+          isNode :: Tree a -> Bool
+          isNode Leaf = False
+          isNode _    = True
 
 -- | Принимает дерево, а возвращает список значений в его нодах в порядке обхода в глубину (1 балл)
 --
