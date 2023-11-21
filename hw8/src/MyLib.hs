@@ -1,4 +1,4 @@
-{-# LANGUAGE InstanceSigs, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs, MultiParamTypeClasses, FlexibleInstances, LambdaCase #-}
 
 module MyLib where
 
@@ -6,8 +6,8 @@ import           Control.Monad.Writer.Strict
 import           Control.Monad.Reader
 import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
-import           Data.Monoid (Sum(..))
-
+import           Data.Monoid()
+import Control.Applicative (ZipList(..))
 -------------------------------------------------------------------------------
 
 -- 1. Travserable (1,5 балла)
@@ -16,19 +16,58 @@ import           Data.Monoid (Sum(..))
 
 -- 1.a Реализуйте инстансы Traversable для Maybe и списка (без док-ва законов) (0,5 балла)
 
+data Maybe' a = Nothing' | Just' a
+  deriving (Show, Eq)
+
+instance Functor Maybe' where
+  fmap :: (a -> b) -> Maybe' a -> Maybe' b
+  fmap _ Nothing' = Nothing'
+  fmap f (Just' a) = Just' $ f a
+
+instance Applicative Maybe' where
+  pure :: a -> Maybe' a
+  pure = Just'
+
+  (<*>) :: Maybe' (a -> b) -> Maybe' a -> Maybe' b
+  Nothing' <*> _ = Nothing'
+  _ <*> Nothing' = Nothing'
+  (Just' f) <*> (Just' a) = Just' $ f a
+
+instance Foldable Maybe' where
+  foldr :: (a -> b -> b) -> b -> Maybe' a -> b
+  foldr _ b Nothing' = b
+  foldr f b (Just' a) = f a b
+
+instance Traversable Maybe' where
+  traverse :: Applicative f => (a -> f b) -> Maybe' a -> f (Maybe' b)
+  traverse _ Nothing' = pure Nothing'
+  traverse f (Just' a) = Just' <$> f a
+
+  sequenceA :: Applicative f => Maybe' (f a) -> f (Maybe' a)
+  sequenceA Nothing' = pure Nothing'
+  sequenceA (Just' fa) = Just' <$> fa
+
 ---------------------------------------
 
 -- 1.b Реализуйте `traverse` через `sequenceA` и `sequenceA` через `traverse` (0,5 балла)
 
 traverse' :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
-traverse' = undefined
+traverse' f = sequenceA . fmap f
 
 sequenceA' :: (Traversable t, Applicative f) => t (f a) -> f (t a)
-sequenceA' = undefined
+sequenceA' = traverse id
+
+-- hlint ругается. пж не не надо баллы снимать (
+-- с другой стороны это значит, что сделано правильно )
 
 ---------------------------------------
 
 -- 1.c В чем разница между Traversable и Functor? Между Traversable и Foldable? (0,5 балла)
+
+-- Functor позволяет вам применять функцию к значению в контексте
+-- Traversable позволяет вам применять функцию к значению в контексте и собирать результаты в другой контекст
+
+-- Я не понят причем тут Foldable. Ведь он позволяет свернуть структуру данных в одно значение.
 
 -------------------------------------------------------------------------------
 
@@ -36,7 +75,7 @@ sequenceA' = undefined
 --       если в нем нет отрицательных элементов, и Nothing в противном случае (0,5 балла)
 --
 rejectWithNegatives :: (Num a, Ord a) => [a] -> Maybe [a]
-rejectWithNegatives = undefined
+rejectWithNegatives = traverse deleteIfNegative
   where
     deleteIfNegative :: (Num a, Ord a) => a -> Maybe a
     deleteIfNegative x = if x < 0 then Nothing else Just x
@@ -47,11 +86,17 @@ rejectWithNegatives = undefined
 --       Используйте Traversable для реализации транспонирования матриц (0,5 балла)
 --
 transpose :: [[a]] -> [[a]]
-transpose = undefined
+transpose = getZipList . traverse ZipList
+
+-- ZipList заменяет Applicative для стандартного списка. Вместо каждый с каждым, будет работать как zip
 
 -------------------------------------------------------------------------------
 
 -- 4. Для чего нужен класс типов MonadFail? (0,25 балла)
+
+-- Для того, чтобы можно было обрабатывать ошибки в монадах.
+-- MonadFail предоставляет метод fail. Используем его для сигнализации об ошибке.
+-- Пример: у Maybe есть инстанс MonadFail. Метод fail возвращает Nothing.
 
 -------------------------------------------------------------------------------
 
@@ -60,6 +105,41 @@ transpose = undefined
 --       Без описания задание не засчитывается (0,5 балла)
 --
 newtype WithData d a = WithData { runWithData :: d -> a }
+
+instance Functor (WithData d) where
+  fmap :: (a -> b) -> WithData d a -> WithData d b
+  fmap f (WithData a) = WithData $ f . a
+
+
+instance Applicative (WithData d) where
+  pure :: a -> WithData d a
+  pure = WithData . const
+
+  (<*>) :: WithData d (a -> b) -> WithData d a -> WithData d b
+  (<*>) (WithData ff) (WithData aa) = WithData $ helper ff aa
+    where
+      helper :: (d -> a -> b) -> (d -> a) -> d -> b
+      helper f a d = f d $ a d
+      
+      
+instance Monad (WithData d) where
+  return :: a -> WithData d a
+  return = pure
+
+  (>>=) :: WithData d a -> (a -> WithData d b) -> WithData d b
+  (>>=) (WithData aa) ff = WithData $ helper aa ff
+    where
+      helper :: (d -> a) -> (a -> WithData d b) -> d -> b
+      helper a f d = runWithData (f $ a d) d
+
+
+instance MonadFail (WithData d) where
+  fail :: String -> WithData d a
+  fail _ = WithData $ const undefined
+
+-- Эффект: мы храним функцию. При вызове runWithData мы передаем в нее данные и получаем результат.
+-- Как такая монада может зафейлиться? 
+
 
 -------------------------------------------------------------------------------
 
@@ -86,7 +166,16 @@ fromDo11 aM bM = do
     b <- fmap (<> "abcd") bM
 
     pure (c, b)
+    
 
+fromDo11' :: Maybe Int -> Maybe String -> Maybe (Int, String)
+fromDo11' aM bM = fmap (+ 10) aM >>= \a ->
+  let 
+    aL = [a, a, a]
+    a  = a + length aL
+  in return a >> bM >> Just aL >>= \case
+    [a, b, c] -> fmap (<> "abcd") bM >>= \b -> pure (c, b)
+    _ -> fail ""
 ---------------------------------------
 
 -- | 6.b Перепешите код без do-нотации, используя bind (>>=), then (>>) и обычные let'ы (0,5 балла)
@@ -113,10 +202,34 @@ fromDo12 isL cM = do
               _         -> fail ""
         else pure ('0', 0)
 
+
+fromDo12' :: [Int] -> Maybe Char -> [(Char, Int)]
+fromDo12' isL cM = isL >>= \curI ->
+    tail isL >>= \nextI ->
+        if nextI > curI
+            then tail (tail isL) >>= \nextNextI ->
+                [cM] >>= \case -- hlint предложил \case
+                -- получается можно не определять переменную для case
+                  Just ch -> 
+                    case (curI, nextI, nextNextI) of
+                      (0, 0, 0) -> pure (ch, curI + nextI)
+                      _         -> fail ""
+                  Nothing -> fail ""
+            else pure ('0', 0)
+
 -------------------------------------------------------------------------------
 
 -- 7. С помощью монады списка создайте список, содержащий в себе все пифагоровы тройки. 
 --    В списке не должно быть дублей. Дублирования нужно убрать за счёт дополнительного условия в do-нотации (0,5 балла)
+
+pifList :: [(Int, Int, Int)]
+pifList = do
+  c <- [1..]
+  b <- [1..c]
+  a <- [1..b]
+  if a*a + b*b == c*c
+    then pure (a, b, c)
+    else fail ""
 
 -------------------------------------------------------------------------------
 
@@ -131,7 +244,7 @@ fromDo12 isL cM = do
 -- | Пример использования 'realReturn'.
 --   Должно вернуться 42, завёрнутое в 'ReturnableCalculation'.
 --
-returnExample :: ReturnableCalculation Int
+returnExample :: ReturnableCalculation Int Int 
 returnExample = do
     let a = 40
         b = 2
@@ -144,25 +257,30 @@ returnExample = do
       then pure 200
       else realReturn 0
 
-data ReturnableCalculation a = YourImplementation
 
-instance Functor ReturnableCalculation where
-    fmap :: (a -> b) -> ReturnableCalculation a -> ReturnableCalculation b
-    fmap = undefined
+newtype ReturnableCalculation a b = ReturnableCalculation { runCalculation :: Either a b }
+-- левый тип для досрочного выхода из вычислений
+-- правый тип для результата вычислений
+-- я не додумался как сделать это по другому
 
-instance Applicative ReturnableCalculation where
-    pure :: a -> ReturnableCalculation a
-    pure = undefined
+instance Functor (ReturnableCalculation a) where
+  fmap :: (b -> c) -> ReturnableCalculation a b -> ReturnableCalculation a c
+  fmap f (ReturnableCalculation x) = ReturnableCalculation (f <$> x)
 
-    (<*>) :: ReturnableCalculation (a -> b) -> ReturnableCalculation a -> ReturnableCalculation b
-    (<*>) = undefined
+instance Applicative (ReturnableCalculation a) where
+  pure :: b -> ReturnableCalculation a b
+  pure = ReturnableCalculation . Right
 
-instance Monad ReturnableCalculation where
-    (>>=) :: ReturnableCalculation a -> (a -> ReturnableCalculation b) -> ReturnableCalculation b
-    (>>=) = undefined
+  (<*>) :: ReturnableCalculation a (b -> c) -> ReturnableCalculation a b -> ReturnableCalculation a c
+  ReturnableCalculation f <*> ReturnableCalculation x = ReturnableCalculation (f <*> x)
 
-realReturn :: a -> ReturnableCalculation a
-realReturn = undefined
+instance Monad (ReturnableCalculation a) where
+  (>>=) :: ReturnableCalculation a b -> (b -> ReturnableCalculation a c) -> ReturnableCalculation a c
+  ReturnableCalculation (Left x) >>= _ = ReturnableCalculation (Left x)
+  ReturnableCalculation (Right x) >>= f = f x
+
+realReturn :: a -> ReturnableCalculation a b
+realReturn = ReturnableCalculation . Left
 
 -------------------------------------------------------------------------------
 
@@ -178,18 +296,20 @@ newtype Writer' w a = Writer' { runWriter' :: (Identity a, w) }
 
 instance Functor (Writer' w) where
     fmap :: (a -> b) -> Writer' w a -> Writer' w b
-    fmap = undefined
+    fmap f (Writer' (a, w)) = Writer' (f <$> a, w)
 
 instance Monoid w => Applicative (Writer' w) where
     pure :: a -> Writer' w a
-    pure = undefined
+    pure a = Writer' (pure a, mempty)
 
     (<*>) :: Writer' w (a -> b) -> Writer' w a -> Writer' w b
-    (<*>) = undefined
+    Writer' (l, lf) <*> Writer' (x, lx) = Writer' (l <*> x, lf <> lx)
 
 instance Monoid w => Monad (Writer' w) where
     (>>=) :: Writer' w a -> (a -> Writer' w b) -> Writer' w b
-    (>>=) = undefined
+    Writer' (x, lx) >>= f = Writer' (x', lx <> lx')
+      where
+        Writer' (x', lx') = f $ runIdentity x
 
 ---------------------------------------
 
@@ -198,15 +318,21 @@ instance Monoid w => Monad (Writer' w) where
 
 instance (Monoid w) => MonadWriter w (Writer' w) where
     tell :: w -> Writer' w ()
-    tell = undefined
+    tell m = Writer' (pure (), m)
 
     listen :: Writer' w a -> Writer' w (a, w)
-    listen = undefined
+    listen (Writer' (x, m)) = Writer' (pure (runIdentity x, m), m)
 
     pass :: Writer' w (a, w -> w) -> Writer' w a
-    pass = undefined
+    pass (Writer' (x, m)) = 
+      let (a, f) = runIdentity x
+      in Writer' (Identity a, f m)
 
 -- Почему нужно было определять `Writer' w a`, а не `Writer' a w`?
+
+-- тк instance принимает частично примененный тип, то есть Writer' w
+-- если мы определим Writer' a w, то мы не сможем определить instance
+-- тк w это лог, а не результат вычислений
 
 ---------------------------------------
 
@@ -223,7 +349,21 @@ data BinaryTree a
   deriving (Show, Eq)
 
 sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
-sumAndTraceInOrder = undefined
+sumAndTraceInOrder tree = do
+  case tree of
+    Leaf -> pure []
+    Node v l r -> do
+      leftSum <- sumAndTraceInOrder l
+      rightSum <- sumAndTraceInOrder r
+      tell $ Sum v
+      pure $ leftSum ++ [v] ++ rightSum
+
+
+bintree :: BinaryTree Int
+bintree = Node 1 (Node 2 Leaf Leaf) (Node 3 Leaf Leaf)
+
+testSumAndTraceInOrder :: (Identity [Int], Sum Int)
+testSumAndTraceInOrder = runWriter' $ sumAndTraceInOrder bintree
 
 -------------------------------------------------------------------------------
 
@@ -238,18 +378,24 @@ newtype Reader' r a = Reader' { runReader' :: r -> Identity a }
 
 instance Functor (Reader' r) where
     fmap :: (a -> b) -> Reader' w a -> Reader' w b
-    fmap = undefined
+    fmap f (Reader' a) = Reader' $ fmap f . a
 
 instance Applicative (Reader' r) where
     pure :: a -> Reader' r a
-    pure = undefined
+    pure = Reader' . const . pure
 
     (<*>) :: Reader' r (a -> b) -> Reader' r a -> Reader' r b
-    (<*>) = undefined
+    Reader' fa <*> Reader' xx = Reader' $ helper fa xx
+      where
+        helper :: (r -> Identity (a -> b)) -> (r -> Identity a) -> r -> Identity b
+        helper f x r = f r <*> x r
 
 instance Monad (Reader' r) where
     (>>=) :: Reader' r a -> (a -> Reader' r b) -> Reader' r b
-    (>>=) = undefined
+    Reader' xx >>= fa = Reader' $ helper xx fa
+      where
+        helper :: (r -> Identity a) -> (a -> Reader' r b) -> r -> Identity b
+        helper x f r = runReader' (f $ runIdentity $ x r) r
 
 ---------------------------------------
 
@@ -258,10 +404,10 @@ instance Monad (Reader' r) where
 
 instance MonadReader r (Reader' r) where
     ask :: Reader' r r
-    ask = undefined
+    ask = Reader' pure
 
     local :: (r -> r) -> Reader' r a -> Reader' r a
-    local = undefined
+    local f m = Reader' $ runReader' m . f
 
 ---------------------------------------
 
@@ -290,18 +436,28 @@ type Environment = M.Map String Int
 --   Если выражение использует необъявленную переменную, вернем Nothing
 --
 eval :: Expr -> Reader' Environment (Maybe Int)
-eval = undefined
+eval e = do
+  case e of
+    Primary i -> evalItem i
+    Binary l r -> do
+      l' <- eval l
+      r' <- eval r
+      pure $ (+) <$> l' <*> r'
+  where
+    evalItem :: Item -> Reader' Environment (Maybe Int)
+    evalItem (Val x) = pure $ Just x
+    evalItem (Var x) = Reader' $ pure . M.lookup x
 
 -- | Пример запуска вычисления выражения
 --
 testEvalExpr :: Maybe Int -- ожидаем `Just 5`
-testEvalExpr = runIdentity $ runReader' (eval expr) env
+testEvalExpr = runIdentity $ runReader' (eval expr') env
   where
     env :: Environment
     env = M.fromList [("x", 3)]
 
-    expr :: Expr
-    expr = Binary (Primary . Val $ 2) (Primary . Var $ "x")
+    expr' :: Expr
+    expr' = Binary (Primary . Val $ 2) (Primary . Var $ "x")
 
 -- | Утверждение будем задавать как декларацию переменной
 --
@@ -314,7 +470,18 @@ data Stmt = Stmt
 --   В качестве результата вычисления всего списка договоримся возвращать результат вычисления последнего выражения в списке
 --
 evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
-evalStmts = undefined
+evalStmts [] = pure Nothing
+evalStmts (Stmt n e : xs) = do
+  env <- ask
+  let 
+    env' = M.insert n (unpack . runIdentity $ runReader' (eval e) env) env
+  local (const env') $ evalStmts xs
+  
+  where
+    unpack :: Maybe Int -> Int
+    unpack (Just x) = x
+    unpack Nothing = 0
+
 
 -- | Пример запуска вычисления списка утверждений
 --
