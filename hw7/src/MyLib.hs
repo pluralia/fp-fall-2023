@@ -6,6 +6,7 @@ import           Control.Applicative
 import qualified Data.Map.Strict as M
 import           Data.Maybe (isJust)
 import           Parser
+import           Test.QuickCheck
 
 -------------------------------------------------------------------------------
 
@@ -97,14 +98,17 @@ fastaCommentP :: Parser String
 fastaCommentP = satisfyP (== ';') *> many (satisfyP (/= '\n')) <* many newLineP
 
 fastaP :: Parser Fasta
-fastaP = Fasta <$> (many fastaCommentP *> fastaDescriptionP) <*> fastaSeqsP <* many fastaCommentP
+fastaP = Fasta 
+  <$> (many fastaCommentP *> fastaDescriptionP) 
+  <*> (many fastaCommentP *> fastaSeqsP)
+  <* many fastaCommentP
 
 fastaListP :: Parser [Fasta]
 fastaListP = many fastaP
 
 testIO0 :: IO (Maybe ([Fasta], String))
 testIO0 = do
-    content <- readFile "test.fasta"
+    content <- readFile "src/test.fasta"
     return $ runParser fastaListP content
 
 -------------------------------------------------------------------------------
@@ -164,23 +168,22 @@ newtype PDB = PDB [PDBModel]
 --     в которой может содержаться только секция ATOM.
 
 count :: Int -> Parser String
-count 0 = pure []
-count n = (:) <$> satisfyP (const True) <*> count (n - 1)
+count n = Parser $ \s -> if length s < n then Nothing else Just (splitAt n s)
 
 -- Я не знаю есть ли этому готовая альтернатива.
 -- мне нужно было, чтобы делать так:
 -- ghci> runParser (floatP <.> count 6) "0.12536567.0 aabd"
 -- Just (0.1253,"6567.0 aabd")
-(<.>) :: Parser b -> Parser String -> Parser b
-bP <.> aP = Parser f
-  where 
-    f s = case runParser aP s of
-      Nothing -> Nothing
-      Just (a, rest) -> case runParser bP a of
-        Nothing -> Nothing
-        Just (b, _) -> Just (b, rest)
 
-  
+infixl 4 <.>
+(<.>) :: Parser b -> Parser String -> Parser b
+bP <.> aP = Parser $ \s -> case runParser aP s of
+  Nothing -> Nothing
+  Just (a, rest) -> case runParser bP a of
+    Nothing -> Nothing
+    Just (b, _) -> Just (b, rest)
+
+
 atomP :: Parser PDBAtom
 atomP = do
   _ <- stringP "ATOM  "
@@ -236,16 +239,18 @@ modelP = PDBModel -- one parser to rule them all
   <*> many bondP 
   <* stringP "ENDMDL" <* newLineP
 
-testIOnobonds :: IO (Maybe (PDBModel, String))
+modelsP :: Parser [PDBModel]
+modelsP = some modelP <* stringP "END" <* many newLineP
+
+testIOnobonds :: IO (Maybe ([PDBModel], String))
 testIOnobonds = do
-    content <- readFile "only_atoms.pdb"
-    return $ runParser modelP content
+    content <- readFile "src/only_atoms.pdb"
+    return $ runParser modelsP content
 
-testIObonds :: IO (Maybe (PDBModel, String))
+testIObonds :: IO (Maybe ([PDBModel], String))
 testIObonds = do
-    content <- readFile "atoms_with_bonds.pdb"
-    return $ runParser modelP content   
-
+    content <- readFile "src/atoms_with_bonds.pdb"
+    return $ runParser modelsP content   
 
 -------------------------------------------------------------------------------
 
@@ -383,29 +388,22 @@ instance Applicative List' where
 --  = Cons' (id a) (pure id <*> as) = Cons' a as 
 --
 -- 2. pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
--- w :: List' a
--- v :: List' (a -> b)
--- u :: List' (b -> c)
--- pure (.) :: List' ((b -> c) -> (a -> b) -> a -> c)
--- pure (.) <*> u :: List' ((a -> b) -> a -> c)
--- pure (.) <*> u <*> v :: List' (a -> c)
--- pure (.) <*> u <*> v <*> w :: List' c  ----
--- v <*> w :: List' b
--- u <*> (v <*> w) :: List' c  ----
--- я не знаю как это по другому доказать. перебором жуть
+-- pure (.) <*> Cons' f fs <*> Cons' g gs <*> Cons' a as =
+--  = Cons' (.) Nil' <*> Cons' f fs <*> Cons' g gs <*> Cons' a as =
+--   = Cons' ((.) f) ((.) <$> fs) <*> Cons' g gs <*> Cons' a as =
+-- Это какой-то ужас
 --
 -- 3. pure f <*> pure x = pure (f x)
--- pure f <*> pure x = Cons' f Nil' <*> Cons' x Nil' =
---  = Cons' (f x) (Nil' <*> Cons' x Nil') =
---   = Cons' (f x) Nil' = pure (f x)
+-- Cons' f Nil' <*> Cons' x Nil' = Cons' (f x) Nil' = pure (f x)
 --
 -- 4. u <*> pure y = pure ($ y) <*> u
--- y :: b
--- u :: List' (b -> c)
--- $ y :: (a -> b) -> b
--- u <*> pure y :: List' c  ----
--- pure ($ y) :: List' ((b -> c) -> c)
--- pure ($ y) <*> u :: List' c  ----
+-- Nil' <*> Cons' y Nil' = Nil' = pure ($ y) <*> Nil'
+-- Cons' f fs <*> Cons' y Nil' = 
+--  = Cons' (f y) (fs <*> Cons' y Nil') =
+--   = Cons' (f y) (fs <*> pure y) =
+--    = Cons' (f y) (pure ($ y) <*> fs) =
+--     = pure ($ y) <*> Cons' f fs
+
 
 
 instance Monad List' where
@@ -428,13 +426,13 @@ instance Monad List' where
 --     = Cons' a as
 --
 -- 3. m >>= (\x -> k x >>= h) = (m >>= k) >>= h
--- k :: a -> List' b
--- h :: b -> List' c
--- m :: List' a
--- \x -> (k x >>= h) :: a -> List' c
--- m >>= (\x -> k x >>= h) :: List' c  ----
--- m >>= k :: List' b
--- (m >>= k) >>= h :: List' c  ----
+-- Nil' >>= (\x -> k x >>= h) = Nil' = (Nil' >>= k) >>= h
+--
+-- Cons' a as >>= (\x -> k x >>= h) =
+--  = (k a >>= h) <> (as >>= (\x -> k x >>= h)) = тут, наверное, надо сказать про индукцию
+--   = (k a >>= h) <> ((as >>= k) >>= h) ==
+--    = (k a <> (as >>= k)) >>= h =
+--     = (Cons' a as >>= k) >>= h
 
 ---------------------------------------
 
@@ -465,26 +463,24 @@ instance Applicative (Either' a) where
 -- pure id <*> Right' b = Right' $ id b = Right' b
 
 -- 2. pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
--- u :: Either' a (b -> c)
--- v :: Either' a (a -> b)
--- w :: Right' a
--- pure (.) :: Either' a ((b -> c) -> (a -> b) -> a -> c)
--- pure (.) <*> u :: Either' a ((a -> b) -> a -> c)
--- pure (.) <*> u <*> v :: Either' a (a -> c)
--- pure (.) <*> u <*> v <*> w :: Either' a c  ----
--- v <*> w :: Either' a b
--- u <*> (v <*> w) :: Either' a c  ----
+-- pure (.) <*> Left' a <*> _ <*> _ = Left' a = Left' a <*> (_ <*> _)
+-- pure (.) <*> Right' a <*> Left' b <*> _ = Left' b = Right' a <*> (Left' b <*> _)
+-- pure (.) <*> Right' a <*> Right' b <*> Left' c = Left' c = Right' a <*> (Right' b <*> Left' c)
+-- pure (.) <*> Right' a <*> Right' b <*> Right' c =
+--  = Right' (.) <*> Right' a <*> Right' b <*> Right' c =
+--   = Right' $ (.) a <*> Right' b <*> Right' c =
+--    = Right' $ a . b <*> Right' c = 
+--     = Right' $ (a . b) c =
+--      = Right' $ a (b c) =
+--       = Right' a <*> Right' (b c)
+--        = Right' a <*> (Right' b <*> Right' c)
 --
 -- 3. pure f <*> pure x = pure (f x)
--- pure f <*> pure x = Right' f <*> Right' x = Right' $ f x = pure (f x)
+-- Right' f <*> Right' x = Right' $ f x = pure (f x)
 --
 -- 4. u <*> pure y = pure ($ y) <*> u
--- u :: Either' a (b -> c)
--- y :: b
--- $ y :: (b -> c) -> c
--- pure ($ y) :: Either' a ((b -> c) -> c)
--- pure ($ y) <*> u :: Either' a c  ----
--- u <*> pure y :: Either' a c  ----
+-- Left' a <*> Right' y = Left' a = pure ($ y) <*> Left' a
+-- Right' b <*> Right' y = Right' $ f y = pure ($ y) <*> Right' b
 
 
 instance Monad (Either' a) where
@@ -503,13 +499,11 @@ instance Monad (Either' a) where
 -- Right' b >>= return = return b = Right' b
 --
 -- 3. m >>= (\x -> k x >>= h) = (m >>= k) >>= h
--- k :: b -> Either' a c
--- h :: c -> Either' a d
--- m :: Either' a b
--- \x -> (k x >>= h) :: b -> Either' a d
--- m >>= (\x -> k x >>= h) :: Either' a d  ----
--- m >>= k :: Either' a c
--- (m >>= k) >>= h :: Either' a d  ----
+-- Left' a >>= (\x -> k x >>= h) = Left' a = (Left' a >>= k) >>= h
+--
+-- Right' b >>= (\x -> k x >>= h) = 
+--  = (\x -> k x >>= h) b = 
+--   = k b >>= h = (Right' b >>= k) >>= h
 
 -------------------------------------------------------------------------------
 
