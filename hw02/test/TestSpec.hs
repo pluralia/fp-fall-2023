@@ -20,7 +20,9 @@ module TestSpec where
      it "true" $ do
        or' [True, True, True] `shouldBe` (True :: Bool)
      it "mixed" $ do
-        or' [True, False, True] `shouldBe` (True :: Bool)
+       or' [True, False, True] `shouldBe` (True :: Bool)
+     it "long list with alternating True and False values" $ do
+       or' [True, False, True, False, False, True, False, True] `shouldBe` (True :: Bool)
 
 
 
@@ -29,12 +31,16 @@ module TestSpec where
        length' ([] :: [Int]) `shouldBe` (0 :: Int)
      it "5 elements" $ do
        length' ([1, 2, 3, 4, 5] :: [Int]) `shouldBe` (5 :: Int)
+     it "1000" $ do
+       length' ([1..1000] :: [Int]) `shouldBe` (1000 :: Int)
 
    describe "maximum" $ do
      it "empty list" $ do
        maximum' ([] :: [Int]) `shouldBe` (Nothing :: Maybe Int)
      it "max 15" $ do
        maximum' [3, -1, 15] `shouldBe` (Just 15 :: Maybe Int)
+     it "max 20" $ do
+       maximum' [5, 12, 8, 3, 20, 7] `shouldBe` (Just 20 :: Maybe Int)
 
    describe "reverse" $ do
      it "empty list" $ do
@@ -59,18 +65,26 @@ module TestSpec where
        map' (+ 5) [1, 2, 3, 4] `shouldBe` [6, 7, 8, 9 :: Int]
      it "mult" $ do
        map' (* 5) [1, 2, 3, 4] `shouldBe` [5, 10, 15, 20 :: Int]
+     it "add big" $ do
+       map' (+ 5) [1, 2, 3, 4, 11, 2, 3, 4, 5, 6, 7, 8] `shouldBe` [6, 7, 8, 9, 16, 7, 8, 9, 10, 11, 12, 13 :: Int]
+     it "mult big" $ do
+       map' (* 2) [1, 2, 3, 4, 11, 2, 3, 4, 5, 6, 7, 8] `shouldBe` [2, 4, 6, 8, 22, 4, 6, 8, 10, 12, 14, 16 :: Int]
 
    describe "head" $ do
      it "empty list" $ do
        head' ([] :: [Int]) `shouldBe` (Nothing :: Maybe Int)
      it "returns 5" $ do
        head' [-1, 6, 9] `shouldBe` (Just (-1) :: Maybe Int)
+     it "returns 1" $ do
+       head' [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 2, 3, 4, 5, 6, 500] `shouldBe` (Just 1 :: Maybe Int)
 
    describe "last" $ do
      it "empty list" $ do
        last' ([] :: [Int]) `shouldBe` (Nothing :: Maybe Int)
      it "returns 9" $ do
        last' [-1, 6, 9] `shouldBe` (Just 9 :: Maybe Int)
+     it "returns 500" $ do
+       last' [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 2, 3, 4, 5, 6, 500] `shouldBe` (Just 500 :: Maybe Int)
 
    describe "takeL" $ do
      it "empty list" $ do
@@ -151,3 +165,21 @@ module TestSpec where
       let tree = Node [Leaf 1, Node [Leaf 2, Leaf 3], Leaf 4]
       bfs tree `shouldBe` ([1, 4, 2, 3] :: [Int])
       dfs tree `shouldBe` ([1, 2, 3, 4] :: [Int])
+    it "complex tree" $ do
+      let complexTree =
+            Node [
+              Leaf 1,
+              Node [
+                Leaf 2,
+                Node [
+                  Leaf 3,
+                  Node [Leaf 4, Leaf 5],
+                  Leaf 6
+                ],
+                Leaf 7
+              ],
+              Node [Leaf 8, Node [Leaf 9, Leaf 10]]
+            ]
+      bfs complexTree `shouldBe` ([1, 2, 7, 8, 3, 6, 9, 10, 4, 5] :: [Int])
+      dfs complexTree `shouldBe` ([1, 2, 3, 4, 5, 6, 7, 8, 9, 10] :: [Int])
+   

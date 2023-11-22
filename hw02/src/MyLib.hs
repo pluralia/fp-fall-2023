@@ -35,7 +35,7 @@ traceFoldl f acc (x : xs) =
 -- Подумайте, какую функцию сверки когда лучше использовать
 
 or' :: [Bool] -> Bool
-or' = traceFoldr (||) False
+or' = foldr (||) False
 
 
 length' :: [a] -> Int
@@ -55,13 +55,13 @@ map' :: (a -> b) -> [a] -> [b]
 map' f = L.foldl' (\acc x -> acc ++ [f x]) []
 
 head' :: [a] -> Maybe a
-head' [] = Nothing
-head' (x:_) = Just x
+head' = L.foldl' (\acc x -> case acc of
+                              Nothing -> Just x
+                              _ -> acc) Nothing
 
 
 last' :: [a] -> Maybe a
-last' [] = Nothing
-last' (x:xs) = L.foldl' (\_ y -> Just y) (Just x) xs
+last' = L.foldl' (\_ y -> Just y) Nothing
 -- используйте L.foldl'
 takeL :: Int -> [a] -> [a]
 takeL a = L.foldl' (\acc x -> if length' acc < a then acc ++ [x] else acc) []
@@ -110,6 +110,7 @@ myZipWith :: (a -> b -> c) -> [a] -> [b] -> [c]
 myZipWith _ [] _ = []
 myZipWith _ _ [] = []
 myZipWith f (x:xs) (y:ys) = f x y : myZipWith f xs ys
+
 
 -- | В Haskell можно создавать бесконечные списки.
 --
