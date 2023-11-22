@@ -3,10 +3,11 @@
 module MyLib where
 
 import           Control.Applicative
+import           Control.Monad (void)
 import qualified Data.Map.Strict      as M
 import           Data.Maybe           (isJust)
 import           Parser
-import           Data.Char            (isSpace, isAlpha)
+import           Data.Char            (isAlpha)
 import           Data.List            (singleton)
 
 -------------------------------------------------------------------------------
@@ -101,18 +102,16 @@ data Fasta = Fasta {
 --
 
 fastaListP :: Parser [Fasta]
-fastaListP = many $ Fasta <$> descriptP <*> seqP
+fastaListP = many $ Fasta <$ commentP <*> descriptP <* commentP <*> seqP <* commentP
     where
+        commentP :: Parser ()
+        commentP = void . many $ (satisfyP (==';') <* many (satisfyP (/='\n')) <* many newLineP)
         descriptP :: Parser String
-        descriptP =    many (satisfyP (==';') *> many (satisfyP (/='\n')) *> newLineP)
-                    *> satisfyP (=='>')
-                    *> some (satisfyP (not . isSpace))
-                    <* many (satisfyP (/='\n'))
+        descriptP =    satisfyP (=='>')
+                    *> many (satisfyP (/='\n'))
                     <* newLineP
-                    <* many (satisfyP (==';') *> many (satisfyP (/='\n')) *> newLineP)
-
         seqP :: Parser [Acid]
-        seqP = foldr (<>) [] <$> some (some (satisfyP (`elem` ('*' : ['A'..'Z']))) <* many newLineP)
+        seqP = mconcat <$> some (some (satisfyP (`elem` ('*' : ['A'..'Z']))) <* many newLineP)
 
 -------------------------------------------------------------------------------
 
