@@ -39,6 +39,13 @@ instance Alternative Parser where
         Nothing -> runParser pA' s
         x       -> x
 
+instance Monad Parser where
+    (>>=) :: Parser a -> (a -> Parser b) -> Parser b
+    p >>= f = Parser $ \s -> case runParser p s of
+        Nothing -> Nothing
+        Just (a, s') -> runParser (f a) s'
+
+
 satisfyP :: (Char -> Bool) -> Parser Char
 satisfyP p = Parser f
   where

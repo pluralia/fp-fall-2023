@@ -9,11 +9,11 @@ spec = do
     it "Fasta test" $ do
         testParserIO "src/test.fasta" fastaListP `shouldReturn` True
 
-    -- it "PDB test only_atoms.pdb" $ do
-    --     testParserIO "src/only_atoms.pdb" modelP `shouldReturn` True
+    it "PDB test only_atoms.pdb" $ do
+        testParserIO "src/only_atoms.pdb" modelP `shouldReturn` True
 
-    -- it "PDB test atoms_with_bonds.pdb" $ do
-    --     testParserIO "src/atoms_with_bonds.pdb" modelAndBondP `shouldReturn` True
+    it "PDB test atoms_with_bonds.pdb" $ do
+        testParserIO "src/atoms_with_bonds.pdb" modelAndBondP `shouldReturn` True
         
     describe "Parser Monad" $ do
         it "returns Nothing for empty input" $ do

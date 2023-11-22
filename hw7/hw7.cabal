@@ -31,7 +31,7 @@ library
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.16.4.0, containers, text, vector, array
+    build-depends:    base ^>=4.16.4.0, containers, text, vector, array, megaparsec
 
     -- Directories containing source files.
     hs-source-dirs:   src
@@ -56,7 +56,7 @@ test-suite hw7-test
 
     -- Test dependencies.
     build-depends:    base ^>=4.16.4.0, containers, text, vector,
-                      hspec, array
+                      hspec, array, megaparsec
     ghc-options:      -Wall 
     
     other-modules:    TestSpec, MyLib, Parser

@@ -6,6 +6,8 @@ import qualified Data.Map.Strict as M
 import           Data.Maybe (isJust)
 import           Parser
 import           Data.List
+import           Data.Functor
+import           Data.Char
 
 -------------------------------------------------------------------------------
 
@@ -34,6 +36,15 @@ rowP cNames = Row . M.fromList . zip cNames <$> sepBy (satisfyP (== ',')) (optio
 
 -- | Для чтения содержимого фалов в заданиях 2 и 3 используйте эту функцию
 --
+testIO' :: FilePath -> Parser a -> IO (Either String (a, String))
+testIO' filePath parser = do
+    content <- readFile filePath         -- чтение из файла
+    let result = runParser parser content
+    return $ case result of
+        Nothing -> Left ("Parsing failed, input was: " ++ content)
+        Just partialResult -> Right partialResult
+
+
 testIO :: FilePath -> Parser a -> IO (Maybe (a, String))
 testIO filePath parser = do
     content <- readFile filePath         -- чтение из файла
@@ -44,6 +55,8 @@ testIO filePath parser = do
 -- 
 testParserIO :: FilePath -> Parser a -> IO Bool
 testParserIO filePath parser = isJust <$> testIO filePath parser
+-- testParserIO :: FilePath -> Parser a -> IO (Maybe (a, String))
+-- testParserIO filePath parser = testIO filePath parser
 
 -- Вызывать `testParserIO` в тестах можно так
 --     it "My test" $ do
@@ -87,16 +100,16 @@ fastaListP :: Parser [Fasta]
 fastaListP = many fastaP
 
 fastaP :: Parser Fasta
-fastaP = Fasta <$> descriptionP <* newLineP <*> aminoAcidP <* many commentP
+fastaP = Fasta <$> (many commentP *> descriptionP <* many commentP) <*> (aminoAcidP <* many commentP)
 
 descriptionP :: Parser String
-descriptionP = satisfyP (== '>') *> many (satisfyP (/= '\n'))
+descriptionP = satisfyP (== '>')  *> some (satisfyP isLetter) <* many (satisfyP (/= '\n'))
 
 aminoAcidP :: Parser String
-aminoAcidP = many (satisfyP (\c -> c /= '>' && c /= ';'))
+aminoAcidP = some (satisfyP isLetter) <* many (satisfyP (\c -> c /= '>' && c /= ';'))
 
 commentP :: Parser ()
-commentP = satisfyP (== ';') *> many (satisfyP (/= '\n')) *> pure ()
+commentP = (satisfyP (== ';') *> many (satisfyP (/= '\n'))) Data.Functor.$> ()
 -------------------------------------------------------------------------------
 
 -- 3. Парсер PDB (3,5 балла)
@@ -119,14 +132,14 @@ data PDBAtom = PDBAtom
   , atomTempFactor :: Float -- фактор температуры
   , atomElement :: Char -- элемент
   , atomCharge :: Maybe Int -- заряд
-  }
+  } deriving(Show)
 
 -- | Тип, представляющий из себя CONNECT
 --
 data PDBBond = PDBBond
   { bondAtom   :: Int    -- номер атома
   , bondAtoms  :: [Int]  -- номера атомов, с которыми связан данный атом
-  }
+  } deriving(Show)
 
 -- | Тип, представляющий из себя MODEL
 --
@@ -134,7 +147,7 @@ data PDBModel
   = PDBModel
       { atoms :: [PDBAtom] -- атомы из секции ATOM
       , bonds :: [PDBBond] -- связи из секции CONNECT
-      }
+      } deriving(Show)
 
 -- | PDB-файл
 --
@@ -145,13 +158,12 @@ newtype PDB = PDB [PDBModel]
 --     в которой может содержаться только секция ATOM.
 modelP :: Parser PDBModel
 modelP = PDBModel
-  <$> (stringP "MODEL" *> newLineP *> atomsP <* stringP "ENDMDL" <* newLineP)
+  <$> (stringP "MODEL" *> newLineP *> atomsP <* stringP "ENDMDL")
   <*> pure []
 
 atomsP :: Parser [PDBAtom]
 atomsP = (:) <$> atomP <*> atomsP <|> ([] <$ stringP "ENDMDL")
 
--- я не сумела победить разделение заряда и элемента друг от друга
 atomP :: Parser PDBAtom
 atomP = PDBAtom
   <$> (stringP "ATOM" *> spaceP *> intP) -- номер атома
@@ -159,12 +171,21 @@ atomP = PDBAtom
   <*> (spaceP *> symbolsP) -- имя остатка
   <*> (spaceP *> symbolP) -- идентификатор цепи
   <*> (spaceP *> intP) -- последовательность остатков
-  <*> ((,,) <$> (spaceP *> floatP) <*> (spaceP *> floatP) <*> (spaceP *> floatP)) -- позиция атома в трехмерном пространстве
+  <*> ((,,) <$> (spaceP *> signedFloatP) <*> (spaceP *> signedFloatP) <*> (spaceP *> signedFloatP)) -- позиция атома в трехмерном пространстве
   <*> (spaceP *> floatP) -- занятость
   <*> (spaceP *> floatP) -- фактор температуры
   <*> (fst <$> (spaceP *> elementAndChargeP)) -- элемент
   <*> (snd <$> elementAndChargeP) -- заряд
-  <* newLineP
+  <* many spaceP
+
+signedFloatP :: Parser Float
+signedFloatP = fmap calculate $ (,) <$> optional (satisfyP (== '-')) <*> floatP'
+  where
+    floatP' = (+) . fromIntegral <$> intP <* satisfyP (== ' ') <*> helper
+    helper = foldl' (\ acc x -> 0.1 * (acc + fromIntegral x)) 0.0 . reverse <$> digitsP
+    calculate (sign, num) = case sign of
+      Just _  -> -num
+      Nothing -> num
 
 stringP :: String -> Parser String
 stringP str = Parser go
@@ -201,11 +222,8 @@ bondP = PDBBond
 -- | Определен в файле Parser.hs
 --   newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
 
-instance Monad Parser where
-    (>>=) :: Parser a -> (a -> Parser b) -> Parser b
-    p >>= f = Parser $ \s -> case runParser p s of
-        Nothing -> Nothing
-        Just (a, s') -> runParser (f a) s'
+-- перенесла в Parser
+
 
 -------------------------------------------------------------------------------
 
