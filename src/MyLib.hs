@@ -251,40 +251,58 @@ pdbP = PDB <$> many modelP              -- парсер моделей
 --     (>>=) aP f = Parser bP
 --       where
 --         bP s = case runParser aP s of
---           Nothing      -> Nothing
+--           Nothing       -> Nothing
 --           Just (xx, s1) -> runParser (f xx) s1
 
 
 -- | Доказательство законов:
 
 -- 1. Left identity
--- return   :: a -> Parser a
--- return a :: Parser a
--- k        :: (a -> Parser b)
 
--- return a >>= k :: Parser a         -> (a -> Parser b)  -> Parser b
--- k a            :: (a -> Parser b)  -> a                -> Parser b
--- => return a >>= k = k a                                    
+-- return a >>= k = k a   
+
+-- return a == Parser $ \s -> Just (a, s)
+-- return a >>= k == Parser $ \s -> bP s
+--    where
+--      bP s = runParser (k a) s
+-- return a >>= k == Parser $ \s -> runParser (k a) s 
+-- return a >>= k == Parser $ runParser (k a)
+-- return a >>= k == Parser . runParser $ (k a)
+-- return a >>= k == k a
+
 
 -- 2. Right identity
--- m      :: Parser ()
--- a      :: ()
--- return :: () -> Parser ()
 
--- Parser () >>= return :: Parser () -> (() -> Parser ()) -> Parser ()
--- => m >>= return = m
+-- m >>= return = m
+
+-- m >>= return == Parser $ \s -> bP s                                == m
+--    where
+--      bP s = case runParser m s of
+--        Nothing      -> Nothing                                 == runParser m
+--        Just (a, s1) -> runParser (return a) s1 == Just (a, s1) == runParser m
+
 
 -- 3. Associativity
--- m          :: Parser a
--- k          :: (a -> Parser b)
--- k x        :: Parser b
--- h          :: (b -> Parser c)
--- k x >>= h  :: Parser c
--- m >>= k    :: Parser a -> (a -> Parser b) -> Parser b
 
--- m >>= (\x -> k x >>= h)  :: Parser a -> ((a -> Parser b) -> (b -> Parser c) -> Parser c) -> Parser c
--- (m >>= k) >>= h          :: (Parser a -> (a -> Parser b) -> Parser b) -> (b -> Parser c) -> Parser c
--- => m >>= (\x -> k x >>= h) = (m >>= k) >>= h
+-- m >>= (\x -> k x >>= h) = (m >>= k) >>= h
+
+-- m >>= (\x -> k x >>= h) == Parser bP
+--     where
+--       bP s = case runParser m s of
+--         Nothing      -> Nothing
+--         Just (a, s1) -> runParser ((\x -> k x >>= h) a) s1 == распишем подробнее
+--           case runParser k s1 of 
+--             Nothing      -> Nothing
+--             Just (b, s2) -> runParser (h b) s2
+
+-- (m >>= k) >>= h == Parser bP
+--     where
+--       bracketP s = case runParser m s of
+--                  Nothing      -> Nothing
+--                  Just (a, s1) -> runParser (k a) s1
+--       bP s = case bracketP s of
+--                Nothing      -> Nothing
+--                Just (b, s2) -> runParser (h b) s2
 
 -------------------------------------------------------------------------------
 
@@ -320,6 +338,86 @@ instance Monad Maybe' where
   (>>=) :: Maybe' a -> (a -> Maybe' b) -> Maybe' b
   (>>=) (Just' xx) f = f xx
   (>>=) Nothing'   _ = Nothing'
+
+-- | Доказательство законов для Applicative:
+
+-- 1. Identity
+
+-- pure id <*> v = v
+
+-- pure id <*> Nothing' == Nothing'
+-- pure id <*> Just' x  == Just' x
+
+
+-- 2. Composition
+
+-- pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
+
+-- pure (.) <*> u <*> v       == pure (.) <*> Just' f   <*> Nothing'  == Nothing'
+-- pure (.) <*> u <*> v       == pure (.) <*> Nothing'  <*> Just' h   == Nothing'
+-- pure (.) <*> u <*> v       == pure (.) <*> Just' f   <*> Just' h   == Just' (f . h)
+-- pure (.) <*> u <*> v <*> w == (pure (.) <*> u <*> v) <*> w
+-- pure (.) <*> u <*> v <*> w == Nothing'               <*> w         == Nothing'
+-- pure (.) <*> u <*> v <*> w == (pure (.) <*> u <*> v) <*> Nothing'  == Nothing'
+-- pure (.) <*> u <*> v <*> w == Just' (f . h)          <*> Just' x   == Just' ((f . h) x)
+
+-- v <*> w          == Nothing' <*> w           == Nothing'
+-- v <*> Nothing'   == v        <*> Nothing'    == Nothing'
+-- v <*> w          == Just' h  <*> Just' x     == Just' (h x)
+-- u <*> (v <*> w)  == Nothing' <*> (v <*> w)   == Nothing'
+-- u <*> (v <*> w)  == u        <*> Nothing'    == Nothing'
+-- u <*> (v <*> w)  == Just' f  <*> Just' (h x) == Just' (f (h x))
+-- u <*> (v <*> w)  == Just' f  <*> Just' (h x) == Just' ((f . h) x)
+
+
+-- 3. Homomorphism
+
+-- pure f <*> pure x = pure (f x)
+
+-- pure f <*> pure x  == Just' f <*> Just' x == Just' (f x)
+-- pure (f x)         == Just' (f x)
+
+-- 4. Interchange
+
+-- u <*> pure y = pure ($ y) <*> u
+
+-- u <*> pure y     == Nothing' <*> pure y      == Nothing'
+-- u <*> pure y     == Just' f  <*> pure y      == Just' f <*> Just' y == Just' (f y)
+-- pure ($ y) <*> u == pure ($ y) <*> Nothing'  == Nothing'
+-- pure ($ y) <*> u == pure ($ y) <*> Just' f   == Just' ($ y) <*> Just' f
+-- pure ($ y) <*> u == pure ($ y) <*> Just' f   == Just' (($ y) f)                  -- ($ y) :: (a -> b) -> b
+-- pure ($ y) <*> u == pure ($ y) <*> Just' f   == Just' (f y)
+
+
+-- | Доказательство законов для Monad:
+
+-- 1. Left identity
+
+-- return a >>= k = k a   
+
+-- return a >>= k == Just' a >>= (\a -> k a) == k a
+
+
+-- 2. Right identity
+
+-- m >>= return = m
+
+-- m >>= return == Nothing' >>= return == Nothing'                    == m
+-- m >>= return == Just' x  >>= return == Just' x >>= (\x -> Just' x)
+-- m >>= return == Just' x  >>= return == Just' x                     == m
+
+
+-- 3. Associativity
+
+-- m >>= (\x -> k x >>= h) = (m >>= k) >>= h
+
+-- m >>= (\x -> k x >>= h) == Nothing' >>= (\x -> k x >>= h)       == Nothing'
+-- m >>= (\x -> k x >>= h) == Just' x  >>= (\x -> Nothing' >>= h)  == Nothing'
+-- m >>= (\x -> k x >>= h) == Just' x  >>= (\x -> Just' kx >>= h) == Just' x  >>= (\x -> hkx) == hkx
+
+-- (m >>= k) >>= h == (Nothing' >>= k) >>= h == Nothing'
+-- (m >>= k) >>= h == (Just' x >>= k) >>= h == Nothing' >>= h == Nothing'
+-- (m >>= k) >>= h == (Just' x >>= k) >>= h == Just' kx >>= h == Just' x  >>= (\x -> hkx) == hkx
 
 ---------------------------------------
 
@@ -384,6 +482,87 @@ instance Monad (Either' a) where
   (>>=) :: Either' a b -> (b -> Either' a c) -> Either' a c
   (>>=) (Left'  xa) _ = Left' xa
   (>>=) (Right' xx) f = f xx
+
+-- | Доказательство законов для Applicative:
+
+-- 1. Identity
+
+-- pure id <*> v = v
+
+-- pure id <*> v == Right' id <*> Left' x  == Left'   x                == v
+-- pure id <*> v == Right' id <*> Right' x == Right' (id x) == Right' x == v
+
+-- 2. Composition
+
+-- pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
+
+-- pure (.) <*> u             == Right' (.) <*> Left' f       == Left' f
+-- pure (.) <*> u             == Right' (.) <*> Right' f      == Right' (f .)
+-- pure (.) <*> u <*> v       == Left' f      <*> v           == Left' f
+-- pure (.) <*> u <*> v       == Right' (f .) <*> Left' h     == Left' h
+-- pure (.) <*> u <*> v       == Right' (f .) <*> Right' h    == Right' ((f .) h) == Right' (f . h)
+-- pure (.) <*> u <*> v <*> w == Right' (f .) <*> Right' h    == Right' ((f .) h) == Right' (f . h)
+-- pure (.) <*> u <*> v <*> w == Left' f <*> w                == Left' f
+-- pure (.) <*> u <*> v <*> w == Left' h <*> w                == Left' h
+-- pure (.) <*> u <*> v <*> w == Right' (f . h) <*> Left' x   == Left' x
+-- pure (.) <*> u <*> v <*> w == Right' (f . h) <*> Right' x  == Right ((f . h) x)
+
+--        v <*> w   == Left' h <*> w == Left' h
+--        v <*> w   == Right' h <*> Left' x       == Left' x
+--        v <*> w   == Right' h <*> Right' x      == Right' (h x)
+-- u <*> (v <*> w)  == Left' f <*> (v <*> w)      == Left' f
+-- u <*> (v <*> w)  == Right' f <*> Left' h       == Left' h
+-- u <*> (v <*> w)  == Right' f <*> Left' x       == Left' x
+-- u <*> (v <*> w)  == Right' f <*> Right' (h x)  == Right' (f (h x)) == Right' ((f . h) x)
+
+
+-- 3. Homomorphism
+
+-- pure f <*> pure x = pure (f x)
+
+-- pure f <*> pure x == Right' f <*> Right' x == Right' (f x) == pure (f x)
+
+
+-- 4. Interchange
+
+-- u <*> pure y = pure ($ y) <*> u
+
+-- u <*> pure y == Left' f  <*> Right' y == Left' f
+-- u <*> pure y == Right' f <*> Right' y == Right' (f x)
+
+-- pure ($ y) <*> u == Right' ($ y) <*> Left' f  == Left' f
+-- pure ($ y) <*> u == Right' ($ y) <*> Right' f == Right' (($ y) f) == Right' (f y)
+
+
+-- | Доказательство законов для Monad:
+
+-- 1. Left identity
+
+-- return a >>= k = k a   
+
+-- return a >>= k == Right' a >>= (\a -> k a) == k a
+
+
+-- 2. Right identity
+
+-- m >>= return = m
+
+-- m >>= return == Left' x  >>= return            == Left' x
+-- m >>= return == Right' x >>= (\x -> Right' x)  == Right' x == m
+
+
+-- 3. Associativity
+
+-- m >>= (\x -> k x >>= h) = (m >>= k) >>= h
+
+-- m >>= (\x -> k x >>= h) == Left' x  >>= (\x -> k x >>= h)                == Left' x
+-- m >>= (\x -> k x >>= h) == Right' x >>= (\x -> Left' kx >>= h)           == Left' kx
+-- m >>= (\x -> k x >>= h) == Right' x >>= (\x -> Right' kx >>= h) == 
+--                            Right' x >>= (\x -> Right' kx >>= \kx -> hkx) == hkx
+
+-- (m >>= k) >>= h == (Left' x >>= k) >>= h == Left' x 
+-- (m >>= k) >>= h == Left' kx >>= h        == Left' kx 
+-- (m >>= k) >>= h == Right' kx >>= h       == Right' kx >>= (\kx -> hkx) == hkx
 
 -------------------------------------------------------------------------------
 
