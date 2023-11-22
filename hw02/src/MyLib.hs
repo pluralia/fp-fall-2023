@@ -2,7 +2,7 @@ module MyLib where
 
 -- импортируем foldl', чтобы можно было вызывать как L.foldl'
 import qualified Data.List as L (foldl')
-
+import Data.Maybe (isNothing)
 ------------------------------------------------------------------------------------------------
 
 -- 1. traceFoldl (0,25 балла)
@@ -43,17 +43,16 @@ length' :: [a] -> Int
 length' = L.foldl' (\acc _ -> acc + 1) 0
 
 maximum' :: [Int] -> Maybe Int
-maximum' []       = Nothing
-maximum' (x : xs) = Just $ L.foldl' max x xs
+maximum' = L.foldl' (\acc x -> if isNothing acc then Just x else max acc (Just x)) Nothing
 
 reverse' :: [a] -> [a]
 reverse' = L.foldl' (flip (:)) []
 
 filter' :: (a -> Bool) -> [a] -> [a]
-filter' f = L.foldl' (\l x -> if f x then l ++ [x] else l) []
+filter' f = reverse . L.foldl' (\l x -> if f x then x : l else l) []
 
 map' :: (a -> b) -> [a] -> [b]
-map' f = L.foldl' (\l x -> l ++ [f x]) []
+map' f = reverse . L.foldl' (\l x -> f x : l) []
 
 head' :: [a] -> Maybe a
 head' = foldr (\x _ -> Just x) Nothing
@@ -63,7 +62,7 @@ last' = L.foldl' (\_ x -> Just x) Nothing
 
 -- используйте L.foldl'
 takeL :: Int -> [a] -> [a]
-takeL n = L.foldl' (\l x -> if length' l < n then l ++ [x] else l) []
+takeL n = reverse . L.foldl' (\l x -> if length' l < n then x : l else l) []
 
 -- используйте foldr
 takeR :: Int -> [a] -> [a]
