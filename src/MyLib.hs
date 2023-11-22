@@ -71,19 +71,19 @@ lineStartsWithP c = satisfyP (== c) *> takeWhileP (/= '\n')
 -- | В одном файле можно встретить несколько последовательностей, разделенных произвольным числом переводов строк
 --   Напишите парсер контента такого файла (Пример в файле `test.fasta`)
 --
-dropLinesP :: Parser ()
-dropLinesP = void . many $ (pure <$> newLineP) <|> lineStartsWithP ';'
+dropEmptyAndCommentsP :: Parser ()
+dropEmptyAndCommentsP = void . many $ (pure <$> newLineP) <|> lineStartsWithP ';'
 
-atLeastOneSeqP :: Parser a -> Parser b -> Parser [b]
-atLeastOneSeqP sep singleElement = (:) <$> singleElement <*> many (sep *> singleElement)
+someSeqP :: Parser a -> Parser b -> Parser [b]
+someSeqP sep singleElement = (:) <$> singleElement <*> many (sep *> singleElement)
 
 fastaP :: Parser Fasta
 fastaP = Fasta
-  <$> lineStartsWithP '>' <* dropLinesP
-  <*> (concat <$> atLeastOneSeqP newLineP (some (satisfyP (\c -> isAlpha c || c == '*'))))
+  <$> lineStartsWithP '>' <* dropEmptyAndCommentsP
+  <*> (concat <$> someSeqP newLineP (some (satisfyP (\c -> isAlpha c || c == '*'))))
 
 fastaListP :: Parser [Fasta]
-fastaListP = dropLinesP *> sepBy dropLinesP fastaP <* dropLinesP <* eofP
+fastaListP = dropEmptyAndCommentsP *> sepBy dropEmptyAndCommentsP fastaP <* dropEmptyAndCommentsP <* eofP
 
 -------------------------------------------------------------------------------
 
@@ -115,7 +115,7 @@ data PDBAtom
       } deriving (Show, Eq)
 
 stringP :: String -> Parser String
-stringP = foldr (\c acc -> (:) <$> satisfyP (== c) <*> acc) (pure [])
+stringP = traverse (satisfyP . (==))
 
 takeInLineP :: Int -> Parser String
 takeInLineP 0 = pure []
@@ -137,11 +137,11 @@ atomP :: Parser PDBAtom
 atomP = PDBAtom
   <$  stringP "ATOM  "
   <*> takeInLineP 5 >>> spacedP intP
-  <* stringP " "
+  <* oneSpaceP
   <*> takeInLineP 4
   <*> satisfyP notNewLine
   <*> takeInLineP 3
-  <* stringP " "
+  <* oneSpaceP
   <*> satisfyP notNewLine
   <*> takeInLineP 4 >>> spacedP intP
   <*> satisfyP notNewLine
