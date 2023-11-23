@@ -96,9 +96,8 @@ insert (x:xs) y
 --   В реализации можно использовать функцию insert, если вы её реализовали
 --
 insertionSort :: Ord a => [a] -> [a]
-insertionSort [] = []
-insertionSort [x] = [x]
-insertionSort (x:xs) = insert (insertionSort xs) x
+insertionSort []       = []
+insertionSort (x : xs) = insert (insertionSort xs) x
 
 ------------------------------------------------------------------------------------------------
 
