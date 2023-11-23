@@ -2,6 +2,15 @@ import           Control.Applicative
 import qualified Data.Map.Strict as M
 import           Data.Maybe (isJust)
 import           Parser
+import qualified Text.Read.Lex as MyLib
+
+-------------------------------------------------------------------------------
+
+-- В этой домашке вам потребуется подгружать одновременно 2 файла в ghci:
+-- src/Parser.hs и src/MyLib.hs. Это требует 2 шага:
+--
+-- ghci> :l src/Parser.hs src/MyLib.hs
+-- ghci> :m Parser MyLib
 
 -------------------------------------------------------------------------------
 
@@ -21,7 +30,7 @@ valueP = IntValue <$> intP
 newtype Row = Row (M.Map String (Maybe Value))
   deriving (Show)
 
--- | напишите парсер строки: заметьте, что теперь строка -- Map в `Maybe Value`
+-- | Hапишите парсер строки: заметьте, что теперь строка -- Map в `Maybe Value`
 --   значения разделены запятыми; если значения между запятыми нет, используйте Nothing
 --   x,y --> [Just x, Just y]
 --   x,,y  --> [Just x, Nothing, Just y]
@@ -31,22 +40,22 @@ rowP cNames = undefined
 
 -------------------------------------------------------------------------------
 
--- | Для чтения содержимого фалов в заданиях 2 и 3 используйте эту функцию
+-- | Для чтения содержимого файлов в заданиях 2 и 3 используйте эту функцию
 --
 testIO :: FilePath -> Parser a -> IO (Maybe (a, String))
 testIO filePath parser = do
     content <- readFile filePath         -- чтение из файла
     return $ runParser parser content    -- запуск парсера на содержимом
 
--- | Чтобы использовать файлы для тестов, воспользуйтесь этой функцией
---   Здесь мы просто проверяем, что результат парсинга не Nothing
+-- | Чтобы использовать содержимое файлы в тестах, воспользуйтесь этой функцией
+--   Здесь мы просто проверяем, что парсер распарсил входную строку полностью
 -- 
-testParserIO :: FilePath -> Parser a -> IO Bool
-testParserIO filePath parser = isJust <$> testIO filePath parser
+testFullyParsedIO :: FilePath -> Parser a -> IO Bool
+testFullyParsedIO filePath parser = maybe False (null . snd) <$> testIO filePath parser
 
--- Вызывать `testParserIO` в тестах можно так
+-- Вызывать `testFullyParsedIO` в тестах можно так
 --     it "My test" $ do
---         testParserIO myFile myParser `shouldReturn` True
+--         testFullyParsedIO myFile myParser `shouldReturn` True
 
 -- Другие тесты для задания 2 и 3 можно не писать
 
