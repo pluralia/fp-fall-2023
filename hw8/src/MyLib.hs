@@ -8,6 +8,7 @@ import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
 import           Data.Monoid()
 import Control.Applicative (ZipList(..))
+
 -------------------------------------------------------------------------------
 
 -- 1. Travserable (1,5 балла)
@@ -15,6 +16,8 @@ import Control.Applicative (ZipList(..))
 ---------------------------------------
 
 -- 1.a Реализуйте инстансы Traversable для Maybe и списка (без док-ва законов) (0,5 балла)
+
+----MAYBE----
 
 data Maybe' a = Nothing' | Just' a
   deriving (Show, Eq)
@@ -46,6 +49,44 @@ instance Traversable Maybe' where
   sequenceA :: Applicative f => Maybe' (f a) -> f (Maybe' a)
   sequenceA Nothing' = pure Nothing'
   sequenceA (Just' fa) = Just' <$> fa
+
+----LIST----
+
+data List' a = Nil' | Cons' a (List' a)
+  deriving (Show, Eq)
+
+instance Semigroup (List' a) where
+  (<>) :: List' a -> List' a -> List' a
+  (<>) Nil' as = as
+  (<>) (Cons' a as) bs = Cons' a (as <> bs)
+
+instance Functor List' where
+  fmap :: (a -> b) -> List' a -> List' b
+  fmap _ Nil' = Nil'
+  fmap f (Cons' a as) = Cons' (f a) (fmap f as)
+
+instance Applicative List' where
+  pure :: a -> List' a
+  pure a = Cons' a Nil'
+
+  (<*>) :: List' (a -> b) -> List' a -> List' b
+  (<*>) Nil' _ = Nil'
+  (<*>) _ Nil' = Nil'
+  (<*>) (Cons' f fs) as = fmap f as <> (fs <*> as) 
+
+instance Foldable List' where
+  foldr :: (a -> b -> b) -> b -> List' a -> b
+  foldr _ b Nil' = b
+  foldr f b (Cons' a as) = f a (foldr f b as)
+
+instance Traversable List' where
+  traverse :: Applicative f => (a -> f b) -> List' a -> f (List' b)
+  traverse _ Nil' = pure Nil'
+  traverse f (Cons' a as) = Cons' <$> f a <*> traverse f as
+
+  sequenceA :: Applicative f => List' (f a) -> f (List' a)
+  sequenceA Nil' = pure Nil'
+  sequenceA (Cons' fa fas) = Cons' <$> fa <*> sequenceA fas
 
 ---------------------------------------
 
@@ -439,14 +480,14 @@ eval :: Expr -> Reader' Environment (Maybe Int)
 eval e = do
   case e of
     Primary i -> evalItem i
+      where
+        evalItem :: Item -> Reader' Environment (Maybe Int)
+        evalItem (Val x) = pure $ Just x
+        evalItem (Var x) = Reader' $ pure . M.lookup x
     Binary l r -> do
       l' <- eval l
       r' <- eval r
       pure $ (+) <$> l' <*> r'
-  where
-    evalItem :: Item -> Reader' Environment (Maybe Int)
-    evalItem (Val x) = pure $ Just x
-    evalItem (Var x) = Reader' $ pure . M.lookup x
 
 -- | Пример запуска вычисления выражения
 --
@@ -471,15 +512,16 @@ data Stmt = Stmt
 --
 evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
 evalStmts [] = pure Nothing
-evalStmts (Stmt n e : xs) = do
-  env <- ask
-  let 
-    env' = M.insert n (unpack . runIdentity $ runReader' (eval e) env) env
-  local (const env') $ evalStmts xs
-  
+evalStmts (x : xs) = do
+  case xs of
+    [] -> eval $ expr x
+    _ -> do
+      env <- ask
+      let env' = M.insert (name x) (unpack . runIdentity $ runReader' (eval $ expr x) env) env
+      local (const env') $ evalStmts xs
   where
     unpack :: Maybe Int -> Int
-    unpack (Just x) = x
+    unpack (Just val) = val
     unpack Nothing = 0
 
 
@@ -496,3 +538,5 @@ testEvalStmts = runIdentity $ runReader' (evalStmts [x, y, z, xx, w]) M.empty
     w = Stmt "w" $ Binary (Primary . Var $ "z") (Primary . Var $ "x")    -- w = 9
 
 -------------------------------------------------------------------------------
+
+
