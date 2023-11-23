@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, InstanceSigs #-}
+
 module MyLib where
 
 import           Control.Monad.Writer.Strict
@@ -35,9 +37,9 @@ sequenceA' = undefined
 --
 rejectWithNegatives :: (Num a, Ord a) => [a] -> Maybe [a]
 rejectWithNegatives = undefined
-  where
-    deleteIfNegative :: (Num a, Ord a) => a -> Maybe a
-    deleteIfNegative x = if x < 0 then Nothing else Just x
+  -- where
+  --   deleteIfNegative :: (Num a, Ord a) => a -> Maybe a
+  --   deleteIfNegative x = if x < 0 then Nothing else Just x
 
 -------------------------------------------------------------------------------
 
@@ -67,27 +69,40 @@ newtype WithData d a = WithData { runWithData :: d -> a }
 
 -- | 6.a Перепешите код без do-нотации, используя bind (>>=), then (>>) и обычные let'ы (0,5 балла)
 --
-fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
-fromDo11 aM bM = do
-    a <- fmap (+ 10) aM
+-- fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
+-- fromDo11 aM bM = do
+--     a <- fmap (+ 10) aM
 
-    -- в одном 'let'-выражении внутри do-нотации можно писать несколько связываний.
-    -- в обычных 'let'-выражениях это тоже работает
-    let aL = [a, a, a]
-        a  = a + length aL
+--     -- в одном 'let'-выражении внутри do-нотации можно писать несколько связываний.
+--     -- в обычных 'let'-выражениях это тоже работает
+--     let aL = [a, a, a]
+--         a  = a + length aL
 
-    return a
+--     return a
 
-    bM
-    [a, b, c] <- Just aL
+--     bM
+--     [a, b, c] <- Just aL
 
-    b <- fmap (<> "abcd") bM
+--     b <- fmap (<> "abcd") bM
 
-    pure (c, b)
+--     pure (c, b)
 
-withoutDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
-withoutDo11 aM bM = fmap (+10) aM >>= (\a -> let aL = [a, a, a] in (a + (length aL)) >> pure a
-                    >> Just aL >>= (\[a, b, c] -> fmap (<> "abcd") bM >>= (\b -> pure (c, b))))
+-- withoutDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
+-- withoutDo11 aM bM = fmap (+ 10) aM >>= (\a ->
+--                     let aL = [a, a, a]; a = a + length aL in
+--                     return a >> (bM
+--                       >> (Just aL
+--                           >>= (\aL' ->
+--                             case aL' of
+--                               [a, b, c] ->
+--                                 fmap (<> "abcd") bM >>= (\b ->
+--                                   pure (c, b)
+--                                 )
+--                               _ -> fail ""
+--                           )
+--                       )
+--                     )
+--                   )
 
 ---------------------------------------
 
@@ -115,10 +130,41 @@ fromDo12 isL cM = do
               _         -> fail ""
         else pure ('0', 0)
 
+withoutDo12 :: [Int] -> Maybe Char -> [(Char, Int)]
+withoutDo12 isL cM =
+  isL >>= (\curI ->
+    tail isL >>= (\nextI ->
+      (if nextI > curI
+        then  let a = curI + nextI in
+              (tail $ tail isL) >>= (\nextNextI ->
+                [cM] >>= (\x ->
+                  case x of
+                    (Just ch) ->
+                      (case (curI, nextI, nextNextI) of
+                        (0, 0, 0) -> pure (ch, a)
+                        _         -> fail "" )
+                    _         -> fail ""
+                        )
+                      )
+        else pure ('0', 0)
+        )
+      )
+    )
+
 -------------------------------------------------------------------------------
 
 -- + 7. С помощью монады списка создайте список, содержащий в себе все пифагоровы тройки. 
 --    В списке не должно быть дублей. Дублирования нужно убрать за счёт дополнительного условия в do-нотации (0,5 балла)
+
+pifagor :: Int -> [(Int, Int, Int)]
+pifagor n = do
+  let array = []
+  a <- [1..n]  -- фиксируем a
+  b <- [1..a]  -- не бесконечное число вариантов
+  c <- [1..b]
+  if a*a == b*b + c*c
+    then (a, b, c) : array
+    else array
 
 -------------------------------------------------------------------------------
 
@@ -133,18 +179,18 @@ fromDo12 isL cM = do
 -- | Пример использования 'realReturn'.
 --   Должно вернуться 42, завёрнутое в 'ReturnableCalculation'.
 --
-returnExample :: ReturnableCalculation Int
-returnExample = do
-    let a = 40
-        b = 2
+-- returnExample :: ReturnableCalculation Int
+-- returnExample = do
+--     let a = 40
+--         b = 2
 
-    realReturn $ a + b
+--     realReturn $ a + b
 
-    let a = 0
+--     let a = 0
 
-    if a == 0
-      then pure 200
-      else realReturn 0
+--     if a == 0
+--       then pure 200
+--       else realReturn 0
 
 data ReturnableCalculation a = YourImplementation
 
@@ -172,7 +218,7 @@ realReturn = undefined
 
 -- | Зададим свой Writer
 newtype Writer' w a = Writer' { runWriter' :: (Identity a, w) }
-  deriving (Show)
+  deriving (Show, Eq)
 
 ---------------------------------------
 
@@ -180,18 +226,19 @@ newtype Writer' w a = Writer' { runWriter' :: (Identity a, w) }
 
 instance Functor (Writer' w) where
     fmap :: (a -> b) -> Writer' w a -> Writer' w b
-    fmap = undefined
+    fmap f aW = Writer' $ (\ (Identity x, logger) -> (Identity (f x), logger)) (runWriter' aW)
 
 instance Monoid w => Applicative (Writer' w) where
     pure :: a -> Writer' w a
-    pure = undefined
+    pure x = Writer' (Identity x, mempty)
 
     (<*>) :: Writer' w (a -> b) -> Writer' w a -> Writer' w b
-    (<*>) = undefined
+    (<*>) (Writer' (Identity f, logger1)) (Writer' (Identity x, logger2)) =
+      Writer' (Identity (f x), logger1 <> logger2)
 
 instance Monoid w => Monad (Writer' w) where
     (>>=) :: Writer' w a -> (a -> Writer' w b) -> Writer' w b
-    (>>=) = undefined
+    (>>=) (Writer' (Identity x, _)) k = k x
 
 ---------------------------------------
 
@@ -200,15 +247,16 @@ instance Monoid w => Monad (Writer' w) where
 
 instance (Monoid w) => MonadWriter w (Writer' w) where
     tell :: w -> Writer' w ()
-    tell = undefined
+    tell logger = Writer' (Identity (), logger)
 
     listen :: Writer' w a -> Writer' w (a, w)
-    listen = undefined
+    listen (Writer' (Identity x, logger)) = Writer' (Identity (x, logger), logger)
 
     pass :: Writer' w (a, w -> w) -> Writer' w a
-    pass = undefined
+    pass (Writer' (Identity (x, f), logger)) = Writer' (Identity x, f logger)
 
 -- Почему нужно было определять `Writer' w a`, а не `Writer' a w`?
+-- Потому что у нас logger всегда одного типа (моноид) и мы его фиксируем
 
 ---------------------------------------
 
@@ -225,7 +273,11 @@ data BinaryTree a
   deriving (Show, Eq)
 
 sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
-sumAndTraceInOrder = undefined
+sumAndTraceInOrder Leaf = pure []
+sumAndTraceInOrder (Node val leftCh rightCh) =
+  (<>) <$> Writer' (Identity [val], Sum val)
+       <*> ((<>) <$> sumAndTraceInOrder leftCh 
+                 <*> sumAndTraceInOrder rightCh)
 
 -------------------------------------------------------------------------------
 
@@ -240,18 +292,23 @@ newtype Reader' r a = Reader' { runReader' :: r -> Identity a }
 
 instance Functor (Reader' r) where
     fmap :: (a -> b) -> Reader' w a -> Reader' w b
-    fmap = undefined
+    fmap f aR = Reader' bR
+      where
+        bR w = Identity $ f . runIdentity $ runReader' aR w
 
 instance Applicative (Reader' r) where
     pure :: a -> Reader' r a
-    pure = undefined
+    pure x = Reader' $ \_ -> Identity x
 
     (<*>) :: Reader' r (a -> b) -> Reader' r a -> Reader' r b
-    (<*>) = undefined
+    (<*>) fR aR = Reader' $ \w -> bR w
+      where
+        f w = runIdentity $ runReader' fR w
+        bR w = Identity $ f w . runIdentity $ runReader' aR w
 
 instance Monad (Reader' r) where
     (>>=) :: Reader' r a -> (a -> Reader' r b) -> Reader' r b
-    (>>=) = undefined
+    (>>=) aR k = Reader' $ \w -> runReader' (k . runIdentity $ runReader' aR w) w
 
 ---------------------------------------
 
@@ -260,14 +317,14 @@ instance Monad (Reader' r) where
 
 instance MonadReader r (Reader' r) where
     ask :: Reader' r r
-    ask = undefined
+    ask = Reader' Identity
 
     local :: (r -> r) -> Reader' r a -> Reader' r a
-    local = undefined
+    local f aR = Reader' $ \w -> runReader' aR (f w)
 
 ---------------------------------------
 
--- 9.c Вычислите список утверждений с помощью Reader' (1 балл)
+-- 10.c Вычислите список утверждений с помощью Reader' (1 балл)
 
 -- | Выражение будет задавать в виде бинарного дерева
 --
@@ -292,18 +349,24 @@ type Environment = M.Map String Int
 --   Если выражение использует необъявленную переменную, вернем Nothing
 --
 eval :: Expr -> Reader' Environment (Maybe Int)
-eval = undefined
+eval (Primary (Val x)) = pure (Just x)
+eval (Primary (Var s)) = reader (M.lookup s) 
+eval (Binary l r) = do
+  val_l <- eval l
+  val_r <- eval r
+  return $ (+) <$> val_l <*> val_r
+
 
 -- | Пример запуска вычисления выражения
 --
 testEvalExpr :: Maybe Int -- ожидаем `Just 5`
-testEvalExpr = runIdentity $ runReader' (eval expr) env
+testEvalExpr = runIdentity $ runReader' (eval expr') env
   where
     env :: Environment
     env = M.fromList [("x", 3)]
 
-    expr :: Expr
-    expr = Binary (Primary . Val $ 2) (Primary . Var $ "x")
+    expr' :: Expr
+    expr' = Binary (Primary . Val $ 2) (Primary . Var $ "x")
 
 -- | Утверждение будем задавать как декларацию переменной
 --
@@ -313,10 +376,19 @@ data Stmt = Stmt
     } deriving (Show, Eq)
 
 -- | Вычислите список утверждений, используя Reader' (постарайтесь использовать функции из MonadReader)
---   В качестве результата вычисления всего списка договоримся возвращать результат вычисления последнего выражения в списке
+--   В качестве результата вычисления всего списка договоримся возвращать результат вычисления 
+--   последнего выражения в списке
 --
 evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
-evalStmts = undefined
+evalStmts [] = pure Nothing
+evalStmts [x] = eval (expr x)
+evalStmts (x : xs) =
+  let v = eval (expr x) in
+    Reader' $ \r -> runReader' (evalStmts xs) (
+      case runIdentity $ runReader' v r of
+        Just vv -> M.insert (name x) vv r
+        Nothing -> r
+    )
 
 -- | Пример запуска вычисления списка утверждений
 --
