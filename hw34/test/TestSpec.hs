@@ -78,8 +78,8 @@ spec = do
       signum Zero `shouldBe` Zero
       signum four `shouldBe` one
 
-      fromInteger 0 `shouldBe` Zero
-      fromInteger 3 `shouldBe` three
+      fromInteger (0 :: Integer) `shouldBe` Zero
+      fromInteger (3 :: Integer) `shouldBe` three
 
   describe "Ix ChurchNumber" $ do
     it "check range" $ do
