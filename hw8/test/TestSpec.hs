@@ -7,6 +7,56 @@ import qualified Data.Map as M
 
 spec :: Spec
 spec = do
+    -- Task 1 a
+    describe "Maybe'" $ do
+        it "traverse with Just'" $ do
+            traverse Just (Just' 5) `shouldBe` (Just' <$> Just (5 :: Int))
+
+        it "foldr with Just'" $ do
+            foldr (+) 0 (Just' 5) `shouldBe` (5 :: Int)
+
+        it "fmap with Just'" $ do
+            fmap (+1) (Just' 5) `shouldBe` Just' (6 :: Int)
+
+        it "foldr with Nothing'" $ do
+            foldr (+) 0 Nothing' `shouldBe` (0 :: Int)
+
+            
+    describe "List" $ do
+        it "traverse with non-empty List" $ do
+            traverse Just (List [1, 2, 3]) `shouldBe` (List <$> traverse Just ([1, 2, 3] :: [Int]))
+
+        it "foldr with non-empty List" $ do
+            foldr (+) 0 (List [1, 2, 3]) `shouldBe` (6 :: Int)
+
+        it "fmap with non-empty List" $ do
+            fmap (+1) (List [1, 2, 3]) `shouldBe` List ([2, 3, 4] :: [Int])
+
+        it "foldr with empty List" $ do
+            foldr (+) 0 (List []) `shouldBe` (0 :: Int)   
+
+-- Task 2
+    describe "rejectWithNegatives" $ do
+        it "returns Just for a list with no negative numbers" $ do
+            rejectWithNegatives [1, 2, 3, 4, 5] `shouldBe` Just ([1, 2, 3, 4, 5] :: [Int])
+
+        it "returns Nothing for a list with at least one negative number" $ do
+            rejectWithNegatives ([1, -2, 3, 4, 5] :: [Int]) `shouldBe` Nothing 
+
+        it "returns Just for an empty list" $ do
+            rejectWithNegatives ([] :: [Int]) `shouldBe` Just ([] :: [Int])
+
+-- Task 3 
+    describe "transpose" $ do
+        it "transpose an emty matrix" $ do
+            transpose ([] :: [[Int]]) `shouldBe` []
+
+        it "transpose 1x1 matrix" $ do
+            transpose [[1] :: [Int]] `shouldBe` [[1]]
+
+        it "transpose 2x2 matrix" $ do
+            transpose [[1, 2] :: [Int], [3, 4] :: [Int]] `shouldBe` [[1, 3], [2, 4]]
+
     -- Task 7 
     describe "pythagoreanTriples" $ do
         it "returns all Pythagorean triples for n=5" $ do

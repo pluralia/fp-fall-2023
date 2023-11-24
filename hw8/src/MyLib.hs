@@ -13,10 +13,9 @@ import           Control.Monad.Writer.Strict
 import           Control.Monad.Reader
 import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
-import           Data.Monoid (Sum(..))
 import           Data.List (nub)
 import Data.Maybe
-
+import Control.Applicative
 -------------------------------------------------------------------------------
 
 -- 1. Travserable (1,5 балла)
@@ -25,19 +24,53 @@ import Data.Maybe
 
 -- 1.a Реализуйте инстансы Traversable для Maybe и списка (без док-ва законов) (0,5 балла)
 
+data Maybe' a = Nothing' | Just' a deriving(Show, Eq)
+
+instance Traversable Maybe' where
+    traverse :: Applicative f => (a -> f b) -> Maybe' a -> f (Maybe' b)
+    traverse _ Nothing' = pure Nothing'
+    traverse f (Just' x) = Just' <$> f x
+    
+instance Foldable Maybe' where
+    foldr :: (a -> b -> b) -> b -> Maybe' a -> b
+    foldr _ z Nothing' = z
+    foldr f z (Just' x) = f x z
+
+instance Functor Maybe' where
+  fmap :: (a -> b) -> Maybe' a -> Maybe' b
+  fmap _ Nothing' = Nothing'
+  fmap f (Just' a) = Just' (f a)
+
+
+newtype List a = List { getList :: [a] }deriving(Show, Eq)
+
+instance Traversable List where
+    traverse :: Applicative f => (a -> f b) -> List a -> f (List b)
+    traverse f (List xs) = List <$> traverse f xs
+    
+instance Functor List where
+  fmap :: (a -> b) -> List a -> List b
+  fmap f (List xs) = List (map f xs)
+
+instance Foldable List where
+    foldr :: (a -> b -> b) -> b -> List a -> b
+    foldr f z (List xs) = foldr f z xs
 ---------------------------------------
 
 -- 1.b Реализуйте `traverse` через `sequenceA` и `sequenceA` через `traverse` (0,5 балла)
 
 traverse' :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
-traverse' = undefined
+traverse' f = sequenceA' . fmap f
 
 sequenceA' :: (Traversable t, Applicative f) => t (f a) -> f (t a)
-sequenceA' = undefined
+sequenceA' = traverse' id
 
 ---------------------------------------
 
 -- 1.c В чем разница между Traversable и Functor? Между Traversable и Foldable? (0,5 балла)
+
+-- чтобы тип был Traversable он должен быть Functor и Foldable. Traversable дает нам возможность
+-- обойти весь тот тип данных который у нас есть, плюс он оставляет контекст
 
 -------------------------------------------------------------------------------
 
@@ -45,7 +78,7 @@ sequenceA' = undefined
 --       если в нем нет отрицательных элементов, и Nothing в противном случае (0,5 балла)
 --
 rejectWithNegatives :: (Num a, Ord a) => [a] -> Maybe [a]
-rejectWithNegatives = undefined
+rejectWithNegatives xs = if foldr ((&&) . isJust . deleteIfNegative) True xs then Just xs else Nothing
   where
     deleteIfNegative :: (Num a, Ord a) => a -> Maybe a
     deleteIfNegative x = if x < 0 then Nothing else Just x
@@ -56,11 +89,12 @@ rejectWithNegatives = undefined
 --       Используйте Traversable для реализации транспонирования матриц (0,5 балла)
 --
 transpose :: [[a]] -> [[a]]
-transpose = undefined
+transpose xss = getZipList $ traverse ZipList xss
 
 -------------------------------------------------------------------------------
 
 -- 4. Для чего нужен класс типов MonadFail? (0,25 балла)
+-- для того, чтобы ловить ошибки в do-нотации, чтобы она вся не полтела
 
 -------------------------------------------------------------------------------
 
@@ -70,6 +104,26 @@ transpose = undefined
 --
 newtype WithData d a = WithData { runWithData :: d -> a }
 
+instance Functor (WithData d) where
+    fmap :: (a -> b) -> WithData d a -> WithData d b
+    fmap f (WithData g) = WithData (f . g)
+
+instance Applicative (WithData d) where
+    pure :: a -> WithData d a
+    pure x = WithData (const x)
+
+    (<*>) :: WithData d (a -> b) -> WithData d a -> WithData d b
+    WithData f <*> WithData g = WithData (\d -> f d (g d))
+
+instance Monad (WithData d) where
+    (>>=) :: WithData d a -> (a -> WithData d b) -> WithData d b
+    WithData f >>= g = WithData (\d -> runWithData (g (f d)) d)
+
+instance MonadFail (WithData d) where
+    fail :: String -> WithData d a
+    fail _ = WithData (error "Sonething went wrong")
+
+-- получается, что мы можем делать какие-то вычисления, таская за собой d. Так же мы можем его использовать его где угодно
 -------------------------------------------------------------------------------
 
 -- 6. Do-нотация (1 балл)
@@ -274,12 +328,16 @@ data BinaryTree a
 
 sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
 sumAndTraceInOrder Leaf = return []
-sumAndTraceInOrder (Node value left' right') = leftSum >>= rightSum
-  where
-    leftSum = sumAndTraceInOrder left'
-    rightSum leftResult = tell (Sum value) >> sumAndTraceInOrder right' >>= result leftResult
-    result leftResult rightResult = return (leftResult ++ [value] ++ rightResult)
-
+-- sumAndTraceInOrder (Node value left' right') = leftSum >>= rightSum
+--   where
+--     leftSum = sumAndTraceInOrder left'
+--     rightSum leftResult = tell (Sum value) >> sumAndTraceInOrder right' >>= result leftResult
+--     result leftResult rightResult = return (leftResult ++ [value] ++ rightResult)
+sumAndTraceInOrder (Node value left' right') = do
+    leftResult <- sumAndTraceInOrder left'
+    tell (Sum value)
+    rightResult <- sumAndTraceInOrder right'
+    return (leftResult ++ [value] ++ rightResult)
 -------------------------------------------------------------------------------
 
 -- 10. Monad `Reader` (1,75 балла)
