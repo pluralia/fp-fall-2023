@@ -1,0 +1,62 @@
+cabal-version:      2.4
+name:               hw8
+version:            0.1.0.0
+synopsis:
+
+-- A longer description of the package.
+-- description:
+homepage:
+
+-- A URL where users can report bugs.
+-- bug-reports:
+license:            NONE
+author:             Olga Pushkina
+maintainer:         olya.pushkina.2001@gmail.com
+
+-- A copyright notice.
+-- copyright:
+-- category:
+extra-source-files: CHANGELOG.md
+
+library
+    -- Modules exported by the library.
+    exposed-modules:  MyLib
+
+    other-modules:    
+
+    -- Modules included in this library but not exported.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+
+    -- Other library packages from which modules are imported.
+    build-depends:    base ^>=4.16.4.0, containers, text, vector, array, mtl
+
+    -- Directories containing source files.
+    hs-source-dirs:   src
+
+    -- Base language which the package is written in.
+    default-language: Haskell2010
+
+    ghc-options:      -Wall
+
+test-suite hw8-test
+    -- Base language which the package is written in.
+    default-language: Haskell2010
+
+    -- The interface type and version of the test suite.
+    type:             exitcode-stdio-1.0
+
+    -- Directories containing source files.
+    hs-source-dirs:   test, src
+
+    -- The entrypoint to the test suite.
+    main-is:          MyLibTest.hs
+
+    -- Test dependencies.
+    build-depends:    base ^>=4.16.4.0, containers, text, vector,
+                      hspec, array, mtl
+    ghc-options:      -Wall 
+    
+    other-modules:    TestSpec, MyLib
