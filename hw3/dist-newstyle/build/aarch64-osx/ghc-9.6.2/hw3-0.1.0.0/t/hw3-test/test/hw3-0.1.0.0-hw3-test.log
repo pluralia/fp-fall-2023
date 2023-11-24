@@ -1,0 +1,53 @@
+Test suite hw3-test: RUNNING...
+
+Test
+  Eq instance Church
+    Checks equality of Zero with Zero [✔]
+    Checks equality of Succ Zero with Zero [✔]
+    Checks inequality of Zero with Succ Zero [✔]
+    Checks inequality of Succ Zero with Succ (Succ Zero) [✔]
+  Ord instance for Church
+    Compares Zero with Zero [✔]
+    Compares Zero with Succ Zero [✔]
+    Compares Succ Zero with Zero [✔]
+  Num instance for Church
+    Adds Zero to a Church number [✔]
+    Subtracts a Church number from Zero [✔]
+    Multiplies Zero by a Church number [✔]
+    Checks 'fromInteger' for a non-zero number [✔]
+    Checks 'fromInteger' for zero [✔]
+    Checks 'abs' function for Zero [✔]
+    Adds two Church numbers [✔]
+  Ix instance for Church
+    Checks the range of Church numbers [✔]
+    Checks if a Church number is in range [✔]
+    Indexes a Church number [✔]
+    Checks inRange for a number outside the range [✔]
+  Enum instance for Day
+    Converts Tue to its enum value [✔]
+    Converts Fri to its enum value [✔]
+    Converts enum value 4 to Thu [✔]
+  dayBefore function
+    from Tue to Mon [✔]
+    Returns Sat for Fri [✔]
+    Returns Fri for Thue [✔]
+  daysBeforeWeekend
+    Returns 5 for Monday [✔]
+    Returns 3 for Thursday [✔]
+  Functor instance for List
+    Maps a function over an empty list [✔]
+    Maps a function over a non-empty list [✔]
+  Functor instance for Tree
+    Maps a function over a tree with a single node [✔]
+    Maps a function over a tree with multiple nodes and branches [✔]
+  Functor instance for Pair
+    Maps a function over the second element of a Pair [✔]
+    Maps a function that multiplies each element of the second list by 10 [✔]
+  Bifunctor instance for Either'
+    Maps a function over the Left side of Either' [✔]
+    Maps a function over the Right side of Either' [✔]
+
+Finished in 0.0006 seconds
+34 examples, 0 failures
+Test suite hw3-test: PASS
+Test suite logged to: /Users/denisteresenko/Progamming/Projects/fp-fall-2023/hw3/dist-newstyle/build/aarch64-osx/ghc-9.6.2/hw3-0.1.0.0/t/hw3-test/test/hw3-0.1.0.0-hw3-test.log

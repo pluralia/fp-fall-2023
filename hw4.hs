@@ -7,6 +7,7 @@ import           Data.Foldable   (foldl', foldr, toList)
 import qualified Data.Map.Strict as M
 import qualified Data.Text       as T
 import qualified Data.Vector     as V
+import qualified Data.Set as Set
 
 -- К каждой задаче приведите хотя бы 1 или 2 тестовых примера.
 -- Подсказка: Text и Vector можно конкатенировать с помощью оператора '<>'.
@@ -28,7 +29,7 @@ import qualified Data.Vector     as V
 -- Готовую функцию из пакета text использовать нельзя
 
 padZero :: T.Text -> Int -> T.Text
-padZero str width = undefined
+padZero str width = T.replicate (width - T.length str) "0" <> str
 
 ------------------------------------------------------------------------------------------------
 
@@ -38,7 +39,11 @@ padZero str width = undefined
 -- должен сохраняться.
 
 evenodd :: [a] -> ([a], [a])
-evenodd xs = undefined
+evenodd xs = foldr f ([], []) (zip xs [1..])
+  where
+    f (x, i) (evens, odds)
+      | even i = (x : evens, odds)
+      | otherwise = (evens, x : odds)
 
 ------------------------------------------------------------------------------------------------
 
@@ -47,7 +52,9 @@ evenodd xs = undefined
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average vec = undefined
+average vec =
+  let (totalSum, count) = V.foldl' (\(sum, cnt) x -> (sum + x, cnt + 1)) (0, 0) vec
+  in if count == 0 then 0 else totalSum / fromIntegral count
 
 ------------------------------------------------------------------------------------------------
 
@@ -57,8 +64,14 @@ average vec = undefined
 -- Посчитать долю G/C в последовательности с помощью свёртки за один проход.
 
 gcContent :: T.Text -> Double
-gcContent str = undefined
+gcContent str
+  | T.null str = error "Empty sequence!"
+  | otherwise = gcCount / fromIntegral (T.length str)
+  where
+    gcCount = T.foldl' helper 0 str
 
+    helper :: Double -> Char -> Double
+    helper cnt ch = if ch == 'G' || ch == 'C' then cnt + 1 else cnt
 ------------------------------------------------------------------------------------------------
 
 -- 9. M.fromList (0,75 балл)
@@ -67,11 +80,13 @@ gcContent str = undefined
 -- чем будет отличаться поведение этих вариантов.
 
 fromListL :: Ord k => [(k, v)] -> M.Map k v
-fromListL lst = undefined
+fromListL = foldl' (\acc (k, v) -> M.insert k v acc) M.empty
+
 
 fromListR :: Ord k => [(k, v)] -> M.Map k v
-fromListR lst = undefined
-
+fromListR = foldr (\(k, v) acc -> M.insert k v acc) M.empty
+-- foldl идет слева направо. При наличии дубликатов ключей, будут использованы значения, встретившиеся последними для каждого ключа.
+-- Для foldr аналогичная история но наоборот.
 ------------------------------------------------------------------------------------------------
 
 -- 10. Уникальные элементы (0,5 балла)
@@ -84,7 +99,14 @@ fromListR lst = undefined
 -- Решение должно использовать свёртку по входному списку в один проход. Использовать fromList нельзя.
 
 nubOrd :: Ord a => [a] -> [a]
-nubOrd xs = undefined
+nubOrd xs = nubOrd' xs Set.empty
+  where
+    nubOrd' :: Ord a => [a] -> Set.Set a -> [a]
+    nubOrd' [] _ = []
+    nubOrd' (y:ys) set =
+      if Set.member y set
+        then nubOrd' ys set
+        else y : nubOrd' ys (Set.insert y set)
 
 ------------------------------------------------------------------------------------------------
 
