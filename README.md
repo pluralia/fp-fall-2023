@@ -212,7 +212,7 @@ Haskell course homework
 - Random generation in Haskell
 - `Monad`
 - Evaluation context
-  - Maybe, List, Either, Reader, Writer
+  - `Maybe`, `[]`, `Either`, `Reader`, `Writer``
   - Kleisli arrow
 
 ---
@@ -233,11 +233,21 @@ Haskell course homework
 
 ## 9 lecture
 
-### Monads III
+#### Monads III
+
+- About `Maybe`, `Either`, `[]`
+- `Writer`, `Reader`
+- `State`
+
+---
+
+## 10 lecture 
+
+#### Monads IV
 
 - `State`
 - `IO`
 
-### Monad Transformers
+#### Monad Transformers
 
 ---
