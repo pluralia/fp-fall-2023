@@ -6,8 +6,33 @@ import Data.Ix (inRange)
 --    Напишите инстансы `Eq`, `Ord`, `Num` и `Ix` для чисел Черча
 
 data ChurchNumber = Zero | Succ ChurchNumber
-  deriving (Show, Eq)
+  deriving (Show)
 
+-- for tests
+churchZero = Zero
+churchOne = Succ Zero
+churchTwo = Succ (Succ Zero)
+
+instance Eq ChurchNumber where
+  (==) :: ChurchNumber -> ChurchNumber -> Bool
+  Zero == Zero = True
+  Succ a == Succ b = a == b
+  _ == _ = False
+
+instance Ord ChurchNumber where
+  (<=) :: ChurchNumber -> ChurchNumber -> Bool
+  Succ a <= Succ b = a <= b
+  Succ _ <= Zero = False
+  Zero <= Succ _ = True
+
+instance Num ChurchNumber where
+  (+) :: ChurchNumber -> ChurchNumber -> ChurchNumber
+  (+) chN1 Zero = chN1
+  (+) Zero chN2 = chN2
+  (+) chN1 (Succ chN2) = Succ (chN1 + chN2)
+
+  (*) :: ChurchNumber -> ChurchNumber -> ChurchNumber
+  (*) chN1 Zero = Zero
 -- Вы можете найти класс `Ix` по ссылке:
 -- https://hackage.haskell.org/package/base-4.19.0.0/docs/Data-Ix.html
 -- Обратите внимание на необходимость импорта: `import Data.Ix`
@@ -15,8 +40,9 @@ data ChurchNumber = Zero | Succ ChurchNumber
 ------------------------------------------------------------------------------------------------
 
 -- 4. Сделайте функцию `pointful` бесточечной, объясняя каждый шаг по примеру из практики
---    (1,5 балла)
+--    (1,5 балла)r
 
+pointful :: (t1 -> t2 -> t3) -> t1 -> (t4 -> t2) -> t4 -> t3
 pointful a b c d = a b (c d)
 
 ------------------------------------------------------------------------------------------------
@@ -36,17 +62,14 @@ data Day = MyDaysAreHere
 -- 5.b Реализуйте следующие функции
 
 -- | Возвращает следующий день
---
 nextDay :: Day -> Day
 nextDay = undefined
 
 -- | Возвращает предыдущий день
---
 dayBefore :: Day -> Day
 dayBefore = undefined
 
 -- | Возвращает количество от текущего до ближайшей субботы
---
 daysBeforeWeekend :: Day -> Int
 daysBeforeWeekend = undefined
 
@@ -74,8 +97,8 @@ instance Functor List where
 -- 6.b Реализуйте инстанс Functor для дерева (0,5 балла)
 
 data Tree a = Node
-  { value :: a
-  , children :: [Tree a]
+  { value :: a,
+    children :: [Tree a]
   }
 
 ---------------------------------------
