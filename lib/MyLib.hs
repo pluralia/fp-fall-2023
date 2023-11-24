@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, InstanceSigs #-}
+{-# LANGUAGE InstanceSigs #-}
 module MyLib where
 
 
@@ -10,6 +10,7 @@ import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Data.Void (Void)
 import           Data.Char (isSpace)
+import           Data.Maybe           (isJust)
 
 -------------------------------------------------------------------------------
 
@@ -44,8 +45,8 @@ rowP columns = Row . M.fromList . zip columns <$> Parser.sepBy (satisfyP (== '.'
 -- Она читает содержимое файла из указанного пути и затем парсит его с помощью предоставленного парсера. 
 -- Результат будет либо Left с ошибкой парсинга, либо Right с успешно разобранными данными.
 
-testParserIO :: FilePath -> Parsec Void String a -> IO Bool
-testParserIO filePath parser = do
+testMYParserIO :: FilePath -> Parsec Void String a -> IO Bool
+testMYParserIO filePath parser = do
   result <- Text.Megaparsec.runParser parser "" <$> readFile filePath
   case result of
     Left _ -> return False    -- Парсер вернул ошибку
@@ -63,8 +64,14 @@ testParserIO filePath parser = do
 -- | Чтобы использовать файлы для тестов, воспользуйтесь этой функцией
 --   Здесь мы просто проверяем, что результат парсинга не Nothing
 -- 
--- testParserIO :: FilePath -> Parser a -> IO Bool
--- testParserIO filePath parser = isJust <$> testIO filePath parser
+
+testIO :: FilePath -> Parser a -> IO (Maybe (a, String))
+testIO filePath parser = do
+    content <- readFile filePath         -- чтение из файла
+    return $ Parser.runParser parser content    -- запуск парсера на содержимом
+
+testParserIO :: FilePath -> Parser a -> IO Bool
+testParserIO filePath parser = isJust <$> testIO filePath parser
 
 -- Вызывать `testParserIO` в тестах можно так
 --     it "My test" $ do
@@ -221,6 +228,26 @@ pdbParser' = do
   models <- Text.Megaparsec.many modelParser' <* string "END"
   return $ PDB' models
 
+-- Функция для тестирования парсера чтобы он выводил прямо в процессе работы результат
+-- testAtomParser :: String -> IO ()
+-- testAtomParser input = do
+--   case Text.Megaparsec.runParser atomParser "" input of
+--     Left err -> putStrLn $ "Error: " ++ errorBundlePretty err
+--     Right result -> do
+--       putStrLn "Parsed result:"
+--       putStrLn $ "  atomType: " ++ atomType result
+--       putStrLn $ "  atomNumber: " ++ show (atomNumber result)
+--       putStrLn $ "  atomName: " ++ atomName result
+--       putStrLn $ "  aminoAcid: " ++ aminoAcid result
+--       putStrLn $ "  chainId: " ++ [chainId result]
+--       putStrLn $ "  residueNumber: " ++ show (residueNumber result)
+--       putStrLn $ "  xCoord: " ++ show (xCoord result)
+--       putStrLn $ "  yCoord: " ++ show (yCoord result)
+--       putStrLn $ "  zCoord: " ++ show (zCoord result)
+--       putStrLn $ "  occupancy: " ++ show (occupancy result)
+--       putStrLn $ "  temperatureFactor: " ++ show (temperatureFactor result)
+--       putStrLn $ "  element: " ++ element result
+
 
 -- 3.b Распарсите `atoms_and_bonds.pdb` (1,25 балл)
 --     Придётся научиться парсить секцию CONNECT.
@@ -289,46 +316,47 @@ instance Applicative Maybe' where
   Nothing' <*> _ = Nothing'
 
 -- -- Проверяем выполнение законов:
--- -- Проверка для Just' a
--- pure id <*> Just' a == Just' (id a) == Just' a
 
--- -- Проверка для Nothing'
--- pure id <*> Nothing' == Nothing'
+-- Identity (pure id <*> v = v)
 
--- -- Проверка для Just' f <*> pure y
--- Just' f <*> pure y == Just' (f y)
+-- pure id <*> Nothing' = Nothing'
+-- pure id <*> Just' f = Just' id <*> Just' f = Just' (id f) = Just' f
 
--- -- Проверка для pure ($ y) <*> Just' f
--- pure ($ y) <*> Just' f == Just' ($ y) <*> Just' f == Just' (f y)
+-- Composition (pure (.) <*> u <*> v <*> w = u <*> (v <*> w))
 
--- -- Проверка для Nothing' <*> pure y
--- Nothing' <*> pure y == Nothing'
+-- pure (.) <*> Just' u <*> Just' v <*> Just' w = Just' (.) <*> Just' u <*> Just' v <*> Just' w =
+-- = Just' ((.) u) <*> Just' v <*> Just' w = Just' ((.u) v) <*> Just' w = Just' (u . v) <*> Just' w = Just' ((u . v) w) = Just'(u (v w))
 
--- -- Проверка для pure ($ y) <*> Nothing'
--- pure ($ y) <*> Nothing' == Nothing'
+-- Homomorphism (pure f <*> pure x = pure (f x))
 
--- -- Проверка для Just' (.)
--- pure (.) <*> Just' f <*> Just' g <*> Just' a == Just' (f . g) <*> Just' a == Just' (f (g a)) == Just' ((f . g) a)
--- Just' f <*> (Just' g <*> Just' a) == Just' f <*> Just' (g a) == Just' (f (g a)) == Just' ((f . g) a)
+-- pure f <*> pure x = Just' f <*> Just' x = Just' (f x)
 
--- -- Проверка для Nothing' <*> Just' g <*> Just' a
--- Nothing' <*> Just' g <*> Just' a == Nothing'
+-- Interchange (x <*> pure y = pure ($ y) <*> x)
 
--- -- Проверка для Just' f <*> Nothing' <*> Just' a
--- Just' f <*> Nothing' <*> Just' a == Nothing'
-
--- -- Проверка для Just' f <*> Just' g <*> Nothing'
--- Just' f <*> Just' g <*> Nothing' == Nothing'
+-- Just' x <*> pure y = Just' x <*> Just' y = Just' (x y)
 
 instance Monad Maybe' where
   (>>=) :: Maybe' a -> (a -> Maybe' b) -> Maybe' b
   Just' x >>= f = f x
   Nothing' >>= _ = Nothing'
 
--- -- Проверяем выполнение законов:
--- leftIdentity a f = Just' a >>= f == f a
--- rightIdentity m = (m >>= Just') == m
--- associativity m f g = ((m >>= f) >>= g) == (m >>= (\x -> f x >>= g))
+-- -- Проверяем выполнение законов для Monad:
+
+-- leftIdentity (return a >>= f = f a)
+
+-- return a >>= f = Just' a >>= f  = f a
+
+-- rightIdentity (m >>= return = m)
+
+-- Just' m >>= return  = return m        = Just' m
+-- Nothing' >>= return = return Nothing' = Nothing'
+
+-- associativity (m >>= (\x -> f x >>= g) = (m >>= f) >>= g)
+
+-- Just' m  >>= (\x -> f x >>= g) = (\x -> f x >>= g) m = f m >>= g
+-- (Just' m  >>= f) >>= g                               = f m >>= g
+-- Nothing' >>= (\x -> f x >>= g) = Nothing'
+-- (Nothing' >>= f) >>= g         = Nothing'
 
 
 ---------------------------------------
@@ -337,23 +365,81 @@ instance Monad Maybe' where
 --     Подумайте, как нужно матчить списки функций и элементов при реализации <*>:
 --     zip или каждый с каждым?
 
-{-
-Рассмотрим на примере, пусть у нас есть список функций fs и список значений xs
-fs = [(+1), (*2), (^2)]
-xs = [1, 2, 3]
+data List a = Null | Cons a (List a)
+  deriving (Show, Eq)
 
-Если мы используем zip для применения каждой функции к каждому значению, результат будет выглядеть так:
-zipWith ($) fs xs = [(+1) 1, (*2) 2, (^2) 3] = [2, 4, 9]
+instance Semigroup (List a) where
+  (<>) :: List a -> List a -> List a
+  (<>)  Null       list = list
+  (<>) (Cons x xs) list = Cons x (xs <> list)
 
-Однако, если мы используем оператор <*> для списков, результат будет:
-fs <*> xs = [(+1) 1, (+1) 2, (+1) 3, (*2) 1, (*2) 2, (*2) 3, (^2) 1, (^2) 2, (^2) 3] = [2, 3, 4, 2, 4, 6, 1, 4, 9]
+instance Monoid (List a) where
+  mempty :: List a
+  mempty = Null
 
-Таким образом, оператор <*> применяет каждую функцию из списка fs ко всем значениям списка xs, создавая новый список результатов. 
-Это соответствует идее комбинирования каждого элемента первого списка с каждым элементом второго списка.
+instance Functor List where
+  fmap :: (a -> b) -> List a -> List b
+  fmap _ Null         = Null
+  fmap f (Cons x xs) = Cons (f x) (fmap f xs)
 
-Я не совсем понял, это чисто теоретический вопрос или нужно прям реализовать код, поэтому
-привел тут теорию, как я ее понял, без реализации <*> для списка
--}
+instance Applicative List where
+  pure :: a -> List a
+  pure x = Cons x Null
+
+  (<*>) :: List (a -> b) -> List a -> List b
+  (<*>)  Null         _           = Null
+  (<*>)  _            Null        = Null
+  (<*>) (Cons fx fs) (Cons x xs) = Cons (fx x) (fmap fx xs <> (fs <*> xs))
+
+-- Доказательства законов для Applicative:
+
+-- Identity (pure id <*> v = v)
+
+-- pure id <*> Null = Cons id Null <*> Null = Cons (id) (fmap id Null) = | fmap для Null возвращает Null | = Cons id Null = Null
+-- Null <*> pure id = Null <*> Cons id Null = Null -- так как первый аргумент Null
+
+-- Composition (pure (.) <*> u <*> v <*> w = u <*> (v <*> w))
+
+-- Это Left Composition
+-- pure (.) <*> u <*> v <*> w = Cons (.) Null <*> u <*> v <*> w = | поскольку Cons (.) Null эквивалентен pure (.) для нашего типа List | =
+-- = fmap (.) u <*> v <*> w = fmap (.) (Cons u us) <*> v <*> w = Cons (u .) (fmap (.) us) <*> v <*> w = Cons (u .) (fmap (.) us <*> v) <*> w
+-- = (Cons (u .) (fmap (.) us <*> v) <*> w) = (u <*> (v <*> w))
+
+-- Это Right Composition
+-- pure (.) <*> u <*> v <*> w = Cons (.) Null <*> u <*> v <*> w = fmap (.) u <*> v <*> w = fmap (.) (Cons u us) <*> v <*> w =
+-- = Cons (u .) (fmap (.) us) <*> v <*> w = Cons (u .) (fmap (.) us <*> v) <*> w = Cons (u .) ((fmap (.) us <*> v) <*> w) =
+-- = Cons (u .) (u <*> (v <*> w)) = (u <*> (v <*> w))
+
+-- Homomorphism (pure f <*> pure x = pure (f x))
+
+-- pure f <*> pure x = Cons f Null <*> Cons x Null = Cons (f x) (fmap f Null) = Cons (f x) Null = pure (f x)
+
+-- Interchange (u <*> pure y = pure ($ y) <*> u)
+
+-- Это Left
+-- u <*> pure y = Cons f fs <*> pure y = Cons f fs <*> Cons y Null = Cons (f y) (fmap f Null) =
+-- = Cons (f y) Null  = pure ($ y) <*> Cons f fs  = pure ($ y) <*> u
+
+-- Это Right
+-- pure ($ y) <*> u = Cons ($) Null <*> u = Cons ($) Null <*> Cons f fs = Cons ($ f) (fmap ($) fs) <*> u =
+-- = Cons ($ f) (fmap ($) fs <*> u) = Cons ($ f) (fmap ($) fs <*> u) = Cons ($ f) (u <*> fs) = u <*> Cons ($ f) fs = u <*> pure y
+
+instance Monad List where
+  (>>=) :: List a -> (a -> List b) -> List b
+  (>>=)  Null        _ = Null
+  (>>=) (Cons x xs) f = f x <> (xs >>= f)
+
+-- Доказательство законов для Monad
+
+-- Left Identity (return a >>= f = f a)
+-- return a >>= f = Cons a Null >>= f = f a <> (Null >>= f)  = f a <> Null = f a
+
+-- Right Identity (m >>= return = m)
+-- m >>= return = Cons x xs >>= return = return x <> (xs >>= return) = Cons x Null <> (xs >>= return) = Cons x Null = Cons x xs
+
+-- Associativity ((m >>= f) >>= g = m >>= (\x -> f x >>= g))
+-- (m >>= f) >>= g = (Cons x xs >>= f) >>= g = (f x <> (xs >>= f)) >>= g = (f x >>= g) <> (xs >>= f >>= g) = (f x >>= g) <> (xs >>= (\x -> f x >>= g))
+
 
 ---------------------------------------
 
@@ -377,6 +463,75 @@ instance Applicative (Either' a) where
     (<*>) :: Either' a (c -> d) -> Either' a c -> Either' a d
     Left' e <*> _ = Left' e       -- Если первый аргумент - Left, оставляем его неизменным
     Right' f <*> r = fmap f r     -- Применяем функцию из Right к значению внутри Right
+
+-- Добавил реализацию монады, ее не было изначально 
+instance Monad (Either' a) where
+    (>>=) :: Either' a b -> (b -> Either' a c) -> Either' a c
+    (>>=) (Left'  e) _ = Left' e
+    (>>=) (Right' r) f = f r
+
+-- Доказательства законов:
+-- Для Applicative:
+
+-- Identity (pure id <*> v = v)
+
+-- Для Right' y
+-- pure id <*> x == Right' id <*> Right' y  == Right' (id y) == Right' y == x
+-- Для Left' 
+-- pure id <*> x == Right' id <*> Left'  y  == Left' y                   == x
+
+
+-- Composition (pure (.) <*> u <*> v <*> w = u <*> (v <*> w))
+
+-- Пусть u = Left' x, v = Left' y, w = Left' z, тогда:
+-- pure (.) <*> Left' x <*> Left' y <*> Left' z = Right' (.) <*> Left' x <*> Left' y <*> Left' z = Left' x <*> Left' y <*> Left' z = Left' x
+-- При этом также:
+-- Left' x <*> (Left' y <*> Left' z) = Left' x <*> Left' y = Left' x
+
+-- Пусть u = Right' x, v = Right' y, w = Right' z, тогда:
+-- pure (.) <*> Right' x <*> Right' y <*> Right' z = Right' (.) <*> Right' x <*> Right' y <*> Right' z  =
+-- = Right' ((.) x)  <*> Right' y <*> Right' z = Right' ((. x) y)  <*> Right' z = 
+-- = Right' (x . y) <*> Right' z =  Right' ((x . y) z) = Right'(x (y z))
+-- При этом также:
+-- Right' x <*> (Right' y <*> Right' z) = Right' x <*> Right' (y z) = Right' (x (y z))
+
+
+-- 3. Homomorphism (pure f <*> pure x = pure (f x))
+
+-- pure f <*> pure x == Right' f <*> Right' x == Right' (f x) == pure (f x)
+
+
+-- 4. Interchange (x <*> pure y = pure ($ y) <*> x)
+
+-- Для Left'
+-- Left' x <*> pure y     == Left' x      <*> Right' y  == Left' x
+-- pure ($ y) <*> Left' x == Right' ($ y) <*> Left'  x  == Left' x
+
+-- Для Right'
+-- Right' x <*> pure y == Right' x     <*> Right' y                     == Right' (x y)
+-- pure ($ y) <*> x    == Right' ($ y) <*> Right' x == Right' (($ y) x) == Right' (x y)
+
+-- Для Monad
+
+-- Left identity (return a >>= k = k a)
+-- Для Left' 
+-- return a >>= Left'  = Right' a >>= Left'  = Left' a
+-- Для Right'
+-- return a >>= Right' = Right' a >>= Right' = Right' a
+
+-- Right identity (m >>= return = m)
+-- Для Left' x
+-- Left' x  >>= return = Left' x  >>= Right' = Left' x
+-- Для Right' x
+-- Right' x >>= return = Right' x >>= Right' = Right' x
+
+-- Associativity ((m >>= f) >>= g = m >>= (\x -> f x >>= g))
+-- Для m = Left' x, f = Left' y, g = Left' z
+-- Left' x >>= (\x -> Left' y x >>= Left' z) = Left' x 
+
+-- Для m = Right' x, f = Right' y, g = Right' z
+-- Right' x >>= (\x -> Right' y x >>= Right' z) = (\x -> Right' y x >>= Right' z) y = Right' x y >>= Right' z = x y z
+
 
 -------------------------------------------------------------------------------
 
