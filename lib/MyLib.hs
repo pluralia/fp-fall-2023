@@ -5,12 +5,13 @@ module MyLib where
 import           Control.Applicative
 import qualified Data.Map.Strict as M
 import           Parser
-import           Text.Megaparsec 
+import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Data.Void (Void)
-import           Data.Char (isSpace)
-import           Data.Maybe           (isJust)
+import           Data.Char (isSpace, isAlphaNum)
+import           Data.Maybe   (isJust)
+import           Control.Monad (void)
 
 -------------------------------------------------------------------------------
 
@@ -114,24 +115,15 @@ data Fasta = Fasta {
 
 fastaP :: Parsec Void String Fasta
 fastaP = do
-  -- _ <- skipMany (satisfy isSpace)  -- Пропуск пробелов
   _ <- char '>'
   desc <- someTill anySingle newline
-  seqq <- Text.Megaparsec.some (satisfy (not . isSpace))
+  seqq <- someTill (satisfy (\c -> c /= ';' && not (isSpace c))) (try (void (string ";\n")) <|> void newline <|> eof)
   return $ Fasta { description = desc, MyLib.seq = seqq }
 
 fastaListP :: Parsec Void String [Fasta]
-fastaListP = Text.Megaparsec.some fastaP
+fastaListP = Text.Megaparsec.many fastaP
 
 
--- main :: IO ()
--- main = do 
---   let testFilePath = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\smalltest.fasta"
-  
---   result <- testParserIO testFilePath fastaP
---   case result of
---     Left err -> putStrLn $ "Parsing failed with error: " ++ err
---     Right parsedData -> putStrLn $ "Parsing successful. Parsed data: " ++ show parsedData
 -------------------------------------------------------------------------------
 
 -- 3. Парсер PDB (3,5 балла)
@@ -193,14 +185,14 @@ atomParser = do
   aatomNumber <- L.decimal <* space1
   aatomName <-  Text.Megaparsec.some alphaNumChar <* space1
   aaminoAcid <- Text.Megaparsec.some alphaNumChar <* space1
-  cchainId <-  symbolChar <* space1
+  cchainId <-  L.charLiteral <* space1
   rresidueNumber <- L.decimal <* space1
-  xxCoord <- L.float <* space1
-  yyCoord <- L.float <* space1
-  zzCoord <- L.float <* space1
+  xxCoord <- L.signed (void space) L.float  <* space1
+  yyCoord <- L.signed (void space) L.float  <* space1
+  zzCoord <- L.signed (void space) L.float  <* space1
   ooccupancy <- L.float <* space1
   ttemperatureFactor <- L.float <* space1
-  eelement <- Text.Megaparsec.some (alphaNumChar <|> symbolChar) <* newline
+  eelement <- Text.Megaparsec.some (satisfy (\c -> isAlphaNum c || c == '-')) <* newline
   return $ PDBAtom  
     aatomType
     aatomNumber
@@ -218,35 +210,15 @@ atomParser = do
 -- Парсер для секции MODEL, содержащей только ATOM
 modelParser' :: Parsec Void String PDBModel'
 modelParser' = do
-  _ <- string "MODEL"  <* Text.Megaparsec.Char.space *> (L.decimal :: Parsec Void String Int)  <* newline
-  atomss <- Text.Megaparsec.many (atomParser <* newline) <* string "ENDMDL"  
+  _ <- string "MODEL" <* space1 *> (L.decimal :: Parsec Void String Int) <* newline
+  atomss <- manyTill (atomParser <* newline) (string "ENDMDL")
   return $ PDBModel' atomss
 
 -- Парсер для всего файла PDB
 pdbParser' :: Parsec Void String PDB'
 pdbParser' = do
-  models <- Text.Megaparsec.many modelParser' <* string "END"
+  models <- manyTill modelParser' (string "END")
   return $ PDB' models
-
--- Функция для тестирования парсера чтобы он выводил прямо в процессе работы результат
--- testAtomParser :: String -> IO ()
--- testAtomParser input = do
---   case Text.Megaparsec.runParser atomParser "" input of
---     Left err -> putStrLn $ "Error: " ++ errorBundlePretty err
---     Right result -> do
---       putStrLn "Parsed result:"
---       putStrLn $ "  atomType: " ++ atomType result
---       putStrLn $ "  atomNumber: " ++ show (atomNumber result)
---       putStrLn $ "  atomName: " ++ atomName result
---       putStrLn $ "  aminoAcid: " ++ aminoAcid result
---       putStrLn $ "  chainId: " ++ [chainId result]
---       putStrLn $ "  residueNumber: " ++ show (residueNumber result)
---       putStrLn $ "  xCoord: " ++ show (xCoord result)
---       putStrLn $ "  yCoord: " ++ show (yCoord result)
---       putStrLn $ "  zCoord: " ++ show (zCoord result)
---       putStrLn $ "  occupancy: " ++ show (occupancy result)
---       putStrLn $ "  temperatureFactor: " ++ show (temperatureFactor result)
---       putStrLn $ "  element: " ++ element result
 
 
 -- 3.b Распарсите `atoms_and_bonds.pdb` (1,25 балл)
@@ -262,17 +234,15 @@ connectParser= do
 -- Парсер для секции MODEL, содержащей ATOM и CONNECT
 modelParser :: Parsec Void String PDBModel
 modelParser = do
-  _ <- string "MODEL" <* Text.Megaparsec.Char.space *> (L.decimal :: Parsec Void String Int)  <* eol
+  _ <- string "MODEL" <* space1 *> (L.decimal :: Parsec Void String Int)  <* newline
   atomss <- Text.Megaparsec.some (Text.Megaparsec.Char.space *> atomParser <* eol)
-  cconect <- Text.Megaparsec.some (Text.Megaparsec.Char.space *> connectParser <* eol)
-  _ <- string "ENDMDL"  <* eol
+  cconect <- manyTill (connectParser <* eol) (string "ENDMDL")
   return $ PDBModel atomss cconect
 
 -- Парсер для всего файла PDB где есть CONNECT
 pdbParser :: Parsec Void String PDB
 pdbParser = do
-  models <- Text.Megaparsec.some modelParser
-  _ <- string "END" <* eol
+  models <- manyTill modelParser (string "END") 
   return $ PDB models
 
 -------------------------------------------------------------------------------
