@@ -15,8 +15,9 @@ data ChurchNumber = Zero | Succ ChurchNumber
 ------------------------------------------------------------------------------------------------
 
 -- 4. Сделайте функцию `pointful` бесточечной, объясняя каждый шаг по примеру из практики
---    (1,5 балла)
+--    (1,5 балла)r
 
+pointful :: (t1 -> t2 -> t3) -> t1 -> (t4 -> t2) -> t4 -> t3
 pointful a b c d = a b (c d)
 
 ------------------------------------------------------------------------------------------------
@@ -36,17 +37,14 @@ data Day = MyDaysAreHere
 -- 5.b Реализуйте следующие функции
 
 -- | Возвращает следующий день
---
 nextDay :: Day -> Day
 nextDay = undefined
 
 -- | Возвращает предыдущий день
---
 dayBefore :: Day -> Day
 dayBefore = undefined
 
 -- | Возвращает количество от текущего до ближайшей субботы
---
 daysBeforeWeekend :: Day -> Int
 daysBeforeWeekend = undefined
 
@@ -74,8 +72,8 @@ instance Functor List where
 -- 6.b Реализуйте инстанс Functor для дерева (0,5 балла)
 
 data Tree a = Node
-  { value :: a
-  , children :: [Tree a]
+  { value :: a,
+    children :: [Tree a]
   }
 
 ---------------------------------------
