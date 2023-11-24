@@ -10,8 +10,8 @@ newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
 instance Monad Parser where
     (>>=) :: Parser a -> (a -> Parser b) -> Parser b
     p >>= f = Parser $ \input ->
-      case Parser.runParser p input of
-        Just (x, rest) -> Parser.runParser (f x) rest
+      case runParser p input of
+        Just (x, rest) -> runParser (f x) rest
         Nothing -> Nothing
 
     return :: a -> Parser a
