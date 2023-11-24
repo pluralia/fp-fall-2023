@@ -6,7 +6,6 @@ import           Control.Applicative
 import qualified Data.Map.Strict as M
 import           Data.Maybe (isJust)
 import           Parser
-import           Test.QuickCheck
 
 -------------------------------------------------------------------------------
 
@@ -167,12 +166,13 @@ newtype PDB = PDB [PDBModel]
 --     Для выполнения задания фактически нужно научиться парсить только секцию MODEL, 
 --     в которой может содержаться только секция ATOM.
 
-count :: Int -> Parser String
-count n = Parser $ \s -> if length s < n then Nothing else Just (splitAt n s)
+-- отщипывает n символов
+chip :: Int -> Parser String
+chip n = Parser $ \s -> if length s < n then Nothing else Just (splitAt n s)
 
 -- Я не знаю есть ли этому готовая альтернатива.
 -- мне нужно было, чтобы делать так:
--- ghci> runParser (floatP <.> count 6) "0.12536567.0 aabd"
+-- ghci> runParser (floatP <.> chip 6) "0.12536567.0 aabd"
 -- Just (0.1253,"6567.0 aabd")
 
 infixl 4 <.>
@@ -187,39 +187,36 @@ bP <.> aP = Parser $ \s -> case runParser aP s of
 atomP :: Parser PDBAtom
 atomP = do
   _ <- stringP "ATOM  "
-  serial' <- (spaceP *> intP) <.> count 5
-  _ <- count 1
-  name' <- (spaceP *> symbolsP <* spaceP) <.> count 4
-  altLoc' <- spaces' $ count 1
-  resName' <- count 3
-  _ <- count 1
+  serial' <- (spaceP *> intP) <.> chip 5
+  _ <- chip 1
+  name' <- (spaceP *> symbolsP <* spaceP) <.> chip 4
+  altLoc' <- allSpaces <$> chip 1
+  resName' <- chip 3
+  _ <- chip 1
   chainID' <- symbolP
-  resSeq' <- (spaceP *> intP) <.> count 4
-  iCode' <- spaces' $ count 1
-  _ <- count 3
-  x' <- (spaceP *> floatP) <.> count 8
-  y' <- (spaceP *> floatP) <.> count 8
-  z' <- (spaceP *> floatP) <.> count 8
-  occupancy' <- (spaceP *> floatP) <.> count 6
-  tempFactor' <- (spaceP *> floatP) <.> count 6
-  _ <- count 10
-  element' <- (spaceP *> symbolsP) <.> count 2
-  charge' <- spaces' $ count 2
+  resSeq' <- (spaceP *> intP) <.> chip 4
+  iCode' <- allSpaces <$> chip 1
+  _ <- chip 3
+  x' <- (spaceP *> floatP) <.> chip 8
+  y' <- (spaceP *> floatP) <.> chip 8
+  z' <- (spaceP *> floatP) <.> chip 8
+  occupancy' <- (spaceP *> floatP) <.> chip 6
+  tempFactor' <- (spaceP *> floatP) <.> chip 6
+  _ <- chip 10
+  element' <- (spaceP *> symbolsP) <.> chip 2
+  charge' <- allSpaces <$> chip 2
   _ <- many newLineP
   return $ PDBAtom serial' name' altLoc' resName' chainID' resSeq' iCode' x' y' z' occupancy' tempFactor' element' charge'
   
 
 -- если res парсера состоит из пробелов кидать Nothing
 -- иначе Just res
-spaces' :: Parser String -> Parser (Maybe String)
-spaces' p = Parser f
-  where
-    f s = case runParser p s of
-      Nothing -> Nothing
-      Just (a, rest) -> case runParser spaceP a of
-        Just (_, "") -> Just (Nothing, rest)
-        _ -> Just (Just a, rest)
 
+isSpace :: Char -> Bool
+isSpace = (== ' ')
+
+allSpaces :: String -> Maybe String
+allSpaces val = if null (dropWhile isSpace val) then Nothing else Just val
         
 -- 3.b Распарсите `atoms_and_bonds.pdb` (1,25 балл)
 --     Придётся научиться парсить секцию CONNECT.
@@ -227,8 +224,8 @@ spaces' p = Parser f
 bondP :: Parser PDBBond
 bondP = do
   _ <- stringP "CONECT"
-  atom1' <- (spaceP *> intP) <.> count 5
-  bondedAtoms' <- many ((spaceP *> intP) <.> count 5)
+  atom1' <- (spaceP *> intP) <.> chip 5
+  bondedAtoms' <- many ((spaceP *> intP) <.> chip 5)
   _ <- many newLineP
   return $ PDBBond atom1' bondedAtoms'
 
@@ -426,13 +423,18 @@ instance Monad List' where
 --     = Cons' a as
 --
 -- 3. m >>= (\x -> k x >>= h) = (m >>= k) >>= h
+-- По индукции:
+-- База:
 -- Nil' >>= (\x -> k x >>= h) = Nil' = (Nil' >>= k) >>= h
 --
+-- Пусть верно для as, тогда докажем, что верно для Cons' a as:
 -- Cons' a as >>= (\x -> k x >>= h) =
---  = (k a >>= h) <> (as >>= (\x -> k x >>= h)) = тут, наверное, надо сказать про индукцию
+--  = (k a >>= h) <> (as >>= (\x -> k x >>= h)) =
 --   = (k a >>= h) <> ((as >>= k) >>= h) ==
 --    = (k a <> (as >>= k)) >>= h =
 --     = (Cons' a as >>= k) >>= h
+-- 
+-- Получается, что верно для Cons' a as. А значит верно для всех списков
 
 ---------------------------------------
 
