@@ -1,0 +1,31 @@
+Test suite hw4-test: RUNNING...
+
+Test
+  padZero
+    pads another string with zeros [✔]
+    does not pad a short string [✔]
+  evenodd
+    check correctness [✔]
+    handles empty list [✔]
+  average
+    handles empty vector [✔]
+    calculates average of a vector with positive values [✔]
+    calculates average of a vector with negative values [✔]
+  gcContent
+    check with all GC [✔]
+    check correctness with no GC content [✔]
+  M.fromList with different handling of duplicate keys
+    fromListL (retains last value for duplicate keys) [✔]
+    fromListR (retains first value for duplicate keys) [✔]
+  nubOrd
+    check correctness with multiple duplicates [✔]
+    check correctness with a range of integers [✔]
+    check correctness with character list [✔]
+    check correctness with an empty list [✔]
+    check correctness with a single element list [✔]
+    check correctness with a list of Either Int Char [✔]
+
+Finished in 0.0018 seconds
+17 examples, 0 failures
+Test suite hw4-test: PASS
+Test suite logged to: /Users/denisteresenko/Progamming/Projects/fp-fall-2023/hw4/dist-newstyle/build/aarch64-osx/ghc-9.6.2/hw4-0.1.0.0/t/hw4-test/test/hw4-0.1.0.0-hw4-test.log

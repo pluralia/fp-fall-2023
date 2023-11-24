@@ -1,6 +1,6 @@
-{- cabal:
-build-depends: base, containers, text, vector
--}
+-- {- cabal:
+-- build-depends: base, containers, text, vector
+-- -}
 
 import           Data.Char       (ord)
 import           Data.Foldable   (foldl', foldr, toList)
