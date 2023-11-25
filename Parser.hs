@@ -1,3 +1,5 @@
+{-# LANGUAGE InstanceSigs #-}
+
 module Parser where
 
 import Data.Char           (digitToInt, isAlphaNum, isSpace, isDigit)
@@ -7,12 +9,12 @@ import Data.Foldable       (foldl')
 newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
 
 instance Functor Parser where
-    fmap :: (a -> b) -> Parser a -> Parser b
-    fmap g aP = Parser f
-      where
-        f s = case runParser aP s of
-            Nothing      -> Nothing
-            Just (a, s') -> Just (g a, s')
+  fmap :: (a -> b) -> Parser a -> Parser b
+  fmap g aP = Parser f
+    where
+      f s = case runParser aP s of
+          Nothing      -> Nothing
+          Just (a, s') -> Just (g a, s')
 
 instance Applicative Parser where 
   pure :: a -> Parser a
@@ -38,6 +40,12 @@ instance Alternative Parser where
         Nothing -> runParser pA' s
         x       -> x
 
+instance Monad Parser where
+    (>>=) :: Parser a -> (a -> Parser b) -> Parser b
+    pA >>= f = Parser $ \s -> case runParser pA s of
+        Nothing      -> Nothing
+        Just (a, s') -> runParser (f a) s'
+        
 satisfyP :: (Char -> Bool) -> Parser Char
 satisfyP p = Parser f
   where
@@ -51,6 +59,9 @@ symbolP = satisfyP isAlphaNum
 
 symbolsP :: Parser String
 symbolsP = some symbolP
+
+stringP :: String -> Parser String
+stringP = traverse (\c -> satisfyP (== c))
 
 oneSpaceP :: Parser Char
 oneSpaceP = satisfyP isSpace
@@ -71,7 +82,7 @@ intP = foldl' (\acc x -> acc * 10 + x) 0 <$> some digitP
 floatP :: Parser Float
 floatP = (+) . fromIntegral
   <$> intP
-  <* satisfyP (== ',')
+  <* satisfyP (== '.') -- тут замени на '.', чтобы не было накладок при тестировании csv файла (там тоже разделитель запятая)
   <*> helper
   where
     helper :: Parser Float
