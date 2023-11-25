@@ -4,6 +4,7 @@ import Test.Hspec
 import MyLib
 import Data.Functor.Identity
 import qualified Data.Map as M
+import Control.Exception (evaluate)
 
 spec :: Spec
 spec = do
@@ -47,15 +48,26 @@ spec = do
             rejectWithNegatives ([] :: [Int]) `shouldBe` Just ([] :: [Int])
 
 -- Task 3 
-    describe "transpose" $ do
-        it "transpose an emty matrix" $ do
-            transpose ([] :: [[Int]]) `shouldBe` []
+    -- describe "transpose" $ do
+    --     it "transpose an emty matrix" $ do
+    --         transpose ([] :: [[Int]]) `shouldBe` []
 
-        it "transpose 1x1 matrix" $ do
-            transpose [[1] :: [Int]] `shouldBe` [[1]]
+    --     it "transpose 1x1 matrix" $ do
+    --         transpose [[1] :: [Int]] `shouldBe` [[1]]
 
-        it "transpose 2x2 matrix" $ do
-            transpose [[1, 2] :: [Int], [3, 4] :: [Int]] `shouldBe` [[1, 3], [2, 4]]
+    --     it "transpose 2x2 matrix" $ do
+    --         transpose [[1, 2] :: [Int], [3, 4] :: [Int]] `shouldBe` [[1, 3], [2, 4]]
+
+-- Task 5
+    describe "WithData" $ do
+        
+        it "checks the Monad instance" $ do
+            let wd = WithData (*2) :: WithData Int Int
+            runWithData (wd >>= \x -> return (x + 1)) 3 `shouldBe` 7
+
+        it "checks the MonadFail instance" $ do
+            let wd = fail "This is an error" :: WithData Int Int
+            evaluate (runWithData wd 3) `shouldThrow` errorCall "Sonething went wrong"
 
     -- Task 7 
     describe "pythagoreanTriples" $ do

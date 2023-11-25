@@ -14,8 +14,8 @@ import           Control.Monad.Reader
 import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
 import           Data.List (nub)
-import Data.Maybe
-import Control.Applicative
+import           Data.Maybe
+import           Control.Applicative
 -------------------------------------------------------------------------------
 
 -- 1. Travserable (1,5 балла)
@@ -42,7 +42,7 @@ instance Functor Maybe' where
   fmap f (Just' a) = Just' (f a)
 
 
-newtype List a = List { getList :: [a] }deriving(Show, Eq)
+newtype List a = List { getList :: [a] } deriving(Show, Eq)
 
 instance Traversable List where
     traverse :: Applicative f => (a -> f b) -> List a -> f (List b)
@@ -94,6 +94,7 @@ transpose xss = getZipList $ traverse ZipList xss
 -------------------------------------------------------------------------------
 
 -- 4. Для чего нужен класс типов MonadFail? (0,25 балла)
+
 -- для того, чтобы ловить ошибки в do-нотации, чтобы она вся не полтела
 
 -------------------------------------------------------------------------------
@@ -123,7 +124,7 @@ instance MonadFail (WithData d) where
     fail :: String -> WithData d a
     fail _ = WithData (error "Sonething went wrong")
 
--- получается, что мы можем делать какие-то вычисления, таская за собой d. Так же мы можем его использовать его где угодно
+-- получается, что мы можем делать какие-то вычисления, таская за собой d. Так же мы можем d использовать его где угодно в процессе вычислений
 -------------------------------------------------------------------------------
 
 -- 6. Do-нотация (1 балл)
@@ -256,13 +257,11 @@ instance Applicative ReturnableCalculation where
 -- instance Monad ReturnableCalculation where
 --   (>>=) :: ReturnableCalculation a-> (a -> ReturnableCalculation b) -> ReturnableCalculation b
 --   ReturnableCalculation (Just x, True) >>= f = f x
---   ReturnableCalculation (Just x, False) >>= _ = pure x
+--   ReturnableCalculation (Just x, False) >>= _ = ReturnableCalculation (Just x, False)
 --   _ >>= _ = ReturnableCalculation (Nothing, False)
 
 realReturn :: a -> ReturnableCalculation a
 realReturn x = ReturnableCalculation (Just x, False)
-
-
 
 -------------------------------------------------------------------------------
 
