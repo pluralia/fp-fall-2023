@@ -9,7 +9,7 @@ build-type:         Simple
 extra-doc-files:    CHANGELOG.md
 
 common warnings
-    ghc-options: -Wall
+    ghc-options:      -Wall
 
 library
     import:           warnings
@@ -20,6 +20,19 @@ library
                  ,    text
                  ,    megaparsec
     hs-source-dirs:   lib
+    default-language: Haskell2010
+
+executable hw8
+    import:           warnings
+    main-is:          Main.hs
+    build-depends:
+                      base ^>=4.18.0.0
+                 ,    hw7
+                 ,    hspec
+                 ,    containers
+                 ,    text
+                 ,    megaparsec
+    hs-source-dirs:   app
     default-language: Haskell2010
 
 test-suite hw6-test
