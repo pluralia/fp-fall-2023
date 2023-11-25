@@ -256,7 +256,8 @@ data List a = Nil | Cons a (List a)
 
 instance Functor List where
   fmap :: (a -> b) -> List a -> List b
-  fmap = undefined
+  fmap func Nil = Nil
+  fmap func (Cons x xs) = Cons (func x) (fmap func xs)
 
 ---------------------------------------
 
@@ -267,12 +268,24 @@ data Tree a = Node
     children :: [Tree a]
   }
 
+instance Functor Tree where
+  fmap :: (a -> b) -> Tree a -> Tree b
+  fmap func Node {value = val, children = ch} = Node {value = func val, children = map (fmap func) ch}
+
+
 ---------------------------------------
 
 -- 6.c Реализуйте инстанс Functor для пары (0,5 балл)
 
-data Pair a b = Pair a b
-  deriving (Show)
+-- data Pair a b = Pair a b
+--   deriving (Show)
+
+-- instance Functor Pair where
+--   fmap :: (a -> b) -> Pair a -> Pair b
+--   fmap = undefined
+
+-- не компилится, наверное, потому что x, y разные типы могут быть,
+-- а функция a -> b
 
 -- С какими трудностями вы столкнулись?
 
