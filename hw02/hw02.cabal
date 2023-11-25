@@ -18,6 +18,9 @@ maintainer:         dev.daniil.bakushkin@gmail.com
 -- category:
 extra-source-files: CHANGELOG.md
 
+common warnings
+    ghc-options: -Wall
+    
 library
     exposed-modules:  MyLib
 

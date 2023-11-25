@@ -59,12 +59,10 @@ length' :: [a] -> Int
 length' = foldl (\acc _ -> acc + 1) 0
 
 -- best choice is foldl
+-- Подсмотрел у Юли, но понял, как работает
 maximum' :: [Int] -> Maybe Int
 maximum' [] = Nothing
-maximum' xs = traceFoldl helper Nothing xs
-  where
-    helper Nothing a = Just a
-    helper (Just acc) a = Just (max acc a)
+maximum' (x : xs) = Just (L.foldl' max x xs)
 
 -- [1, 2, 3, 4, 5]
 -- 1:(2:(3:(4:(5))))
@@ -95,10 +93,8 @@ head' = foldl f Nothing
     f (Just acc) _ = Just acc
 
 last' :: [a] -> Maybe a
-last' = foldl f Nothing
-  where
-    f Nothing el = Just el
-    f (Just _) el = Just el
+last' [] = Nothing
+last' (x : xs) = Just (foldl (\_ acc -> acc) x xs)
 
 -- Интуитивнее foldr
 -- head' :: [a] -> Maybe a
@@ -121,10 +117,7 @@ takeR r = foldr (\x ini -> if length ini < r then x : ini else ini) []
 -- | Быстрая сортировка (1 балл)
 quicksort :: [Int] -> [Int]
 quicksort [] = []
-quicksort (p : xs) = (quicksort lesser) ++ [p] ++ (quicksort greater)
-  where
-    lesser = filter (< p) xs
-    greater = filter (>= p) xs
+quicksort (x : xs) = quicksort (filter (< x) xs) ++ [x] ++ quicksort (filter (>= x) xs)
 
 -- | Функция, которая вставляет в уже отсортированный список элементов
 --   новый элемент на такую позицию, что все элементы левее будут меньше или

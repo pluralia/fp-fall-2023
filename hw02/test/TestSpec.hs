@@ -47,6 +47,15 @@ spec = do
     it "test_or'_true_true" $ do
       or' [True, True] `shouldBe` (True :: Bool)
 
+    it "test_or'_n_times_1" $ do
+      or' (replicate 10 True :: [Bool]) `shouldBe` (True :: Bool)
+
+    it "test_or'_n_times_2" $ do
+      or' (replicate 10 False ++ [True] :: [Bool]) `shouldBe` (True :: Bool)
+
+    it "test_or'_n_times_2" $ do
+      or' (replicate 10 False :: [Bool]) `shouldBe` (False :: Bool)
+
     it "test_length'_empty" $ do
       length' [] `shouldBe` (0 :: Int)
 
@@ -75,7 +84,7 @@ spec = do
       filter' (> 3) [1, 2, 3, 4] `shouldBe` (filter (> 3) [1, 2, 3, 4] :: [Int])
 
     it "test_map'_0" $ do
-      map' (* 2) [] `shouldBe` (map (* 2) [] :: [Int])
+      map' (* 2) [] `shouldBe` ([] :: [Int])
 
     it "test_map'_1" $ do
       map' (* 2) [1, 2, 3] `shouldBe` (map (* 2) [1, 2, 3] :: [Int])
@@ -128,13 +137,13 @@ spec = do
 
   describe "task_5" $ do
     it "test_myZipWith_1" $ do
-      myZipWith (+)([1, 2, 3] :: [Int]) ([1, 2, 3] :: [Int]) `shouldBe` ([2, 4, 6] :: [Int])
+      myZipWith (+) ([1, 2, 3] :: [Int]) ([1, 2, 3] :: [Int]) `shouldBe` ([2, 4, 6] :: [Int])
 
     it "test_myZipWith_2" $ do
-      myZipWith (+)([] :: [Int]) ([] :: [Int]) `shouldBe` ([] :: [Int])
+      myZipWith (+) ([] :: [Int]) ([] :: [Int]) `shouldBe` ([] :: [Int])
 
     it "test_myZipWith_2" $ do
-      myZipWith (+)([] :: [Int]) ([] :: [Int]) `shouldBe` ([] :: [Int])
+      myZipWith (+) ([] :: [Int]) ([] :: [Int]) `shouldBe` ([] :: [Int])
 
     it "test_fibSum_1" $ do
       fibSum ([0, 1, 1, 2, 3, 5, 8, 13, 21] :: [Integer]) `shouldBe` (31 :: Integer)
@@ -142,8 +151,16 @@ spec = do
   describe "task_6" $ do
     it "test_bfs_1" $ do
       let tree1 = Node 0 [Node 1 [Node 2 [Leaf]]]
-        in bfs tree1 `shouldBe` ([0, 1, 2] :: [Int])
+       in bfs tree1 `shouldBe` ([0, 1, 2] :: [Int])
+
+    it "test_bfs_2" $ do
+      let tree1 = Node 0 [Node 1 [Node 3 [Leaf], Node 4 [Leaf]], Node 2 [Node 5 [Leaf]] ]
+       in bfs tree1 `shouldBe` ([0, 1, 2, 3, 4, 5] :: [Int])
+
+    it "test_dfs_2" $ do
+      let tree1 = Node 0 [Node 1 [Node 3 [Leaf], Node 4 [Leaf]], Node 2 [Node 5 [Leaf]] ]
+       in dfs tree1 `shouldBe` ([0, 1, 3, 4, 2, 5] :: [Int])
 
     it "test_dfs_1" $ do
       let tree1 = Node 0 [Node 1 [Node 2 [Leaf]]]
-        in dfs tree1 `shouldBe` ([0, 1, 2] :: [Int])
+       in dfs tree1 `shouldBe` ([0, 1, 2] :: [Int])
