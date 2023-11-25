@@ -20,10 +20,10 @@ spec = do
             testMYParserIO testFilePath2 fastaListP `shouldReturn` True
         
     describe "3. Парсер PDB" $ do 
-        it "My test only_atoms" $ do
+        it "My test PDB only_atoms" $ do
             let testFilePath3 = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\only_atoms.pdb"
             testMYParserIO testFilePath3 pdbParser' `shouldReturn` True
 
-        it "My test atoms_with_bonds" $ do
+        it "My test PDB atoms_with_bonds" $ do
             let testFilePath4 = "D:\\Studies_at_HSE_spb\\3 semestr\\HASKELL\\homeworks\\hw7\\atoms_with_bonds.pdb"
             testMYParserIO testFilePath4 pdbParser `shouldReturn` True
