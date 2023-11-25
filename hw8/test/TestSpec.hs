@@ -16,6 +16,37 @@ import Test.Hspec
 spec :: Spec
 spec = do
     describe "Tests" $ do
+      it "sequenceA' tests" $ do
+        let 
+          multiplyByTwo :: Int -> Maybe Int
+          multiplyByTwo x = if x < 0 then Nothing else Just (x * 2)
+
+          inputList :: [Int]
+          inputList = [1, 2, 3, 4, 5]
+
+        traverse' (\x -> multiplyByTwo x) inputList    `shouldBe` (Just [2,4,6,8,10] :: Maybe [Int])
+
+      it "sequenceA' tests" $ do
+        sequenceA' [Just 1, Just 2, Just 3, Just 4, Just 5]    `shouldBe` (Just [1,2,3,4,5] :: Maybe [Int])
+
+      it "rejectWithNegatives tests" $ do
+        rejectWithNegatives [1, 6, 12]     `shouldBe` (Just [1, 6, 12] :: Maybe [Int])
+        rejectWithNegatives [10, 5 .. -15] `shouldBe` (Nothing         :: Maybe [Int])
+
+      it "transpose tests" $ do
+        transpose ([[1, 2, 3], [4, 5, 6]] :: [[Int]]) `shouldBe` ([[1,4],[2,5],[3,6]] :: [[Int]])
+        transpose ([[999]] :: [[Int]])                `shouldBe` ([[999]] :: [[Int]])
+        transpose ([[]] :: [[Int]])                   `shouldBe` ([] :: [[Int]])
+
+      it "WithData tests" $ do
+        let
+          testWithData :: WithData String Int
+          testWithData = do
+            dataString <- WithData id  -- Получаем доступ к данным типа String
+            return $ length dataString  -- Возвращаем результат вычисления, зависящий от данных
+
+        runWithData testWithData "Hello, Monad!" `shouldBe` (13 :: Int)
+
       it "fromDo11 tests" $ do
         myFromDo11 (Just 15 :: Maybe Int) (Just "apple" :: Maybe String) `shouldBe` Just (25 :: Int, "appleabcd" :: String) 
         myFromDo11 (Nothing :: Maybe Int) (Just "apple" :: Maybe String) `shouldBe` Nothing  
