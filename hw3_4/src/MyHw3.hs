@@ -1,6 +1,10 @@
-import Data.Bifunctor (Bifunctor (bimap, first, second))
+{-# LANGUAGE InstanceSigs #-}
+
+module MyHw3 where
+
+import Data.Bifunctor (Bifunctor (bimap))
 import Data.Ix (Ix, inRange, index, range)
-import Data.Time (DayOfWeek (Friday, Saturday, Thursday, Wednesday))
+import Data.Time ()
 
 ------------------------------------------------------------------------------------------------
 
@@ -25,6 +29,7 @@ instance Ord ChurchNumber where
   Succ a <= Succ b = a <= b
   Succ _ <= Zero = False
   Zero <= Succ _ = True
+  Zero <= Zero = True
 
 instance Num ChurchNumber where
   (+) :: ChurchNumber -> ChurchNumber -> ChurchNumber
@@ -34,20 +39,27 @@ instance Num ChurchNumber where
 
   (*) :: ChurchNumber -> ChurchNumber -> ChurchNumber
   (*) a (Succ b) = (+) a (a * b)
-  (*) a Zero = Zero
+  (*) _ Zero = Zero
 
   (-) :: ChurchNumber -> ChurchNumber -> ChurchNumber
-  (-) Zero Zero = Zero
   -- можно реализовывать через Maybe, но решил оставить так;
   (-) Zero _ = Zero
   (-) (Succ a) (Succ b) = a - b
+  (-) (Succ a) Zero = Succ a
 
+  -- комплиятор говорит, что non-exhaustive pattern matching
+  -- линтер говорит, что pattern match is redundant ; D
+
+  negate :: ChurchNumber -> ChurchNumber
   negate _ = Zero
+  abs :: ChurchNumber -> ChurchNumber
   abs m = m
 
+  signum :: ChurchNumber -> ChurchNumber
   signum Zero = Zero
   signum _ = Succ Zero
 
+  fromInteger :: Integer -> ChurchNumber
   fromInteger 0 = Zero
   fromInteger n =
     if n > 0
@@ -69,19 +81,20 @@ churchThree = churchOne + churchTwo
 churchFour :: ChurchNumber
 churchFour = churchTwo * churchTwo
 
+-- А можешь подсказать, пожалуйста, как здесь с shadowing бороться?
 instance Ix ChurchNumber where
   range :: (ChurchNumber, ChurchNumber) -> [ChurchNumber]
-  range (chN1, chN2) = helper chN1 chN2 []
+  range (chN11, chN22) = helper chN11 chN22 []
     where
       helper chN1 chN2 acc = if chN1 == chN2 then acc ++ [chN2] else helper (Succ chN1) chN2 (acc ++ [chN1])
 
   index :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
-  index (chN1, chN2) chN3 = helper (chN1, chN2) chN3 0
+  index (chN11, chN22) chN33 = helper (chN11, chN22) chN33 0
     where
       helper (chN1, chN2) chN3 acc = if chN1 == chN3 then acc else helper (Succ chN1, chN2) chN3 (acc + 1)
 
   inRange :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Bool
-  inRange (chN1, chN2) chN3 = helper (chN1, chN2) chN3
+  inRange (chN11, chN22) = helper (chN11, chN22)
     where
       helper (chN1, chN2) chN3 | chN1 == chN3 = True | chN1 == chN2 = False | otherwise = helper (Succ chN1, chN2) chN3
 
@@ -100,18 +113,18 @@ instance Ix ChurchNumber where
 
 (*&) :: ChurchNumber -> ChurchNumber -> ChurchNumber
 (*&) a (Succ b) = (+&) a (a *& b)
-(*&) a Zero = Zero
+(*&) _ Zero = Zero
 
 chAdd :: ChurchNumber -> ChurchNumber -> ChurchNumber
 chAdd a (Succ b) = chAdd (Succ a) b
-chAdd a churchZero = a
+chAdd a _ = a
 
 chSucc :: ChurchNumber -> ChurchNumber
 chSucc = Succ
 
 chMult :: ChurchNumber -> ChurchNumber -> ChurchNumber
 chMult a (Succ b) = chAdd a (a `chMult` b)
-chMult a Zero = Zero
+chMult _ Zero = Zero
 
 churchNullify :: (ChurchNumber, ChurchNumber) -> (ChurchNumber, ChurchNumber)
 churchNullify (Zero, Zero) = (Zero, Zero)
@@ -127,20 +140,21 @@ churchIntCalcDifference (pos1, neg1) (pos2, neg2) = churchNullify (pos1 +& neg2,
 churchIntCalcSum :: (ChurchNumber, ChurchNumber) -> (ChurchNumber, ChurchNumber) -> (ChurchNumber, ChurchNumber)
 churchIntCalcSum (pos1, neg1) (pos2, neg2) = churchNullify (pos1 +& pos2, neg1 +& neg2)
 
-churchIntCalcProd :: (ChurchNumber, ChurchNumber) -> (ChurchNumber, ChurchNumber) -> (ChurchNumber, ChurchNumber)
-churchIntCalcProd chN1 chN2 = helper (churchNullify chN1) (churchNullify chN2)
-  where
-    -- helper chN1 chN2 = chN2
-    helper (_, _) (Zero, Zero) = (Zero, Zero)
-    helper (Zero, Zero) (_, _) = (Zero, Zero)
-    helper (Zero, b) (c, Zero) = (Zero, b *& c)
-    helper (a, Zero) (c, Zero) = (a *& c, Zero)
-    helper (a, Zero) (Zero, d) = (Zero, a *& d)
-    helper (Zero, b) (Zero, d) = (b *& d, Zero)
+-- ругается на non-exhausitve pattern matching
+-- churchIntCalcProd :: (ChurchNumber, ChurchNumber) -> (ChurchNumber, ChurchNumber) -> (ChurchNumber, ChurchNumber)
+-- churchIntCalcProd chN1 chN2 = helper (churchNullify chN1) (churchNullify chN2)
+--   where
+--     helper (_, _) (Zero, Zero) = (Zero, Zero)
+--     helper (Zero, Zero) (_, _) = (Zero, Zero)
+--     helper (Zero, b) (c, Zero) = (Zero, b *& c)
+--     helper (a, Zero) (c, Zero) = (a *& c, Zero)
+--     helper (a, Zero) (Zero, d) = (Zero, a *& d)
+--     helper (Zero, b) (Zero, d) = (b *& d, Zero)
 
 churchIntAbs :: (ChurchNumber, ChurchNumber) -> (ChurchNumber, ChurchNumber)
 churchIntAbs chN = helper (churchNullify chN)
   where
+    helper (Succ a, Succ b) = churchIntAbs (a, b)
     helper (Zero, Zero) = (Zero, Zero)
     helper (a, Zero) = (a, Zero)
     helper (Zero, a) = (a, Zero)
@@ -148,15 +162,16 @@ churchIntAbs chN = helper (churchNullify chN)
 churchIntSignum :: (ChurchNumber, ChurchNumber) -> (ChurchNumber, ChurchNumber)
 churchIntSignum chN = helper (churchNullify chN)
   where
+    helper (Succ a, Succ b) = churchIntSignum (a, b)
     helper (Zero, Zero) = (Zero, Zero)
-    helper (a, Zero) = (Succ Zero, Zero)
-    helper (Zero, a) = (Zero, Succ Zero)
+    helper (_, Zero) = (Succ Zero, Zero)
+    helper (Zero, _) = (Zero, Succ Zero)
 
 fromInteger' :: Integer -> (ChurchNumber, ChurchNumber)
 fromInteger' int = helper int (Zero, Zero)
   where
     helper 0 (a, b) = (a, b)
-    helper int (a, b) = helper (int - 1) (Succ a, Zero)
+    helper int1 (a, _) = helper (int1 - 1) (Succ a, Zero)
 
 churchIntNegation :: (ChurchNumber, ChurchNumber) -> (ChurchNumber, ChurchNumber)
 churchIntNegation (pos1, neg1) = churchNullify (neg1, pos1)
@@ -164,6 +179,7 @@ churchIntNegation (pos1, neg1) = churchNullify (neg1, pos1)
 churchIntIsPositive :: (ChurchNumber, ChurchNumber) -> Bool
 churchIntIsPositive chN = helper (churchNullify chN)
   where
+    helper (Succ a, Succ b) = churchIntIsPositive (a, b)
     helper (Zero, Zero) = False
     helper (_, Zero) = True
     helper (Zero, _) = False
@@ -212,6 +228,8 @@ instance Enum Day where
     | day == Friday' = 4
     | day == Saturday' = 5
     | day == Sunday' = 6
+    | otherwise = -1
+
   toEnum :: Int -> Day
   toEnum num
     | num == 0 = Monday'
@@ -221,6 +239,7 @@ instance Enum Day where
     | num == 4 = Friday'
     | num == 5 = Saturday'
     | num == 6 = Sunday'
+    | otherwise = Saturday'
 
 ---------------------------------------
 
@@ -236,7 +255,7 @@ dayBefore day = if day == Monday' then Sunday' else pred day
 
 -- | Возвращает количество от текущего до ближайшей субботы
 daysBeforeWeekend :: Day -> Int
-daysBeforeWeekend day = helper day 0
+daysBeforeWeekend day1 = helper day1 0
   where
     helper day n = if day == Saturday' then n else helper (succ day) n + 1
 
@@ -251,13 +270,12 @@ daysBeforeWeekend day = helper day 0
 ---------------------------------------
 
 -- 6.a Реализуйте инстанс Functor для списка (0,25 балла)
-
 data List a = Nil | Cons a (List a)
-  deriving (Show)
+  deriving (Show, Eq)
 
 instance Functor List where
   fmap :: (a -> b) -> List a -> List b
-  fmap func Nil = Nil
+  fmap _ Nil = Nil
   fmap func (Cons x xs) = Cons (func x) (fmap func xs)
 
 ---------------------------------------
@@ -267,7 +285,7 @@ instance Functor List where
 data Tree a = Node
   { value :: a,
     children :: [Tree a]
-  }
+  } deriving (Show, Eq)
 
 instance Functor Tree where
   fmap :: (a -> b) -> Tree a -> Tree b
@@ -278,7 +296,7 @@ instance Functor Tree where
 -- 6.c Реализуйте инстанс Functor для пары (0,5 балл)
 
 data Pair a b = Pair a b
-  deriving (Show)
+  deriving (Show, Eq)
 
 -- instance Functor Pair where
 --   fmap :: (a -> b) -> Pair a -> Pair b

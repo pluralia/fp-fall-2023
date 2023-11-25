@@ -1,3 +1,4 @@
+module MyHw4 where
 {- cabal:
 build-depends: base, containers, text, vector
 -}
