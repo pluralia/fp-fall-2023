@@ -1,3 +1,4 @@
+import Data.Bifunctor (Bifunctor (bimap, first, second))
 import Data.Ix (Ix, inRange, index, range)
 import Data.Time (DayOfWeek (Friday, Saturday, Thursday, Wednesday))
 
@@ -272,13 +273,12 @@ instance Functor Tree where
   fmap :: (a -> b) -> Tree a -> Tree b
   fmap func Node {value = val, children = ch} = Node {value = func val, children = map (fmap func) ch}
 
-
 ---------------------------------------
 
 -- 6.c Реализуйте инстанс Functor для пары (0,5 балл)
 
--- data Pair a b = Pair a b
---   deriving (Show)
+data Pair a b = Pair a b
+  deriving (Show)
 
 -- instance Functor Pair where
 --   fmap :: (a -> b) -> Pair a -> Pair b
@@ -297,5 +297,17 @@ instance Functor Tree where
 -- https://hackage.haskell.org/package/base-4.19.0.0/docs/Data-Bifunctor.html#t:Bifunctor
 
 -- Реализуйте инстанс Bifunctor для Either и пары
+
+data Either' a b = Left' a | Right' b
+  deriving (Show, Eq)
+
+instance Bifunctor Either' where
+  bimap :: (a -> b) -> (c -> d) -> Either' a c -> Either' b d
+  bimap f _ (Left' a) = Left' (f a)
+  bimap _ g (Right' b) = Right' (g b)
+
+instance Bifunctor Pair where
+  bimap :: (a -> b) -> (c -> d) -> Pair a c -> Pair b d
+  bimap f g (Pair a b) = Pair (f a) (g b)
 
 ------------------------------------------------------------------------------------------------

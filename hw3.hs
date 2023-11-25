@@ -68,7 +68,6 @@ data List a = Nil | Cons a (List a)
 instance Functor List where
   fmap :: (a -> b) -> List a -> List b
   fmap = undefined
-
 ---------------------------------------
 
 -- 6.b Реализуйте инстанс Functor для дерева (0,5 балла)
