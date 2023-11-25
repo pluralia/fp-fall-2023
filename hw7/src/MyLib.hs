@@ -5,9 +5,9 @@ module MyLib where
 
 import           Control.Applicative
 import qualified Data.Map.Strict as M
-import           Data.Char (isAlphaNum)
+import           Data.Char (isAlpha)
 import           Data.Maybe (isJust)
-import           Data.Functor
+import           Data.Functor ()
 import           Parser
 
 -------------------------------------------------------------------------------
@@ -51,6 +51,10 @@ testIO filePath parser = do
 testParserIO :: FilePath -> Parser a -> IO Bool
 testParserIO filePath parser = isJust <$> testIO filePath parser
 
+
+testFullyParsedIO :: FilePath -> Parser a -> IO Bool
+testFullyParsedIO filePath parser = maybe False (null . snd) <$> testIO filePath parser
+
 -- Вызывать `testParserIO` в тестах можно так
 --     it "My test" $ do
 --         testParserIO myFile myParser `shouldReturn` True
@@ -92,27 +96,28 @@ data Fasta = Fasta {
 
 fastaP :: Parser Fasta
 fastaP = Fasta
-     <$> descriptionP
-     <*> sequenceP
+     <$> (many commentP *> descriptionP)
+     <*> (many commentP *> sequencesP)
+     <*   many commentP
   where
     descriptionP :: Parser String
-    descriptionP = many commentP
-                *> satisfyP (== '>')
-                *> some (satisfyP (/= '\n'))
-                <* newLineP
+    descriptionP = satisfyP (== '>')
+                *> many (satisfyP (/= '\n'))
     
-    sequenceP :: Parser [Acid]
-    sequenceP = many (satisfyP (\c -> c /= ';' && c /= '\n'))
-               <* many commentP
-               <* many newLineP
+    sequencesP :: Parser [Acid]
+    sequencesP = concat
+              <$> many (satisfyP (\c -> c `notElem` [';', '>'])
+               *> many (satisfyP (/= '\n'))
+              <* many newLineP)
 
     commentP :: Parser String
     commentP = satisfyP (== ';')
             *> many (satisfyP (/= '\n'))
+            <* many newLineP
                 
 -- Парсер списка записей FASTA
 fastaListP :: Parser [Fasta]
-fastaListP = sepBy (many newLineP) fastaP
+fastaListP = many fastaP
 
 
 -------------------------------------------------------------------------------
@@ -126,6 +131,7 @@ fastaListP = sepBy (many newLineP) fastaP
 
 -- | Тип, представляющий из себя ATOM
 --
+
 data PDBAtom = PDBAtom
   { atomSerial     :: Int          -- Серийный номер атома
   , atomName       :: String       -- Имя атома
@@ -133,23 +139,24 @@ data PDBAtom = PDBAtom
   , atomResName    :: String       -- Имя остатка
   , atomChainID    :: Char         -- Идентификатор цепи
   , atomResSeq     :: Int          -- Номер остатка
-  , atomICode      :: Char         -- Код вставки
+  , atomICode      :: Maybe Char   -- Код вставки
   , atomX          :: Float        -- Координата X
   , atomY          :: Float        -- Координата Y
   , atomZ          :: Float        -- Координата Z
   , atomOccupancy  :: Float        -- Занимаемость места атомом
   , atomTempFactor :: Float        -- Температурный фактор
-  , atomElement    :: String       -- Химический элемент атома
-  , atomCharge     :: String       -- Заряд атома
+  , atomElement    :: Char         -- Химический элемент атома
+  , atomCharge     :: Maybe String -- Заряд атома
   } deriving (Eq, Show)
 
 -- | Тип, представляющий из себя CONNECT
 --
 data PDBBond = PDBBond
-    {
-      atomOne     :: Int   -- номер первого атома
-    , bondedAtoms :: [Int] -- номера атомов, связанных с ним
-    }deriving (Eq, Show)
+  {number :: Int,
+   bond1  :: Maybe Int,
+   bond2  :: Maybe Int
+    } deriving (Eq, Show)
+
 
 -- | Тип, представляющий из себя MODEL
 --
@@ -157,60 +164,66 @@ data PDBModel
   = PDBModel
       { atoms :: [PDBAtom] -- атомы из секции ATOM
       , bonds :: [PDBBond] -- связи из секции CONNECT
-      }
+      } deriving (Eq, Show)
 
 -- | PDB-файл
 --
 newtype PDB = PDB [PDBModel]
+  deriving (Eq, Show)
 
 -- 3.a Распарсите `only_atoms.pdb` (2,25 балла)
 --     Для выполнения задания фактически нужно научиться парсить только секцию MODEL, 
 --     в которой может содержаться только секция ATOM.
---
-string :: String -> Parser String
-string = traverse (\c -> satisfyP (== c))
 
--- | Парсер для секции ATOM
+
 atomP :: Parser PDBAtom
 atomP = PDBAtom
-  <$> (string "ATOM" *> spaceP *> intP)                        -- atomSerial
-  <*> (spaceP *> symbolsP)                                     -- atomName
-  <*> (oneSpaceP *> satisfyP (\c -> c == ' ' || isAlphaNum c)) -- atomAltLoc
-  <*> (spaceP *> symbolsP)                                     -- atomResName
-  <*> (oneSpaceP *> satisfyP isAlphaNum)                       -- atomChainID
-  <*> (spaceP *> intP)                                         -- atomResSeq
-  <*> (satisfyP (== ' ') Data.Functor.$> ' ')                  -- atomICode - это hlint поправила
-  <*> (spaceP *> floatP)                                       -- atomX
-  <*> (spaceP *> floatP)                                       -- atomY
-  <*> (spaceP *> floatP)                                       -- atomZ
-  <*> (spaceP *> floatP)                                       -- atomOccupancy
-  <*> (spaceP *> floatP)                                       -- atomTempFactor
-  <*> (spaceP *> symbolsP)                                     -- atomElement
-  <*> (spaceP *> symbolsP <* many (satisfyP (/= '\n')))        -- atomCharge 
-
-
+  <$  spaceP                                    -- Игнорируем пробелы перед началом парсинга
+  <*> intP <* spaceP                             -- Парсим целое число (atomSerial) с пробелом после
+  <*> symbolsP <* spaceP                         -- Парсим строку символов (atomName) с пробелом после
+  <*> satisfyP isAlpha <* spaceP                 -- Парсим одну букву (atomAltLoc) с пробелом после
+  <*> some (satisfyP isAlpha) <* spaceP          -- Парсим одну или более букв (atomResName) с пробелом после
+  <*> satisfyP isAlpha <* spaceP                 -- Парсим одну букву (atomChainID) с пробелом после
+  <*> intP <* spaceP                             -- Парсим целое число (atomResSeq) с пробелом после
+  <*> optional (satisfyP isAlpha) <* spaceP      -- Парсим опциональную букву (atomICode) с пробелом после
+  <*> floatWithNegP <* spaceP                    -- Парсим число с возможным знаком минус (atomX) с пробелом после
+  <*> floatWithNegP <* spaceP                    -- Парсим число с возможным знаком минус (atomY) с пробелом после
+  <*> floatWithNegP <* spaceP                    -- Парсим число с возможным знаком минус (atomZ) с пробелом после
+  <*> floatWithNegP <* spaceP                    -- Парсим число с возможным знаком минус (atomOccupancy) с пробелом после
+  <*> floatWithNegP <* spaceP                    -- Парсим число с возможным знаком минус (atomTempFactor) с пробелом после
+  <*> symbolP <* spaceP                          -- Парсим символ (atomElement) с пробелом после
+  <*> optional (some (satisfyP (\c -> c == '+' || c == '-' || ('1' <= c && c <= '9')))) <* spaceP
+                                                -- Парсим опциональный заряд атома (atomCharge) с пробелом после
+    where
+      floatWithNegP :: Parser Float
+      floatWithNegP = negate <$> (satisfyP (=='-') *> floatP) <|> floatP
 
 -- 3.b Распарсите `atoms_and_bonds.pdb` (1,25 балл)
 --     Придётся научиться парсить секцию CONNECT.
 
--- | Парсер для секции CONNECT
 connectP :: Parser PDBBond
-connectP =
-  PDBBond
-    <$> (string "CONECT" *> spaceP *> intP)        -- atom1
-    <*> (spaceP *> sepBy spaceP intP)              -- bondedAtoms
+connectP = PDBBond
+  <$  spaceP
+  <*> intP <* spaceP
+  <*> optional intP <* spaceP
+  <*> optional intP <* spaceP
 
 
--- | Парсер для секции MODEL
 modelP :: Parser PDBModel
-modelP =
-  PDBModel
-    <$> (string "MODEL" *> spaceP *> many atomP)  -- atoms
-    <*> (spaceP *> many connectP)                 -- bonds
+modelP = PDBModel
+  <$            stringP "MODEL" <*  skipToNewLine
+  <*> many     (stringP "ATOM"   *> atomP)
+  <*> (some    (stringP "CONECT" *> connectP) <|> pure [])
+  <*  spaceP <* stringP "ENDMDL"
+  where
+    skipToNewLine :: Parser String
+    skipToNewLine = many (satisfyP (/= '\n')) <* newLineP
 
--- | Парсер для PDB-файла
 pdbP :: Parser PDB
-pdbP = PDB <$> many modelP
+pdbP = PDB
+   <$> many modelP <* spaceP
+   <*  stringP "END" 
+
 -------------------------------------------------------------------------------
 
 -- 4. Monad Parser (0,5 балла)
@@ -261,11 +274,11 @@ instance Applicative Maybe' where
 --
 -- Закон 1 (Identity):
 -- pure id <*> v = v
---
+
 -- pure id <*> Nothing' = Nothing'       - Левая сторона
 -- Nothing'             = Nothing'       - Правая сторона
 --
--- pure id <*> (Just' x) = Just' (id x)  - Левая сторона
+-- pure id <*> (Just' x) = Just' id <*> Just' x = Just' (id x) - Левая сторона
 -- Just' x               = Just' x       - Правая сторона
 --
 -- Закон 2 (Composition):
@@ -274,23 +287,32 @@ instance Applicative Maybe' where
 -- pure (.) <*> Nothing' <*> Just' f <*> Just' x = Nothing'                   - Левая сторона
 -- Nothing' <*> (Just' f <*> Just' x)            = Nothing'                   - Правая сторона
 --
--- pure (.) <*> Just' g <*> Just' f <*> Just' x  = Just' (g . f) <*> Just' x  - Левая сторона
--- Just' (g . f) <*> Just' x                     = Just' (g (f x))            - Правая сторона
---
+-- pure (.) <*> Just' g <*> Just' f <*> Just' x  - Левая сторона
+-- = Just' (g . f) <*> Just' x
+-- = Just' (g . f $ x)
+-- = Just' (g (f x))
+-- = Just' g <*> Just' (f x)
+-- = Just' g <*> (Just' f <*> Just' x)
+--   
+-- Just' g <*> (Just' f <*> Just' x) - Правая сторона
+-- = Just' g <*> Just' (f x)
+-- = Just' (g (f x))
+
 -- Закон 3 (Homomorphism):
 -- pure f <*> pure x = pure (f x)
 --
--- pure g <*> pure x = Just' (g x)  - Левая сторона
+-- pure g <*> pure x = Just' g <*> Just' x = Just' (g x) - Левая сторонаv
 -- pure (g x)        = Just' (g x)  - Правая сторона
---
+
 -- Закон 4 (Interchange):
 -- u <*> pure y = pure ($ y) <*> u
 --
 -- Nothing' <*> pure y     = Nothing'   - Левая сторона
 -- pure ($ y) <*> Nothing' = Nothing'   - Правая сторона
 --
--- Just' f <*> pure y     = Just' (f y) - Левая сторона
--- pure ($ y) <*> Just' f = Just' (f y) - Правая сторона
+-- Just' f <*> pure y = Just' f <*> Just' y = Just' (f y) - Левая сторона
+-- pure ($ y) <*> Just' f = Just' ($ y) <*> Just' f = Just' ($ y f) = Just' (f y) - Правая сторона
+
 
 instance Monad Maybe' where
   (>>=) :: Maybe' a -> (a -> Maybe' b) -> Maybe' b
@@ -303,19 +325,21 @@ instance Monad Maybe' where
 -- return a >>= f                 = f a
 -- return a >>= \x -> Just' (f x) = Just' (f a)  - Левая сторона
 -- Just' (f a)                    = Just' (f a)  - Правая сторона
---
+
 -- Закон 2 (Right Identity):
 -- m >>= return = m
--- Nothing' >>= return = Nothing'  - Левая сторона
--- Nothing'            = Nothing'  - Правая сторона
---
+-- Just' a >>= return = return a = Just' a          - Левая сторона
+-- Nothing' >>= return = return Nothing' = Nothing' - Правая сторона
+
 -- Закон 3 (Associativity):
 -- (m >>= f) >>= g = m >>= (\x -> f x >>= g)
 -- (Nothing' >>= f) >>= g                 = Nothing' - Левая сторона
 -- Nothing'         >>= (\x -> f x >>= g) = Nothing' - Правая сторона
 --
--- (Just' x >>= f) >>= g = (f x) >>= g        - Левая сторона
--- (f x)           >>= g = (f x) >>= g        - Правая сторона
+-- (Just' x >>= f) >>= g = (f x) >>= g        - Левая сторона      
+-- Just' x >>= (\x -> f x >>= g)              - Правая сторона
+-- = (\x -> f x >>= g) x =
+-- = f a >>= g                                - теперь все хорошо
 
 ---------------------------------------
 
@@ -349,19 +373,45 @@ append (Cons x xs) ys = Cons x (xs `append` ys)
 -- Закон 1 (Identity):
 --
 -- pure id <*> v   = v
--- pure id <*> Nil = Nil  -- Левая сторона
--- Nil             = Nil  -- Правая сторона
--- pure id <*> Cons x xs = Cons (id x) (pure id <*> xs)  -- Левая сторона
--- Cons x xs             = Cons x xs                     -- Правая сторона
 --
+-- pure id <*> Nil
+-- -- Редукция
+-- = Cons id Nil `append` (Nil <*> Nil)
+-- -- По определению append
+-- = Cons id Nil `append` Nil
+-- -- По определению append
+-- = Cons id Nil
+-- -- По определению fmap
+-- = fmap id Nil
+-- -- По определению fmap
+-- = Nil
+
 -- Закон 2 (Composition):
---
--- pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
--- pure (.) <*> Nil <*> Cons f fs <*> Cons x xs = Nil  -- Левая сторона
--- Nil      <*> (Cons f fs <*> Cons x xs)       = Nil  -- Правая сторона
--- pure (.) <*> Cons g gs <*> Cons f fs <*> Cons x xs = Cons (g . f) (pure (.) <*> gs <*> fs <*> xs)  -- Левая сторона
--- Cons (g . f) (pure (.) <*> gs <*> fs <*> xs)       = Cons (g (f x)) (gs <*> (fs <*> xs))           -- Правая сторона
--- 
+-- pure (.) <*> u <*> v <*> w == u <*> (v <*> w)
+-- pure (.) <*> Cons f1 (Cons f2 Nil) <*> Cons g1 (Cons g2 Nil) <*> Cons x1 (Cons x2 Nil)
+-- = fmap (.) (Cons f1 (Cons f2 Nil)) `append` (pure (.) <*> Cons g1 (Cons g2 Nil) <*> Cons x1 (Cons x2 Nil))  -- по определению <*>
+-- = Cons (f1 . f2) Nil `append` (Cons (g1 . g2) Nil `append` (pure (.) <*> Cons x1 (Cons x2 Nil)))       -- по определению fmap и закону композиции для List
+-- = Cons (f1 . f2) Nil `append` (Cons (g1 . g2) Nil `append` Cons (x1 . x2) Nil)                          -- по закону композиции для List
+-- = fmap (f1 . f2) (Cons x1 (Cons x2 Nil))                                                               -- по определению fmap и закону композиции для List
+-- = Cons (f1 . f2 $ x1) (fmap (f1 . f2) (Cons x2 Nil))                                                  -- по определению fmap и закону композиции для List
+-- = Cons (f1 . f2 $ x1) (Cons (g1 . g2 $ x2) Nil)                                                      -- по определению fmap и закону композиции для List
+-- = Cons (f1 (f2 x1)) (Cons (g1 (g2 x2)) Nil)                                                         -- по закону композиции для функций
+-- = fmap f1 (Cons (f2 x1) (Cons (g2 x2) Nil))                                                          -- по определению fmap и закону композиции для List
+-- = Cons (f1 (f2 x1)) (fmap g1 (Cons (g2 x2) Nil))                                                     -- по определению fmap и закону композиции для List
+-- = Cons (f1 (f2 x1)) (Cons (g1 (g2 x2)) Nil)                                                         -- по закону композиции для функций
+-- = fmap (f1 . f2) (Cons x1 (Cons x2 Nil))                                                             -- по определению fmap и закону композиции для List
+-- = Cons (f1 . f2 $ x1) (fmap (f1 . f2) (Cons x2 Nil))                                                 -- по определению fmap и закону композиции для List
+-- = Cons (f1 . f2 $ x1) (Cons (g1 . g2 $ x2) Nil)                                                      -- по определению fmap и закону композиции для List
+-- = Cons (f1 (f2 x1)) (Cons (g1 (g2 x2)) Nil)                                                         -- по закону композиции для функций
+-- = fmap f1 (Cons (f2 x1) (Cons (g2 x2) Nil))                                                          -- по определению fmap и закону композиции для List
+-- = Cons (f1 (f2 x1)) (fmap g1 (Cons (g2 x2) Nil))                                                     -- по определению fmap и закону композиции для List
+-- = Cons (f1 (f2 x1)) (Cons (g1 (g2 x2)) Nil)                                                         -- по закону композиции для функций
+-- = fmap (f1 . f2) (Cons x1 (Cons x2 Nil))                                                             -- по определению fmap и закону композиции для List
+-- = Cons (f1 . f2 $ x1) (fmap (f1 . f2) (Cons x2 Nil))                                                 -- по определению fmap и закону композиции для List
+-- = Cons (f1 . f2 $ x1) (Cons (g1 . g2 $ x2) Nil)                                                      -- по определению fmap и закону композиции для List
+-- = Cons (f1 (f2 x1)) (Cons (g1 (g2 x2)) Nil)                                                         -- по закону композиции для функций
+-- после такого нужен курс реабилитации
+
 -- Закон 3 (Homomorphism):
 -- pure f <*> pure x = pure (f x)
 -- pure g <*> pure x = Cons (g x) Nil  -- Левая сторона
@@ -394,11 +444,13 @@ instance Monad List where
 
 -- Закон 3 (Associativity):
 -- (m >>= f) >>= g = m >>= (\x -> f x >>= g)
--- (Nil >>= f) >>= g         = Nil  -- Левая сторона
--- Nil >>= (\x -> f x >>= g) = Nil  -- Правая сторона
--- (Cons x xs >>= f) >>= g = (f x) >>= g  -- Левая сторона
--- (f x) >>= g = (f x)             >>= g  -- Правая сторона
-
+-- (m >>= f) >>= g
+-- = (Cons x xs >>= f) >>= g
+-- = (f x `append` (xs >>= f)) >>= g
+-- = (g (f x) `append` (xs >>= (\x -> f x >>= g)))
+-- = (g (f x) `append` ((xs >>= f) >>= g))
+-- = ((Cons x xs >>= f) >>= g)
+-- = (m >>= (\x -> f x >>= g))
 
 ---------------------------------------
 
