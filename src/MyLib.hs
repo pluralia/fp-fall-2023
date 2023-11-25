@@ -7,6 +7,7 @@ import           Control.Monad.Reader
 import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
 import           Data.Monoid (Sum(..))
+import           Control.Applicative (ZipList(..))
 
 -------------------------------------------------------------------------------
 
@@ -16,19 +17,67 @@ import           Data.Monoid (Sum(..))
 
 -- 1.a Реализуйте инстансы Traversable для Maybe и списка (без док-ва законов) (0,5 балла)
 
+data Maybe' a = Nothing' | Just' a
+  deriving (Show, Eq)
+
+instance Functor Maybe' where
+  fmap :: (a -> b) -> Maybe' a -> Maybe' b
+  fmap _ Nothing'  = Nothing'
+  fmap f (Just' x) = Just' $ f x
+
+instance Foldable Maybe' where
+  foldr :: (a -> b -> b) -> b -> Maybe' a -> b
+  foldr _ ini Nothing'  = ini
+  foldr f ini (Just' x) = f x ini
+
+instance Traversable Maybe' where
+  traverse :: (Applicative f) => (a -> f b) -> Maybe' a -> f (Maybe' b)
+  traverse _ Nothing'  = pure Nothing'
+  traverse f (Just' x) = Just' <$> f x
+
+
+data List a = Null | Cons a (List a)
+  deriving (Eq, Show)
+
+instance Functor List where
+  fmap :: (a -> b) -> List a -> List b
+  fmap _ Null         = Null
+  fmap f (Cons xx xs) = Cons (f xx) (fmap f xs)
+
+instance Foldable List where
+  foldr :: (a -> b -> b) -> b -> List a -> b
+  foldr _ ini  Null       = ini
+  foldr f ini (Cons x xs) = f x (foldr f ini xs)
+
+instance Traversable List where
+  traverse :: (Applicative f) => (a -> f b) -> List a -> f (List b)
+  traverse _  Null       = pure Null
+  traverse f (Cons x xs) = Cons <$> f x <*> traverse f xs
+
 ---------------------------------------
 
 -- 1.b Реализуйте `traverse` через `sequenceA` и `sequenceA` через `traverse` (0,5 балла)
 
 traverse' :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
-traverse' = undefined
+traverse' f = sequenceA' . fmap f
 
 sequenceA' :: (Traversable t, Applicative f) => t (f a) -> f (t a)
-sequenceA' = undefined
+sequenceA' = traverse' id
 
 ---------------------------------------
 
 -- 1.c В чем разница между Traversable и Functor? Между Traversable и Foldable? (0,5 балла)
+
+-- между Traversable и Functor: 
+--    Functor вытаскивает тип из какого-то контейнера и применяет к нему функцию, изменяя тип,
+--    но сохраняя его в том же контейнере, а Traversable может работать с какими-то "побочными" 
+--    эффектами, меняя внешний и внутренний контейнер местами: например [Maybe a] -> Maybe [a]
+
+-- между Traversable и Foldable:
+--    Foldable осуществляет свёртку на типах, завёрнутыми в контейнер - то есть он их может 
+--    как-то преобразовать и выдать результат на всех элементах в контейнере, который не завёрнут
+--    в этот контейнер. Traversable в свою очередь не считает результат на всех элементах, он
+--    изменяет каждый элемент, меняя контейнеры местами.
 
 -------------------------------------------------------------------------------
 
@@ -36,10 +85,10 @@ sequenceA' = undefined
 --       если в нем нет отрицательных элементов, и Nothing в противном случае (0,5 балла)
 --
 rejectWithNegatives :: (Num a, Ord a) => [a] -> Maybe [a]
-rejectWithNegatives = undefined
-  -- where
-  --   deleteIfNegative :: (Num a, Ord a) => a -> Maybe a
-  --   deleteIfNegative x = if x < 0 then Nothing else Just x
+rejectWithNegatives = traverse deleteIfNegative
+  where
+    deleteIfNegative :: (Num a, Ord a) => a -> Maybe a
+    deleteIfNegative x = if x < 0 then Nothing else Just x
 
 -------------------------------------------------------------------------------
 
@@ -47,11 +96,15 @@ rejectWithNegatives = undefined
 --       Используйте Traversable для реализации транспонирования матриц (0,5 балла)
 --
 transpose :: [[a]] -> [[a]]
-transpose = undefined
+transpose = getZipList . traverse ZipList
 
 -------------------------------------------------------------------------------
 
 -- 4. Для чего нужен класс типов MonadFail? (0,25 балла)
+
+-- для обработки ситуаций в case ... of, когда нам приходит какое-то значение, 
+-- которое не удовлетворяет нашему паттерн-матчингу
+-- или для возвращения ошибки в конструкции it - then - else
 
 -------------------------------------------------------------------------------
 
@@ -60,6 +113,38 @@ transpose = undefined
 --       Без описания задание не засчитывается (0,5 балла)
 --
 newtype WithData d a = WithData { runWithData :: d -> a }
+
+instance Functor (WithData d) where
+  fmap :: (a -> b) -> WithData d a -> WithData d b
+  fmap f aR = WithData bR
+    where
+      bR w = f $ runWithData aR w
+
+instance Applicative (WithData d) where
+    pure :: a -> WithData d a
+    pure = WithData . const
+
+    (<*>) :: WithData d (a -> b) -> WithData d a -> WithData d b
+    (<*>) fR aR = WithData $ \w -> bR w
+      where
+        f    = runWithData fR
+        bR w = f w $ runWithData aR w
+
+instance Monad (WithData d) where
+    (>>=) :: WithData d a -> (a -> WithData d b) -> WithData d b
+    (>>=) aR k = WithData $ \w -> runWithData (k $ runWithData aR w) w
+
+instance MonadFail (WithData d) where
+  fail :: String -> WithData d a
+  fail = error
+
+-- WithData похожа на Reader - то есть она принимает какое-то окружение и возвращает значение,
+-- посчитанное на этом окружении. 
+
+-- При реализации инстанса MonadFail у меня возникла проблема с типом `a` : непонятно, что будет выдаваться 
+-- при ошибке. Идеальным был бы случай, если бы для типа `a` были установлены ограничения на классы типов - 
+-- `(Monoid a)` или `(MonadFail a)`, потому что тогда был бы определён `mempty a` или `fail a`.
+-- Но так как таких ограничений нет, я просто вернула ошибку.
 
 -------------------------------------------------------------------------------
 
@@ -179,38 +264,48 @@ pifagor n = do
 -- | Пример использования 'realReturn'.
 --   Должно вернуться 42, завёрнутое в 'ReturnableCalculation'.
 --
--- returnExample :: ReturnableCalculation Int
--- returnExample = do
---     let a = 40
---         b = 2
+returnExample :: ReturnableCalculation Int
+returnExample = do
+    let a = 40
+        b = 2
 
---     realReturn $ a + b
+    realReturn $ a + b
 
---     let a = 0
+    let a = 0
 
---     if a == 0
---       then pure 200
---       else realReturn 0
+    if a == 0
+      then pure 200
+      else realReturn 0
 
-data ReturnableCalculation a = YourImplementation
+newtype ReturnableCalculation' a b = ReturnableCalculation' { runRC :: Either a b }
+  deriving (Show, Eq)
 
-instance Functor ReturnableCalculation where
-    fmap :: (a -> b) -> ReturnableCalculation a -> ReturnableCalculation b
-    fmap = undefined
+type ReturnableCalculation a = ReturnableCalculation' a a
 
-instance Applicative ReturnableCalculation where
-    pure :: a -> ReturnableCalculation a
-    pure = undefined
+-- Left - realReturn был 
 
-    (<*>) :: ReturnableCalculation (a -> b) -> ReturnableCalculation a -> ReturnableCalculation b
-    (<*>) = undefined
+instance Functor (ReturnableCalculation' a) where
+    fmap :: (b -> c) -> ReturnableCalculation' a b -> ReturnableCalculation' a c
+    fmap _ (ReturnableCalculation' (Left x))  = ReturnableCalculation' (Left x)
+    fmap f (ReturnableCalculation' (Right x)) = ReturnableCalculation' (Right (f x))
 
-instance Monad ReturnableCalculation where
-    (>>=) :: ReturnableCalculation a -> (a -> ReturnableCalculation b) -> ReturnableCalculation b
-    (>>=) = undefined
+instance Applicative (ReturnableCalculation' a) where
+    pure :: b -> ReturnableCalculation' a b 
+    pure = ReturnableCalculation' . Right
 
-realReturn :: a -> ReturnableCalculation a
-realReturn = undefined
+    (<*>) :: ReturnableCalculation' a (b -> c) -> ReturnableCalculation' a b -> ReturnableCalculation' a c
+    (<*>) (ReturnableCalculation' (Left x)) _ = ReturnableCalculation' (Left x)
+    (<*>) _ (ReturnableCalculation' (Left x)) = ReturnableCalculation' (Left x)
+    (<*>) (ReturnableCalculation' (Right f)) (ReturnableCalculation' (Right x)) = 
+      ReturnableCalculation' (Right (f x))
+
+instance Monad (ReturnableCalculation' a) where
+    (>>=) :: ReturnableCalculation' a b -> (b -> ReturnableCalculation' a c) -> ReturnableCalculation' a c
+    (>>=) (ReturnableCalculation' (Left x)) _ = ReturnableCalculation' (Left x)
+    (>>=) (ReturnableCalculation' (Right x)) k = k x
+
+realReturn :: a -> ReturnableCalculation' a b
+realReturn = ReturnableCalculation' . Left
 
 -------------------------------------------------------------------------------
 
@@ -256,6 +351,7 @@ instance (Monoid w) => MonadWriter w (Writer' w) where
     pass (Writer' (Identity (x, f), logger)) = Writer' (Identity x, f logger)
 
 -- Почему нужно было определять `Writer' w a`, а не `Writer' a w`?
+
 -- Потому что у нас logger всегда одного типа (моноид) и мы его фиксируем
 
 ---------------------------------------
@@ -273,11 +369,14 @@ data BinaryTree a
   deriving (Show, Eq)
 
 sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
-sumAndTraceInOrder Leaf = pure []
-sumAndTraceInOrder (Node val leftCh rightCh) =
-  (<>) <$> Writer' (Identity [val], Sum val)
-       <*> ((<>) <$> sumAndTraceInOrder leftCh 
-                 <*> sumAndTraceInOrder rightCh)
+sumAndTraceInOrder binTree = do
+  case binTree of
+    Leaf -> pure []
+    (Node val leftCh rightCh) -> do
+      tell (Sum val)
+      resL <- sumAndTraceInOrder leftCh
+      resR <- sumAndTraceInOrder rightCh
+      pure $ val : resL <> resR
 
 -------------------------------------------------------------------------------
 
@@ -348,13 +447,25 @@ type Environment = M.Map String Int
 -- | Вычислите выражение, используя Reader'
 --   Если выражение использует необъявленную переменную, вернем Nothing
 --
+
 eval :: Expr -> Reader' Environment (Maybe Int)
-eval (Primary (Val x)) = pure (Just x)
-eval (Primary (Var s)) = reader (M.lookup s) 
-eval (Binary l r) = do
-  val_l <- eval l
-  val_r <- eval r
-  return $ (+) <$> val_l <*> val_r
+eval (Primary (Val x)) = return . Just $ x
+eval (Primary (Var x)) = reader $ \r -> M.lookup x r
+eval (Binary left' right') = do
+    resLeft <- eval left'
+    resRight <- eval right'
+    return $ do
+        x <- resLeft
+        y <- resRight
+        return $ x + y
+
+-- eval :: Expr -> Reader' Environment (Maybe Int)
+-- eval (Primary (Val x)) = pure (Just x)
+-- eval (Primary (Var s)) = reader (M.lookup s) 
+-- eval (Binary l r) = do
+--   val_l <- eval l
+--   val_r <- eval r
+--   return $ (+) <$> val_l <*> val_r
 
 
 -- | Пример запуска вычисления выражения
@@ -379,6 +490,7 @@ data Stmt = Stmt
 --   В качестве результата вычисления всего списка договоримся возвращать результат вычисления 
 --   последнего выражения в списке
 --
+
 evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
 evalStmts [] = pure Nothing
 evalStmts [x] = eval (expr x)

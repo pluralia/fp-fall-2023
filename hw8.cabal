@@ -36,4 +36,5 @@ test-suite hw8-test
     build-depends:
         base ^>=4.18.1.0,
         hw8,
-        hspec
+        hspec,
+        containers
