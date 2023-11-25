@@ -171,8 +171,10 @@ newtype PDBModel' = PDBModel'
 -- | PDB-файл
 --
 newtype PDB = PDB [PDBModel]
+  deriving(Show)
 
-newtype PDB' = PDB' [PDBModel']
+newtype PDB' = PDB' [PDBModel'] 
+  deriving(Show)
 
 -- 3.a Распарсите `only_atoms.pdb` (2,25 балла)
 --     Для выполнения задания фактически нужно научиться парсить только секцию MODEL, 
@@ -192,7 +194,7 @@ atomParser = do
   zzCoord <- L.signed (void space) L.float  <* space1
   ooccupancy <- L.float <* space1
   ttemperatureFactor <- L.float <* space1
-  eelement <- Text.Megaparsec.some (satisfy (\c -> isAlphaNum c || c == '-')) <* newline
+  eelement <- Text.Megaparsec.some (satisfy (\c -> isAlphaNum c || c `elem` ['-', '+'])) <* space
   return $ PDBAtom  
     aatomType
     aatomNumber
@@ -211,7 +213,7 @@ atomParser = do
 modelParser' :: Parsec Void String PDBModel'
 modelParser' = do
   _ <- string "MODEL" <* space1 *> (L.decimal :: Parsec Void String Int) <* newline
-  atomss <- manyTill (atomParser <* newline) (string "ENDMDL")
+  atomss <- manyTill atomParser (string "ENDMDL" <* space)
   return $ PDBModel' atomss
 
 -- Парсер для всего файла PDB
@@ -226,17 +228,17 @@ pdbParser' = do
 
 connectParser :: Parsec Void String PDBBond
 connectParser= do
-  _ <- string "CONNECT"
+  _ <- string "CONECT"
   bond1 <- Text.Megaparsec.Char.space *> L.decimal
-  bond2 <- Text.Megaparsec.Char.space *> L.decimal <* eol
+  bond2 <- Text.Megaparsec.Char.space *> L.decimal <* space
   return $ PDBBond bond1 bond2
 
 -- Парсер для секции MODEL, содержащей ATOM и CONNECT
 modelParser :: Parsec Void String PDBModel
 modelParser = do
   _ <- string "MODEL" <* space1 *> (L.decimal :: Parsec Void String Int)  <* newline
-  atomss <- Text.Megaparsec.some (Text.Megaparsec.Char.space *> atomParser <* eol)
-  cconect <- manyTill (connectParser <* eol) (string "ENDMDL")
+  atomss <- Text.Megaparsec.some (atomParser <* space)
+  cconect <- manyTill connectParser (string "ENDMDL") <* space
   return $ PDBModel atomss cconect
 
 -- Парсер для всего файла PDB где есть CONNECT
