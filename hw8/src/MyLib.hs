@@ -10,6 +10,7 @@ module MyLib where
     > ghci
     >> :set -package mtl
 -}
+import           Control.Applicative (ZipList(..))
 import           Control.Monad.Writer.Strict
 import           Control.Monad.Reader
 import           Data.Functor.Identity
@@ -24,27 +25,57 @@ import           Data.Monoid()
 
 -- 1.a Реализуйте инстансы Traversable для Maybe и списка (без док-ва законов) (0,5 балла)
 
+-- Все закоментированно, потому что данный инстанс уже Defined in `Data.Traversable'
+-- Maybe:
+-- instance Traversable Maybe where
+--   traverse :: Applicative f => (a -> f b) -> Maybe a -> f (Maybe b)
+--   traverse _ Nothing  = pure Nothing
+--   traverse f (Just a) = Just <$> f a
+
+--   sequenceA :: Applicative f => Maybe (f a) -> f (Maybe a)
+--   sequenceA Nothing   = pure Nothing
+--   sequenceA (Just fa) = Just <$> fa
+
+-- List:
+-- instance Traversable List where
+--   traverse :: Applicative f => (a -> f b) -> List a -> f (List b)
+--   traverse _ Nil         = pure Nil
+--   traverse f (Cons x xs) = Cons
+--                       <$> f x
+--                       <*> traverse f xs
+--   sequenceA :: Applicative f => List (f a) -> f (List a)
+--   sequenceA Nil         = pure Nil
+--   sequenceA (Cons x xs) = Cons
+--                       <$> x
+--                       <*> sequenceA xs
 ---------------------------------------
 
 -- 1.b Реализуйте `traverse` через `sequenceA` и `sequenceA` через `traverse` (0,5 балла)
+--
+-- На эти функции ругается hlint, значит все сделано правильно
 
--- traverse' :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
--- traverse' f = sequenceA . fmap f
+traverse' :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
+traverse' f = sequenceA . fmap f
 
--- sequenceA' :: (Traversable t, Applicative f) => t (f a) -> f (t a)
--- sequenceA' = traverse id
+sequenceA' :: (Traversable t, Applicative f) => t (f a) -> f (t a)
+sequenceA' = traverse id
 
 ---------------------------------------
 
 -- 1.c В чем разница между Traversable и Functor? Между Traversable и Foldable? (0,5 балла)
 
+-- Traversable позволяет не просто применять функцию к значению в контексте, как это делает Functor,
+-- но и собирать полученный результат в какой-нибудь другой контекст.
+
+-- Foldable предоставляет способ сворачивать структуры данных в одно значение,
+-- в то время как Traversable предоставляет способ применять функцию, возвращающую структуру данных, ко всей структуре данных.
 -------------------------------------------------------------------------------
 
 -- | 2. Реализуйте `rejectWithNegatives`, которая возвращает исходный список, обернутый в Just,
 --       если в нем нет отрицательных элементов, и Nothing в противном случае (0,5 балла)
 --
 rejectWithNegatives :: (Num a, Ord a) => [a] -> Maybe [a]
-rejectWithNegatives = undefined
+rejectWithNegatives = traverse deleteIfNegative
   where
     deleteIfNegative :: (Num a, Ord a) => a -> Maybe a
     deleteIfNegative x = if x < 0 then Nothing else Just x
@@ -54,13 +85,17 @@ rejectWithNegatives = undefined
 -- | 3. Рассмотрим представление матриц в виде вложенных списков, в которых внутренние списки являются строками.
 --       Используйте Traversable для реализации транспонирования матриц (0,5 балла)
 --
-transpose :: [[a]] -> [[a]]
-transpose = undefined
+transpose ::  [[a]] -> [[a]]
+transpose = (.) getZipList (traverse ZipList)
 
 -------------------------------------------------------------------------------
 
 -- 4. Для чего нужен класс типов MonadFail? (0,25 балла)
-
+-- Для обработки ошибок в контексте Монад, то есть для случаев,
+-- когда монадические вычисления могут завершиться неудачей или ошибкой.
+--
+-- Например, пусть есть функция, ищущая элемент в списке и возвращающая Either String a,
+-- где String - это сообщение об ошибке, а 'a' - тип элемента.
 -------------------------------------------------------------------------------
 
 -- | 5. Сделайте (WithData d) монадой и не забудьте про 'MonadFail'.
@@ -68,6 +103,33 @@ transpose = undefined
 --       Без описания задание не засчитывается (0,5 балла)
 --
 newtype WithData d a = WithData { runWithData :: d -> a }
+
+instance Functor (WithData d) where
+  fmap :: (a -> b) -> WithData d a -> WithData d b
+  fmap f (WithData g) = WithData (f . g)
+
+instance Applicative (WithData d) where
+  pure :: a -> WithData d a
+  pure  = (.) WithData const
+
+  (<*>) :: WithData d (a -> b) -> WithData d a -> WithData d b
+  WithData f <*> WithData g = WithData (\d -> f d (g d))
+
+instance Monad (WithData d) where
+  return :: a -> WithData d a
+  return = pure
+
+  (>>=) :: WithData d a -> (a -> WithData d b) -> WithData d b
+  WithData g >>= f = WithData (\d -> runWithData (f (g d)) d)
+
+instance MonadFail (WithData d) where
+  fail :: String -> WithData d a
+  fail message = WithData (\_ -> error message)
+
+-- Эта монада WithData d представляет собой монаду,
+-- которая инкапсулирует вычисление, зависящее от некоторых данных типа d.
+-- Эффект заключается в хранении какой-нибудь функции
+-- При вызове runWithData в нее передаются значения, а она возвращает какой-нибудь результат
 
 -------------------------------------------------------------------------------
 
