@@ -1,13 +1,14 @@
 module MyHw4 where
+
 {- cabal:
 build-depends: base, containers, text, vector
 -}
 
-import           Data.Char       (ord)
-import           Data.Foldable   (foldl', foldr, toList)
-import qualified Data.Map.Strict as M
-import qualified Data.Text       as T
-import qualified Data.Vector     as V
+import Data.Char (ord)
+import Data.Foldable (foldl', foldr, toList)
+import Data.Map.Strict qualified as M
+import Data.Text qualified as T
+import Data.Vector qualified as V
 
 -- К каждой задаче приведите хотя бы 1 или 2 тестовых примера.
 -- Подсказка: Text и Vector можно конкатенировать с помощью оператора '<>'.
@@ -29,7 +30,7 @@ import qualified Data.Vector     as V
 -- Готовую функцию из пакета text использовать нельзя
 
 padZero :: T.Text -> Int -> T.Text
-padZero str width = undefined
+padZero str width = 
 
 ------------------------------------------------------------------------------------------------
 
@@ -67,10 +68,10 @@ gcContent str = undefined
 -- Реализовать `M.fromList :: [(k, v)] -> M.Map k v` с помощью свёрток `foldl'` и `foldr`. Объяснить
 -- чем будет отличаться поведение этих вариантов.
 
-fromListL :: Ord k => [(k, v)] -> M.Map k v
+fromListL :: (Ord k) => [(k, v)] -> M.Map k v
 fromListL lst = undefined
 
-fromListR :: Ord k => [(k, v)] -> M.Map k v
+fromListR :: (Ord k) => [(k, v)] -> M.Map k v
 fromListR lst = undefined
 
 ------------------------------------------------------------------------------------------------
@@ -84,7 +85,7 @@ fromListR lst = undefined
 --
 -- Решение должно использовать свёртку по входному списку в один проход. Использовать fromList нельзя.
 
-nubOrd :: Ord a => [a] -> [a]
+nubOrd :: (Ord a) => [a] -> [a]
 nubOrd xs = undefined
 
 ------------------------------------------------------------------------------------------------
