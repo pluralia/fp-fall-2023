@@ -2,7 +2,7 @@
 
 import qualified Data.Map.Strict as M
 
-import Data.Monoid
+import Data.Monoid ()
 
 -- Во всех заданиях с инстансами укажите сигнатуры функций
 

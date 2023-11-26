@@ -1,0 +1,85 @@
+Test suite hw03-test: RUNNING...
+
+Test
+  HW3: Eq instance for ChurchNumber
+    Checks equality of Zero with Zero [✔]
+    Checks equality of Succ Zero with Zero [✔]
+    Checks inequality of Zero with Succ Zero [✔]
+  HW3: Ord instance for ChurchNumber
+    Compares Zero with Zero [✔]
+    Compares Zero with Succ Zero [✔]
+    Compares Succ Zero with Zero [✔]
+  HW3: Num instance for ChurchNumber
+    Adds two Church numbers [✔]
+    Subtracts two Church numbers [✔]
+    Multiplies two Church numbers [✔]
+    Checks 'abs' function for Zero [✔]
+    Checks 'abs' function for non Zero [✔]
+    Checks 'signum' function for a non-zero number [✔]
+  HW3: Ix instance for ChurchNumber
+    Checks the range of Church numbers [✔]
+    Checks if a Church number is in range [✔]
+    Indexes a Church number [✔]
+    Checks inRange for a number outside the range [✔]
+    Checks index for a number outside the range [✔]
+  HW3: Enum instance for Day
+    Converts Monday to its enum value [✔]
+    Converts Saturday to its enum value [✔]
+    Converts 4 to its corresponding Day value [✔]
+  HW3: nextDay function
+    Returns Tuesday for Monday [✔]
+    Returns Sunday for Saturday [✔]
+    Returns Monday for Sunday [✔]
+  HW3: dayBefore function
+    Returns Sunday for Monday [✔]
+    Returns Saturday for Sunday [✔]
+    Returns Tuesday for Wednesday [✔]
+  HW3: daysBeforeWeekend function
+    Returns 5 for Monday [✔]
+    Returns 0 for Saturday [✔]
+    Returns 3 for Thursday [✔]
+  HW3: Functor instance for List
+    Maps a function over an empty list [✔]
+    Maps a function over a non-empty list [✔]
+    Maps a function that turns values to strings [✔]
+  HW3: Functor instance for Tree
+    Maps a function over a tree with one node [✔]
+    Maps a function over a tree with multiple levels 1 [✔]
+    Maps a function over a tree with multiple levels 2 [✔]
+  HW3: Functor instance for Pair
+    Maps a function over the second element of the pair [✔]
+    Maps a function that multiplies each element of the second list by 10 [✔]
+  HW3: Bifunctor instance for Either'
+    Maps a function over the Left side of Either' [✔]
+    Maps a function over the Right side of Either' [✔]
+  HW3: Bifunctor instance for Pair
+    Maps a function over the first element of the Pair [✔]
+    Maps a function over the second element of the Pair [✔]
+  HW4: padZero
+    handles empty string [✔]
+    handles string larger than width [✔]
+  HW4: evenodd
+    handles empty list [✔]
+    handles list with odd and even elements [✔]
+  HW4: average
+    handles empty vector [✔]
+    handles vector with values [✔]
+  HW4: gcContent
+    handles empty string [✔]
+    handles DNA string [✔]
+  HW4: fromListL and fromListR
+    fromListL works as expected [✔]
+    fromListR works as expected [✔]
+    fromListL handles duplicates correctly [✔]
+    fromListR handles duplicates correctly [✔]
+  HW4: nubOrd
+    handles empty list [✔]
+    handles list with duplicate elements [✔]
+  HW4: buildQuery
+    builds query parameters correctly [✔]
+    returns an empty string for empty parameters [✔]
+
+Finished in 0.0055 seconds
+57 examples, 0 failures
+Test suite hw03-test: PASS
+Test suite logged to: /home/gv/edu/haskell/fp-fall-2023/hw03/dist-newstyle/build/x86_64-linux/ghc-9.4.7/hw03-0.1.0.0/t/hw03-test/test/hw03-0.1.0.0-hw03-test.log
