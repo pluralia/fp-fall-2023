@@ -3,15 +3,12 @@
 
 module MyHw4 where
 
-{- cabal:
-build-depends: base, containers, text, vector
--}
-
 import Data.ByteString (replicate)
 import Data.ByteString qualified as L
 import Data.Char (ord)
 import Data.Foldable (foldl', foldr, toList)
 import Data.Map.Strict qualified as M
+import Data.Set qualified as Set
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import GHC.TypeError qualified as T
@@ -35,9 +32,6 @@ import GHC.TypeError qualified as T
 --
 -- Готовую функцию из пакета text использовать нельзя
 
-str1 :: T.Text
-str1 = "hh"
-
 -- T.pack :: String -> T.Text
 -- T.unpack :: T.Text -> String
 
@@ -58,15 +52,9 @@ padZero str width = T.append (T.replicate numZeros (T.pack "0")) str
 -- Разделить список на подсписки элементов на четных и нечетных позициях используя свертку. Порядок элементов
 -- должен сохраняться.
 
-isEven :: Int -> Bool
-isEven x = if x `mod` 2 == 0 then True else False
-
+-- :p но задачка легкая, просто идею не смог придумать
 evenodd :: [a] -> ([a], [a])
-evenodd = foldl (\x acc -> ) ([], [])
-  where
-    helper x (evens, odds)
-      | isEven x = (x : evens, odds)
-      | otherwise = (evens, x : odds)
+evenodd = foldr (\x (left, right) -> if length left < length right then (x : left, right) else (left, x : right)) ([], [])
 
 ------------------------------------------------------------------------------------------------
 
@@ -75,7 +63,7 @@ evenodd = foldl (\x acc -> ) ([], [])
 -- Посчитать среднее значение чисел в массиве с помощью свёртки за один проход
 
 average :: V.Vector Double -> Double
-average vec = undefined
+average arr = fst $ foldr (\x (s, l) -> (((l - 1) / l) * s + x / l, l + 1)) (0, 1) arr
 
 ------------------------------------------------------------------------------------------------
 
@@ -84,8 +72,11 @@ average vec = undefined
 --
 -- Посчитать долю G/C в последовательности с помощью свёртки за один проход.
 
+-- foldr intakes x acc
+-- foldl intakes acc x
+-- wow
 gcContent :: T.Text -> Double
-gcContent str = undefined
+gcContent text = T.foldl' (\acc c -> if c == 'G' || c == 'C' then acc + 1 else acc) (0 :: Double) text / fromIntegral (T.length text)
 
 ------------------------------------------------------------------------------------------------
 
@@ -93,12 +84,13 @@ gcContent str = undefined
 --
 -- Реализовать `M.fromList :: [(k, v)] -> M.Map k v` с помощью свёрток `foldl'` и `foldr`. Объяснить
 -- чем будет отличаться поведение этих вариантов.
+-- idk :(
 
 fromListL :: (Ord k) => [(k, v)] -> M.Map k v
-fromListL lst = undefined
+fromListL = foldl (\acc (k, v) -> M.insert k v acc) M.empty
 
 fromListR :: (Ord k) => [(k, v)] -> M.Map k v
-fromListR lst = undefined
+fromListR = foldr (\(k, v) acc -> M.insert k v acc) M.empty
 
 ------------------------------------------------------------------------------------------------
 
@@ -112,7 +104,7 @@ fromListR lst = undefined
 -- Решение должно использовать свёртку по входному списку в один проход. Использовать fromList нельзя.
 
 nubOrd :: (Ord a) => [a] -> [a]
-nubOrd xs = undefined
+nubOrd xs = toList $ foldl (flip Set.insert) Set.empty xs
 
 ------------------------------------------------------------------------------------------------
 
@@ -123,6 +115,10 @@ nubOrd xs = undefined
 -- Соберите строку "a=1&b=2&c=hello" из `Map Text Text` используя `foldlWithKey'` или `foldrWithKey`.
 
 buildQuery :: M.Map T.Text T.Text -> T.Text
-buildQuery parameters = undefined
+buildQuery parameters =
+  let eq = T.pack "="
+      and = T.pack "&"
+      emp = T.pack ""
+   in T.intercalate and (M.foldlWithKey (\ks k v -> ks ++ [T.intercalate eq [k, v]]) [] parameters)
 
 ------------------------------------------------------------------------------------------------
