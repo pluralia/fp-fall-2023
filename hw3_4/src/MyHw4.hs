@@ -1,14 +1,20 @@
+-- pragma ->
+{-# LANGUAGE OverloadedStrings #-}
+
 module MyHw4 where
 
 {- cabal:
 build-depends: base, containers, text, vector
 -}
 
+import Data.ByteString (replicate)
+import Data.ByteString qualified as L
 import Data.Char (ord)
 import Data.Foldable (foldl', foldr, toList)
 import Data.Map.Strict qualified as M
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import GHC.TypeError qualified as T
 
 -- К каждой задаче приведите хотя бы 1 или 2 тестовых примера.
 -- Подсказка: Text и Vector можно конкатенировать с помощью оператора '<>'.
@@ -29,8 +35,21 @@ import Data.Vector qualified as V
 --
 -- Готовую функцию из пакета text использовать нельзя
 
+str1 :: T.Text
+str1 = "hh"
+
+-- T.pack :: String -> T.Text
+-- T.unpack :: T.Text -> String
+
 padZero :: T.Text -> Int -> T.Text
-padZero str width = 
+padZero str width = T.append (T.replicate numZeros (T.pack "0")) str
+  where
+    numZeros = width - T.length str
+
+-- padZero :: String -> Int -> String
+-- padZero str width = replicate numZeros '0' <> str
+--   where
+--     numZeros = width - length str
 
 ------------------------------------------------------------------------------------------------
 
@@ -39,8 +58,15 @@ padZero str width =
 -- Разделить список на подсписки элементов на четных и нечетных позициях используя свертку. Порядок элементов
 -- должен сохраняться.
 
+isEven :: Int -> Bool
+isEven x = if x `mod` 2 == 0 then True else False
+
 evenodd :: [a] -> ([a], [a])
-evenodd xs = undefined
+evenodd = foldl (\x acc -> ) ([], [])
+  where
+    helper x (evens, odds)
+      | isEven x = (x : evens, odds)
+      | otherwise = (evens, x : odds)
 
 ------------------------------------------------------------------------------------------------
 

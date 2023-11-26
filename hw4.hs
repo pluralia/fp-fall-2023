@@ -4,9 +4,79 @@ build-depends: base, containers, text, vector
 
 import Data.Char (ord)
 import Data.Foldable (foldl', foldr, toList)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map.Strict qualified as M
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import qualified Data.IntMap as M
+
+-- info
+-- list is represented as a nodes with links -> : and el
+-- String == [Char]
+-- <> == ++
+-- String ++ String
+-- [Char] ++ [Char]
+-- 'c' -> Char
+
+-- length :: [a] -> Int
+-- length [] = 0
+-- length (x: xs) 1 + length xs
+
+-- (!!) :: [a] -> Int -> a
+-- (!!) [] _ = error
+-- (!!) (a: _) 0 = a
+-- (!!) (a: xs) idx = (!!) xs (idx - 1)
+
+--  groupBy :: (a -> a - Bool) -> [a] -> [ [a] ]
+-- non-empty
+
+-- data NonEmpty a = a :| [a]
+-- headNE :: NonEmpty a -> a
+-- headNE (a :| _) = a
+
+-- groupBy :: (a -> a -> Bool) -> [a] -> [NonEmpty a]
+
+-- O(1) -> length, index
+-- intercalate, map
+
+-- compact storage
+-- 2nd part :->
+
+-- Vector <-
+-- vec :: V.Vector Int <- parametrized
+-- vec = [1, 2, 3, 4]
+
+-- toList
+-- fromList
+-- O(1) length, index
+
+-- T.pack :: String -> T.Text
+-- T.unpack :: T.Text -> String
+
+
+-- maps
+-- import qualified Data.Map.Strict as M
+-- M.fromList :: [(k, v)] -> M.Map k v
+-- M.toList ::  M.Map k v -> [(k, v)]
+
+-- M.! :: M.Map k v -> k -> v - unsafe
+-- M.!? :: M.Map k v -> k -> Maybe v
+
+-- M.member :: k -> M.Map k v -> Bool
+-- M.insert :: k -> v -> M.Map k v -> M.Map k v
+-- M.delete  :: k -> M.Map k v -> M.Map k v
+
+-- T.foldl'
+-- T.foldr
+-- T -> [Char] but more effective
+-- V.foldr
+-- V.foldl'
+
+-- V.ifoldl'
+-- V.ifoldr
+
+-- M.foldlWithKey' :: (a -> k -> b -> a) -> a -> M.Map k b -> a
+-- M.foldrWithKey  :: (a -> k -> b -> a) -> a -> M.Map k b -> a
 
 -- К каждой задаче приведите хотя бы 1 или 2 тестовых примера.
 -- Подсказка: Text и Vector можно конкатенировать с помощью оператора '<>'.

@@ -47,7 +47,7 @@ test-suite hw34-test
     build-depends:    base ^>=4.17.2.0
                  ,    containers
                  ,    text
-                 ,    vector
                  ,    hspec
                  ,    time
                  ,    hw34
+                 ,    vector
