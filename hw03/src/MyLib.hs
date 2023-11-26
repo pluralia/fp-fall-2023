@@ -209,6 +209,10 @@ instance Functor (Pair a) where
 data Either' a b = Left' a | Right' b
   deriving (Show, Eq)
 
+instance Functor (Either' a) where
+  fmap _ (Left' a) = Left' a
+  fmap f (Right' b) = Right' (f b)
+
 instance Bifunctor Either' where
   bimap :: (a -> b) -> (c -> d) -> Either' a c -> Either' b d
   bimap f _ (Left' a)  = Left' (f a)
