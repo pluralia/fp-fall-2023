@@ -50,9 +50,13 @@ padZero str width = T.append (T.replicate numZeros (T.pack "0")) str
 -- должен сохраняться.
 
 -- :p но задачка легкая, просто идею не смог придумать
-evenodd :: [a] -> ([a], [a])
-evenodd = foldr (\x (left, right) -> if length left < length right then (x : left, right) else (left, x : right)) ([], [])
 
+evenodd :: [a] -> ([a], [a])
+evenodd [] = ([], [])
+evenodd xs = foldr f ([], []) $ zip xs [0..]
+ where
+  f :: (a, Int) -> ([a], [a]) -> ([a], [a])
+  f (x, idx) (even1, odd1) = if even idx then (x : even1, odd1) else (even1, x : odd1)
 ------------------------------------------------------------------------------------------------
 
 -- 4. Среднее (0,5 балла)
