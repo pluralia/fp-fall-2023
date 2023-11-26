@@ -3,15 +3,12 @@
 
 module MyHw4 where
 
-import Data.ByteString (replicate)
-import Data.ByteString qualified as L
-import Data.Char (ord)
-import Data.Foldable (foldl', foldr, toList)
-import Data.Map.Strict qualified as M
-import Data.Set qualified as Set
-import Data.Text qualified as T
-import Data.Vector qualified as V
-import GHC.TypeError qualified as T
+import Data.Foldable (toList)
+import qualified Data.Map.Strict  as M
+import qualified Data.Set  as Set
+import qualified Data.Text  as T
+import qualified Data.Vector  as V
+
 
 -- К каждой задаче приведите хотя бы 1 или 2 тестовых примера.
 -- Подсказка: Text и Vector можно конкатенировать с помощью оператора '<>'.
@@ -116,9 +113,8 @@ nubOrd xs = toList $ foldl (flip Set.insert) Set.empty xs
 
 buildQuery :: M.Map T.Text T.Text -> T.Text
 buildQuery parameters =
-  let eq = T.pack "="
-      and = T.pack "&"
-      emp = T.pack ""
-   in T.intercalate and (M.foldlWithKey (\ks k v -> ks ++ [T.intercalate eq [k, v]]) [] parameters)
+  let eq_ = T.pack "="
+      and_ = T.pack "&"
+   in T.intercalate and_ (M.foldlWithKey (\ks k v -> ks ++ [T.intercalate eq_ [k, v]]) [] parameters)
 
 ------------------------------------------------------------------------------------------------
