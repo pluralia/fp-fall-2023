@@ -1,5 +1,4 @@
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE InstanceSigs, OverloadedStrings #-}
 module MyHW3 where
 
 import Data.Ix (inRange, Ix, range, index)
@@ -28,8 +27,8 @@ instance Ord ChurchNumber where
   (Succ m) <= (Succ n) = m <= n
 
 instance Num ChurchNumber where
-  (+), (-), (*) :: ChurchNumber -> ChurchNumber -> ChurchNumber
-  negate, abs, signum :: ChurchNumber -> ChurchNumber
+  (+), (*), (-) :: ChurchNumber -> ChurchNumber -> ChurchNumber
+  abs, signum :: ChurchNumber -> ChurchNumber
   fromInteger :: Integer -> ChurchNumber
 
   Zero + m             = m
@@ -43,7 +42,6 @@ instance Num ChurchNumber where
   _ * Zero             = Zero
   (Succ m) * n         = n + m * n
 
-  negate _             = Zero
   abs m                = m
 
   signum Zero          = Zero
@@ -72,7 +70,7 @@ instance Ix ChurchNumber where
                         | l == r     = r : lst
                         | otherwise  = helper (r : lst) (l, r - Succ Zero)
   
-  index (lb, rb) = helper 0 (lb, rb) 
+  index = helper 0
     where
       helper :: Int -> (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
       helper idx (l, r) num | l > r              = error "Lower bound must be less then upper bound!"
@@ -91,18 +89,18 @@ instance Ix ChurchNumber where
 
 pointful :: (t1 -> t2 -> t3) -> t1 -> (t4 -> t2) -> t4 -> t3
 pointful a b c d = a b (c d)
--- f x g y = f x (g y)      - записали функцию
--- f x g y = f x $ g y      - убрали скобки
--- f x g y = (f x) $ g y    - теперь (f x) - лямбда-функция
--- f x g y = (f x) . g $ y  - композиция двух функций: (f x) и g
--- f x g y = (f x) . g      - редукция
--- f x g y = ((.) (f x)) g  - записали в операторном стиле
--- f x g y = (.) (f x)      - редукция
--- f x g y = (.) $ f x      - убрали скобки
--- f x g y = (.) $ f        - редукция
--- f x g y = (.) . f        - композиция двух функция: (.) и f
--- f x g y = (.) (.) f      - записали в операторном стиле
--- f x g y = (.) (.)        - редукция, готово
+-- p f x g y = f x (g y)      - записали функцию
+-- p f x g y = f x $ g y      - убрали скобки
+-- p f x g y = (f x) $ g y    - теперь (f x) - функция
+-- p f x g y = (f x) . g $ y  - композиция двух функций: (f x) и g
+-- p f x g   = (f x) . g      - редукция
+-- p f x g   = ((.) (f x)) g  - записали в операторном стиле
+-- p f x     = (.) (f x)      - редукция
+-- p f x     = (.) $ f x      - убрали скобки
+-- p f       = (.) $ f        - редукция
+-- p f       = (.) . f        - композиция двух функций: (.) и f
+-- p f       = (.) (.) f      - записали в операторном стиле
+-- p         = (.) (.)        - редукция, готово
 
 
 ------------------------------------------------------------------------------------------------
@@ -217,7 +215,6 @@ instance Functor (Pair a) where
 
 -- С какими трудностями вы столкнулись?
 -- Что fmap может изменять только последний параметр, если конструктор типа включает в себя несколько параметров
--- Также в инстанциировании нужно было указать (Pair a), я все еще не очень понимаю, почему именно так
 
 ------------------------------------------------------------------------------------------------
 
@@ -230,6 +227,11 @@ instance Functor (Pair a) where
 
 data Either' a b = Left' a | Right' b 
   deriving(Show, Eq)
+
+instance Functor (Either' a) where 
+  fmap :: (b -> c) -> Either' a b -> Either' a c
+  fmap _ (Left' x)  = Left' x
+  fmap f (Right' x) = Right' (f x)
 
 instance Bifunctor Either' where
   bimap :: (a -> c) -> (b -> d) -> Either' a b -> Either' c d

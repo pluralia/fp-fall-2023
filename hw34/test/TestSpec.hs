@@ -3,6 +3,7 @@ module TestSpec where
 
 import Test.Hspec ( describe, it, shouldBe, Spec )
 import Data.Ix ( Ix(inRange, range, index) )
+import Data.Functor ()
 import Data.Bifunctor (Bifunctor (bimap))
 
 import qualified Data.Vector as V
