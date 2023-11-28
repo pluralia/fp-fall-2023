@@ -4,7 +4,10 @@ import Test.Hspec
 import MyLib
 import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
--- import           Data.Monoid (Sum(..))
+import           Data.Monoid (Sum(..))
+
+forTraverse :: Int -> Maybe Int
+forTraverse a = if a > 5 then Just a else Nothing
 
 k :: Int -> Writer' String Int
 k x = Writer' (Identity x + 27, " стрелка Клейсли! ")
@@ -14,7 +17,26 @@ k2 val = WithData $ const (val + 1)
 
 spec :: Spec
 spec = do
-    describe "2. Maybe списка без отрицательный элементов" $ do
+    describe "1. Traverse:" $ do
+
+        let myMB1 = Just' [17, 25, 11, 8, 9, 14] :: Maybe' [Int]
+        let myMB2 = Just' 7                      :: Maybe' Int
+        let myMB3 = Nothing'                     :: Maybe' Int
+
+        let myList1 = Cons 9  (Cons 7  (Cons 5  (Cons 3 (Cons 1 (Cons 11 Null))))) :: List Int
+        let myList2 = Cons 12 (Cons 11 (Cons 10 (Cons 9 (Cons 8 (Cons 7  Null))))) :: List Int
+
+        it "для Maybe" $ do
+            sequenceA myMB1     `shouldBe` 
+                ([Just' 17, Just' 25, Just' 11, Just' 8, Just' 9, Just' 14] :: [Maybe' Int])
+            sequenceA Nothing'  `shouldBe` ([Nothing'] :: [Maybe' Int])
+            traverse show myMB2 `shouldBe` ([Just' '7']                     :: [Maybe' Char])
+            traverse show myMB3 `shouldBe` ([Nothing'] :: [Maybe' Char])
+        it "для List" $ do
+            traverse forTraverse myList1 `shouldBe` (Nothing      :: Maybe (List Int))
+            traverse forTraverse myList2 `shouldBe` (Just myList2 :: Maybe (List Int))
+
+    describe "2. Maybe списка без отрицательных элементов" $ do
 
         let list1 = [1, 2, -9, 4, 7, 3, -2]
         let list2 = [1, 4, 2, 7, 8, 4, 2, 0, -5]
@@ -37,11 +59,11 @@ spec = do
         let array5 = [[]]
 
         it "transpose" $ do
-            transpose array1 `shouldBe` ([[1, 4, 6], [2, 5, 7], [3, 0, 8]] :: [[Int]])
-            transpose array2 `shouldBe` ([[1, 4, 6, 8, 9, 34]] :: [[Int]])
+            transpose array1 `shouldBe` ([[1, 4, 6], [2, 5, 7], [3, 0, 8]]              :: [[Int]])
+            transpose array2 `shouldBe` ([[1, 4, 6, 8, 9, 34]]                          :: [[Int]])
             transpose array3 `shouldBe` ([[1, 2, 3], [2, 3, 4], [3, 4, 5],
-                                          [4, 5, 6], [5, 6, 7], [6, 7, 8], [7, 8, 9]] :: [[Int]])
-            transpose array5 `shouldBe` ([] :: [[Int]])
+                                          [4, 5, 6], [5, 6, 7], [6, 7, 8], [7, 8, 9]]   :: [[Int]])
+            transpose array5 `shouldBe` ([]                                             :: [[Int]])
 
     describe "8. ReturnableCalculation - почти настоящий return" $ do
         it "returnExample" $ do
@@ -57,70 +79,70 @@ spec = do
     describe "новая монада: WithData" $ do
 
         let env1 = M.fromList [(1, "It's"), (2, "My"), (3, "Life")] :: M.Map Int String
-        let env2 = M.fromList [("first", 52), ("second", 127)] :: M.Map String Int
-        let wd1 = WithData (\v-> env1 M.! v ++ " .")
-        let wd2 = WithData (\v-> env2 M.! v + 5)
-        let f3 = WithData (\v-> (env2 M.! v +))
+        let env2 = M.fromList [("first", 52), ("second", 127)]      :: M.Map String Int
+        let wd1  = WithData (\v-> env1 M.! v ++ " .")
+        let wd2  = WithData (\v-> env2 M.! v + 5)
+        let f3   = WithData (\v-> (env2 M.! v +))
 
         it "Functor WithData" $ do
-            runWithData (fmap (>12) wd2) "first" `shouldBe` (True :: Bool)
-            runWithData (fmap (<12) wd2) "second" `shouldBe` (False :: Bool)
-            runWithData (fmap (++"..") wd1) 1 `shouldBe` ("It's ..." :: String)
-            runWithData (fmap (++"..") wd1) 2 `shouldBe` ("My ..." :: String)
-            runWithData (fmap (++"..") wd1) 3 `shouldBe` ("Life ..." :: String)
+            runWithData (fmap (>12) wd2) "first"  `shouldBe` (True          :: Bool)
+            runWithData (fmap (<12) wd2) "second" `shouldBe` (False         :: Bool)
+            runWithData (fmap (++"..") wd1) 1     `shouldBe` ("It's ..."    :: String)
+            runWithData (fmap (++"..") wd1) 2     `shouldBe` ("My ..."      :: String)
+            runWithData (fmap (++"..") wd1) 3     `shouldBe` ("Life ..."    :: String)
         it "Applicative WithData" $ do
-            runWithData (f3 <*> wd2) "first" `shouldBe` (109 :: Int)
+            runWithData (f3 <*> wd2) "first"  `shouldBe` (109 :: Int)
             runWithData (f3 <*> wd2) "second" `shouldBe` (259 :: Int)
         it "Monad WithData" $ do
             runWithData (wd2 >>= k2) "second" `shouldBe` (133 :: Int)
-            runWithData (wd2 >>= k2) "first" `shouldBe` (58 :: Int)
+            runWithData (wd2 >>= k2) "first"  `shouldBe` (58  :: Int)
 
     describe "7. Пифагоровы тройки" $ do
         it "test for different n" $ do
-            pifagor 4 `shouldBe` ([] :: [(Int, Int, Int)])
-            pifagor 5 `shouldBe` ([(5, 4, 3)] :: [(Int, Int, Int)])
-            pifagor 10 `shouldBe` ([(5, 4, 3), (10, 8, 6)] :: [(Int, Int, Int)])
+            pifagor 4 `shouldBe` ([]                                                    :: [(Int, Int, Int)])
+            pifagor 5 `shouldBe` ([(5, 4, 3)]                                           :: [(Int, Int, Int)])
+            pifagor 10 `shouldBe` ([(5, 4, 3), (10, 8, 6)]                              :: [(Int, Int, Int)])
             pifagor 27 `shouldBe` ([(5,4,3), (10,8,6), (13,12,5), (15,12,9), (17,15,8),
-                                    (20,16,12), (25,20,15), (25,24,7), (26,24,10)] :: [(Int, Int, Int)])
+                                    (20,16,12), (25,20,15), (25,24,7), (26,24,10)]      :: [(Int, Int, Int)])
 
     describe "9. Monad `Writer`" $ do
 
         let f1 = Writer' (Identity (*12),  "Function_1 ")
         let f2 = Writer' (Identity (+505), "Function_2 ")
-        let x = Writer' (Identity 17, "x ")
-        let y = Writer' (Identity 50, "y ")
+        let x  = Writer' (Identity 17, "x ")
+        let y  = Writer' (Identity 50, "y ")
 
         it "Functor `Writer'`" $ do
-            fmap (*12) x `shouldBe` (Writer' (Identity 204,  "x ") :: Writer' String Int)
-            fmap (+50) y `shouldBe` (Writer' (Identity 100,  "y ") :: Writer' String Int)
-            fmap (>50) y `shouldBe` (Writer' (Identity False,  "y ") :: Writer' String Bool)
-            fmap (<98) x `shouldBe` (Writer' (Identity True,  "x ") :: Writer' String Bool)
+            fmap (*12) x `shouldBe` (Writer' (Identity 204,  "x ")      :: Writer' String Int)
+            fmap (+50) y `shouldBe` (Writer' (Identity 100,  "y ")      :: Writer' String Int)
+            fmap (>50) y `shouldBe` (Writer' (Identity False,  "y ")    :: Writer' String Bool)
+            fmap (<98) x `shouldBe` (Writer' (Identity True,  "x ")     :: Writer' String Bool)
         it "Applicative `Writer'`" $ do
             f1 <*> x `shouldBe` (Writer' (Identity 204,  "Function_1 x ") :: Writer' String Int)
             f1 <*> y `shouldBe` (Writer' (Identity 600,  "Function_1 y ") :: Writer' String Int)
             f2 <*> x `shouldBe` (Writer' (Identity 522,  "Function_2 x ") :: Writer' String Int)
             f2 <*> y `shouldBe` (Writer' (Identity 555,  "Function_2 y ") :: Writer' String Int)
         it "Monad `Writer'`" $ do
-            (x >>= k) `shouldBe` (Writer' (Identity 44,  " стрелка Клейсли! ") :: Writer' String Int)
-            (y >>= k) `shouldBe` (Writer' (Identity 77,  " стрелка Клейсли! ") :: Writer' String Int)
+            (x >>= k) `shouldBe` (Writer' (Identity 44,  "x  стрелка Клейсли! ") :: Writer' String Int)
+            (y >>= k) `shouldBe` (Writer' (Identity 77,  "y  стрелка Клейсли! ") :: Writer' String Int)
 
-        -- let myTree1 = Node 5 (Node 4 (Node 3 (Node 7 (Node 8 Leaf Leaf) Leaf) Leaf) (Node 2 Leaf Leaf)) 
-                            --  (Node 1 (Node 0 Leaf Leaf) (Node 10 Leaf Leaf))
-        -- let myTree2 = Node 200 (Node 505 Leaf Leaf) (Node 72 Leaf Leaf)
-        -- let myTree3 = Node 70 Leaf Leaf
-        -- let myTree4 = Leaf
+        let myTree1 = Node 5 (Node 4 (Node 3 (Node 7 (Node 8 Leaf Leaf) Leaf) Leaf) (Node 2 Leaf Leaf)) 
+                             (Node 1 (Node 0 Leaf Leaf) (Node 10 Leaf Leaf)) 
+        let myTree2 = Node 200 (Node 505 Leaf Leaf) (Node 72 Leaf Leaf)
+        let myTree3 = Node 70 Leaf Leaf
+        let myTree4 = Leaf
 
-        -- it "BinaryTree" $ do
-            -- sumAndTraceInOrder myTree1 `shouldBe` 
-            --     (Writer' (Identity [5,4,3,7,8,2,1,0,10], Sum 40) :: Writer' (Sum Int) [Int])
-            -- sumAndTraceInOrder myTree2 `shouldBe` 
-            --     (Writer' (Identity [200, 505, 72], Sum 777) :: Writer' (Sum Int) [Int])
-            -- sumAndTraceInOrder myTree3 `shouldBe` 
-            --     (Writer' (Identity [70], Sum 70) :: Writer' (Sum Int) [Int])
-            -- sumAndTraceInOrder myTree4 `shouldBe` 
-            --     (Writer' (Identity [], Sum 0) :: Writer' (Sum Int) [Int])
+        it "BinaryTree" $ do
+            sumAndTraceInOrder myTree1 `shouldBe` 
+                (Writer' (Identity [5,4,3,7,8,2,1,0,10], Sum 40) :: Writer' (Sum Int) [Int])
+            sumAndTraceInOrder myTree2 `shouldBe` 
+                (Writer' (Identity [200, 505, 72], Sum 777)      :: Writer' (Sum Int) [Int])
+            sumAndTraceInOrder myTree3 `shouldBe` 
+                (Writer' (Identity [70], Sum 70)                 :: Writer' (Sum Int) [Int])
+            sumAndTraceInOrder myTree4 `shouldBe` 
+                (Writer' (Identity [], Sum 0)                    :: Writer' (Sum Int) [Int])
 
     describe "10. Monad `Reader`" $ do
-        it "Last task `Reader'`" $ do
-            testEvalExpr `shouldBe` (Just 5 :: Maybe Int)
+        it "Last task `Reader' : Expr`" $ do
+            testEvalExpr  `shouldBe` (Just 5 :: Maybe Int)
             testEvalStmts `shouldBe` (Just 9 :: Maybe Int)

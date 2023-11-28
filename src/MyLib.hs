@@ -154,40 +154,40 @@ instance MonadFail (WithData d) where
 
 -- | 6.a Перепешите код без do-нотации, используя bind (>>=), then (>>) и обычные let'ы (0,5 балла)
 --
--- fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
--- fromDo11 aM bM = do
---     a <- fmap (+ 10) aM
+fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
+fromDo11 aM bM = do
+    a <- fmap (+ 10) aM
 
---     -- в одном 'let'-выражении внутри do-нотации можно писать несколько связываний.
---     -- в обычных 'let'-выражениях это тоже работает
---     let aL = [a, a, a]
---         a  = a + length aL
+    -- в одном 'let'-выражении внутри do-нотации можно писать несколько связываний.
+    -- в обычных 'let'-выражениях это тоже работает
+    let aL = [a, a, a]
+        a  = a + length aL
 
---     return a
+    return a
 
---     bM
---     [a, b, c] <- Just aL
+    bM
+    [a, b, c] <- Just aL
 
---     b <- fmap (<> "abcd") bM
+    b <- fmap (<> "abcd") bM
 
---     pure (c, b)
+    pure (c, b)
 
--- withoutDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
--- withoutDo11 aM bM = fmap (+ 10) aM >>= (\a ->
---                     let aL = [a, a, a]; a = a + length aL in
---                     return a >> (bM
---                       >> (Just aL
---                           >>= (\aL' ->
---                             case aL' of
---                               [a, b, c] ->
---                                 fmap (<> "abcd") bM >>= (\b ->
---                                   pure (c, b)
---                                 )
---                               _ -> fail ""
---                           )
---                       )
---                     )
---                   )
+withoutDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
+withoutDo11 aM bM = fmap (+ 10) aM >>= (\a ->
+                    let aL = [a, a, a]; a = a + length aL in
+                    return a >> (bM
+                      >> (Just aL
+                          >>= (\aL' ->
+                            case aL' of
+                              [a, b, c] ->
+                                fmap (<> "abcd") bM >>= (\b ->
+                                  pure (c, b)
+                                )
+                              _ -> fail ""
+                          )
+                      )
+                    )
+                  )
 
 ---------------------------------------
 
@@ -243,13 +243,12 @@ withoutDo12 isL cM =
 
 pifagor :: Int -> [(Int, Int, Int)]
 pifagor n = do
-  let array = []
   a <- [1..n]  -- фиксируем a
   b <- [1..a]  -- не бесконечное число вариантов
   c <- [1..b]
   if a*a == b*b + c*c
-    then (a, b, c) : array
-    else array
+    then return (a, b, c)
+    else fail ""
 
 -------------------------------------------------------------------------------
 
@@ -286,18 +285,15 @@ type ReturnableCalculation a = ReturnableCalculation' a a
 
 instance Functor (ReturnableCalculation' a) where
     fmap :: (b -> c) -> ReturnableCalculation' a b -> ReturnableCalculation' a c
-    fmap _ (ReturnableCalculation' (Left x))  = ReturnableCalculation' (Left x)
-    fmap f (ReturnableCalculation' (Right x)) = ReturnableCalculation' (Right (f x))
+    fmap f rc  = f <$> rc
+    -- fmap f (ReturnableCalculation' e) = ReturnableCalculation' (fmap f e)
 
 instance Applicative (ReturnableCalculation' a) where
     pure :: b -> ReturnableCalculation' a b 
     pure = ReturnableCalculation' . Right
 
     (<*>) :: ReturnableCalculation' a (b -> c) -> ReturnableCalculation' a b -> ReturnableCalculation' a c
-    (<*>) (ReturnableCalculation' (Left x)) _ = ReturnableCalculation' (Left x)
-    (<*>) _ (ReturnableCalculation' (Left x)) = ReturnableCalculation' (Left x)
-    (<*>) (ReturnableCalculation' (Right f)) (ReturnableCalculation' (Right x)) = 
-      ReturnableCalculation' (Right (f x))
+    (<*>) (ReturnableCalculation' f) (ReturnableCalculation' e) = ReturnableCalculation' (f <*> e)
 
 instance Monad (ReturnableCalculation' a) where
     (>>=) :: ReturnableCalculation' a b -> (b -> ReturnableCalculation' a c) -> ReturnableCalculation' a c
@@ -333,7 +329,9 @@ instance Monoid w => Applicative (Writer' w) where
 
 instance Monoid w => Monad (Writer' w) where
     (>>=) :: Writer' w a -> (a -> Writer' w b) -> Writer' w b
-    (>>=) (Writer' (Identity x, _)) k = k x
+    (>>=) (Writer' (Identity x, logger1)) k = Writer' (Identity new_x, logger1 <> logger2)
+      where
+        Writer' (Identity new_x, logger2) = k x
 
 ---------------------------------------
 
@@ -369,10 +367,8 @@ data BinaryTree a
   deriving (Show, Eq)
 
 sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
-sumAndTraceInOrder binTree = do
-  case binTree of
-    Leaf -> pure []
-    (Node val leftCh rightCh) -> do
+sumAndTraceInOrder Leaf = pure []
+sumAndTraceInOrder (Node val leftCh rightCh) = do
       tell (Sum val)
       resL <- sumAndTraceInOrder leftCh
       resR <- sumAndTraceInOrder rightCh
@@ -459,15 +455,6 @@ eval (Binary left' right') = do
         y <- resRight
         return $ x + y
 
--- eval :: Expr -> Reader' Environment (Maybe Int)
--- eval (Primary (Val x)) = pure (Just x)
--- eval (Primary (Var s)) = reader (M.lookup s) 
--- eval (Binary l r) = do
---   val_l <- eval l
---   val_r <- eval r
---   return $ (+) <$> val_l <*> val_r
-
-
 -- | Пример запуска вычисления выражения
 --
 testEvalExpr :: Maybe Int -- ожидаем `Just 5`
@@ -492,15 +479,23 @@ data Stmt = Stmt
 --
 
 evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
-evalStmts [] = pure Nothing
-evalStmts [x] = eval (expr x)
-evalStmts (x : xs) =
-  let v = eval (expr x) in
-    Reader' $ \r -> runReader' (evalStmts xs) (
-      case runIdentity $ runReader' v r of
-        Just vv -> M.insert (name x) vv r
-        Nothing -> r
-    )
+evalStmts []                      = return Nothing
+evalStmts [x]                     = eval (expr x)
+evalStmts (x : xs) = do
+    maybeVal <- eval (expr x)
+    _ <- ask
+    local (maybe id (M.insert (name x)) maybeVal) (evalStmts xs)
+
+-- evalStmts [] = pure Nothing
+-- evalStmts [x] = eval (expr x)
+-- evalStmts (x : xs) =
+--   let v = eval (expr x) in
+--     Reader' $ \r -> runReader' (evalStmts xs) (
+--       case runIdentity $ runReader' v r of
+--         Just vv -> M.insert (name x) vv r
+--         Nothing -> r
+--     )
+
 
 -- | Пример запуска вычисления списка утверждений
 --

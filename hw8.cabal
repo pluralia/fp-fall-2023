@@ -2,15 +2,12 @@ cabal-version:      2.4
 name:               hw8
 version:            0.1.0.0
 synopsis:           HW8
--- description:
 license:            MIT
 license-file:       LICENSE
 author:             SophiaLaz
 maintainer:         lazareva.sone4ka@yandex.ru
--- copyright:
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
--- extra-source-files:
 
 common warnings
     ghc-options: -Wall
@@ -37,4 +34,5 @@ test-suite hw8-test
         base ^>=4.18.1.0,
         hw8,
         hspec,
+        mtl,
         containers
