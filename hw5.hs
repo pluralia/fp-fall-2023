@@ -1,7 +1,6 @@
 {-# LANGUAGE InstanceSigs #-}
 
-import qualified Data.Map.Strict as M
-
+import Data.Map.Strict qualified as M
 import Data.Monoid
 
 -- Во всех заданиях с инстансами укажите сигнатуры функций
@@ -15,38 +14,74 @@ import Data.Monoid
 
 -- | Arrow представляет собой обертку над функцией из a в b
 --
-newtype Arrow a b = Arrow (a -> b)
+-- :p
+--  Я нормально понял, что такое функторы, но вообще не понял, что здесь происходит.
+-- Где почитать можно? На хугле не нашел.
+newtype Arrow a b = Arrow {getArrow :: a -> b}
+
+instance Functor (Arrow a) where
+  fmap :: (b -> c) -> Arrow a b -> Arrow a c
+  fmap f (Arrow g) = Arrow $ f . g
 
 -- Напишите инстанс Functor для Arrow и покажите выполнение законов
 
+-- Identity
+-- fmap id == id
+-- fmap id (Arrow f) = Arrow $ id . f = Arrow f
+-- id (Arrow f) = Arrow f
+
+-- Composition
+-- fmap (f . g) == fmap f . fmap g
+-- fmap (f . g) (Arrow h) = Arrow $ f . g . h
+-- fmap g (Arrow h) = Arrow $ g . h
+-- fmap f (Arrow $ g . h) = Arrow $ f . g . h
 -------------------------------------------------------------------------------
 
 -- 2. Студенты и Moinoid (1 балл)
 
 -- | Тип данных "Студент"
---
-data Student = Student 
-    { name  :: String -- имя студента
-    , grade :: Int    -- оценка студента по нашему предмету
-    }
+data Student = Student
+  { name :: String, -- имя студента
+    grade :: Int -- оценка студента по нашему предмету
+  }
 
 data StudentsLog = StudentsLog
-    { studentNames :: [String]  -- список имён студентов
-    , worstGrade   :: Maybe Int -- наименьшая оценка по курсу
-    , bestGrade    :: Maybe Int -- наибольшая оценка по курсу
-    }
+  { studentNames :: [String], -- список имён студентов
+    worstGrade :: Maybe Int, -- наименьшая оценка по курсу
+    bestGrade :: Maybe Int -- наибольшая оценка по курсу
+  }
+  deriving (Show)
+
+s1 = Student "string1" 1
+
+s2 = Student "string2" 2
+
+s3 = Student "string3" 3
+
+students = [s1, s2, s3]
 
 -- 2.a Функция, которая по списку студентов курса рассчитывает информацию по курсу (0,5 балла)
 --
 calculateStudentsLog :: [Student] -> StudentsLog
-calculateStudentsLog = undefined
+calculateStudentsLog = foldr (\Student {name = name, grade = grade} StudentsLog {studentNames = studentNames, worstGrade = Just worstGrade, bestGrade = Just bestGrade} -> StudentsLog {studentNames = name : studentNames, worstGrade = Just (min grade worstGrade), bestGrade = Just (max grade bestGrade)}) (StudentsLog [] Nothing Nothing)
 
 -- 2.b Сделайте 'StudentsLog' представителем класса типов 'Monoid' и реализуйте
 --     calculateStudentsLog', которая делает то же самое, что и calculateStudentsLog
 --     В реализации нужно использовать то, что 'StudentsLog' — моноид. (0,5 балла)
 --
-calculateStudentsLog' :: [Student] -> StudentsLog
-calculateStudentsLog' = undefined
+instance Semigroup StudentsLog where
+  (<>) :: StudentsLog -> StudentsLog -> StudentsLog
+  (<>) StudentsLog {studentNames = studentNames1, worstGrade = Just worstGrade1, bestGrade = Just bestGrade1} StudentsLog {studentNames = studentNames2, worstGrade = Just worstGrade2, bestGrade = Just bestGrade2} = StudentsLog {studentNames = studentNames1 ++ studentNames2, worstGrade = Just (min worstGrade1 worstGrade2), bestGrade = Just (max bestGrade1 bestGrade2)}
+
+
+instance Monoid StudentsLog where
+  mempty :: StudentsLog
+  mempty = StudentsLog {studentNames = [] :: [String], worstGrade = Nothing, bestGrade = Nothing}
+  mconcat :: [StudentsLog] -> StudentsLog
+  mconcat = foldr (<>) mempty 
+  
+-- calculateStudentsLog' :: [Student] -> StudentsLog
+-- calculateStudentsLog' = mconcat 
 
 -------------------------------------------------------------------------------
 
@@ -62,14 +97,14 @@ data Tree a = Node a [Tree a] | Leaf
 -- 4. Яблоко и Foldable (1 балл)
 
 data Apple = Apple
-    { color  :: String -- цвет яблока
-    , weight :: Float  -- вес яблока
-    }
+  { color :: String, -- цвет яблока
+    weight :: Float -- вес яблока
+  }
   deriving (Eq, Show)
 
 -- С помощью функций из 'Data.Foldable' реализуйте следующие функции:
 
--- 4.a Проверка, что все яблоки в дереве имеют вес, который находится 
+-- 4.a Проверка, что все яблоки в дереве имеют вес, который находится
 --     в заданном диапазоне весов (0,25 балла)
 --
 applesInRange :: Tree Apple -> (Float, Float) -> Bool
@@ -97,15 +132,14 @@ sumOfApples = undefined
 
 -- | Яблоки в корзинке расфасованы по цветам.
 -- | Для каждого цвета яблоки упорядочены по весу
---
-newtype Basket = Basket { apples :: M.Map String [Apple] }
+newtype Basket = Basket {apples :: M.Map String [Apple]}
   deriving (Eq, Show)
 
--- Реализуйте с помощью свёртки дерева функцию, которая соберёт 
+-- Реализуйте с помощью свёртки дерева функцию, которая соберёт
 -- по дереву яблок корзинку с яблоками.
 -- В 'Data.Map.Strict' вы найдёте функции, которые помогут вам
 -- инициализировать и модифицировать мапу
---      
+--
 collectBasket :: Tree Apple -> Basket
 collectBasket = undefined
 
@@ -114,18 +148,18 @@ collectBasket = undefined
 -- 6. Двоичная куча и Foldable (1,5 балла)
 --    https://neerc.ifmo.ru/wiki/index.php?title=Двоичная_куча
 --
-data BinaryHeap a 
-  = BinNode 
-      { val   :: a
-      , left  :: BinaryHeap a
-      , right :: BinaryHeap a
-      } 
+data BinaryHeap a
+  = BinNode
+      { val :: a,
+        left :: BinaryHeap a,
+        right :: BinaryHeap a
+      }
   | BinLeaf
   deriving (Eq, Show)
 
 -- 6.a Реализуйте функцию siftDown, восстанавливающую свойство кучи в куче (0,5 балла)
---      
-siftDown :: Ord a => BinaryHeap a -> BinaryHeap a
+--
+siftDown :: (Ord a) => BinaryHeap a -> BinaryHeap a
 siftDown = undefined
 
 -- 6.b Реализуйте с помощью свёртки функцию buildHeap,
@@ -133,8 +167,8 @@ siftDown = undefined
 --     Соответствующий алогритм описан в статье на вики (ссылка выше).
 --     Считайте, что изменение элемента 'Data.Array' происходит за константу (хотя это не так!)
 --     (1 балл)
---       
-buildHeap :: Ord a => [a] -> BinaryHeap a
+--
+buildHeap :: (Ord a) => [a] -> BinaryHeap a
 buildHeap l = foldr undefined undefined l
 
 -------------------------------------------------------------------------------
@@ -148,7 +182,6 @@ buildHeap l = foldr undefined undefined l
 
 -- | Зададим бинарное дерево, в листьях которого хранятся элементы a
 -- | Кроме того, каждый узел в этом дереве аннотируется значением типа v (tag)
---
 data BinaryTree v a = BLeaf v a | BBranch v (BinaryTree v a) (BinaryTree v a)
   deriving (Show)
 
@@ -162,7 +195,7 @@ data BinaryTree v a = BLeaf v a | BBranch v (BinaryTree v a) (BinaryTree v a)
 --         v   v
 --         a   a
 
--- 7.a В листьях хранятся элементы нашего списка слева направо 
+-- 7.a В листьях хранятся элементы нашего списка слева направо
 --     Реализуйте получение списка элементов из дерева (0,25 балла)
 --
 toList :: BinaryTree v a -> [a]
@@ -272,8 +305,7 @@ getWinner = undefined
 -- Что нужно изменить в определении Size и Priority?
 
 -- | Теперь branchSize и branchPrio могут быть заменены на branch
---
-branch :: Monoid v => BinaryTree v a -> BinaryTree v a -> BinaryTree v a
+branch :: (Monoid v) => BinaryTree v a -> BinaryTree v a -> BinaryTree v a
 branch x y = BBranch (tag x <> tag y) x y
 
 -- | Однако, мы не можем сделать то же с leaf. Почему?
@@ -283,13 +315,12 @@ branch x y = BBranch (tag x <> tag y) x y
 
 -- Чтобы задать leaf унифицированным способом аналогично branch, давайте создадим класс типов Measured
 
-class Monoid v => Measured v a where
-    measure :: a -> v
+class (Monoid v) => Measured v a where
+  measure :: a -> v
 
 -- | Написав различные инстансы этого класса для наших `BinaryTree Size a` и `BinaryTree Priority a`,
 -- | мы сможем по-разному вычислять аннотацию листа по значению. Тогда
--- 
-leaf :: Measured v a => a -> BinaryTree v a
+leaf :: (Measured v a) => a -> BinaryTree v a
 leaf x = BLeaf (measure x) x
 
 -- 10.b Напишите инстансы Measured для Size и Priority (0,5 балла)
