@@ -15,6 +15,7 @@ import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
 import           Data.Monoid (Sum(..))
 import           Control.Monad (guard)
+import           Control.Applicative (ZipList(..))
 
 
 -- Hlint ругается на задание 1b, но это нормально из-за смысла самого задания, не обращаем внимание
@@ -39,10 +40,12 @@ import           Control.Monad (guard)
 -- 1.a Реализуйте инстансы Traversable для Maybe и списка (без док-ва законов) (0,5 балла)
 
 -- instance Traversable Maybe where
+--   traverse :: Applicative f => (a -> f b) -> Maybe a -> f (Maybe b)
 --   traverse _ Nothing = pure Nothing
 --   traverse f (Just a) = Just <$> f a
 
 -- instance Traversable [] where
+--   traverse :: Applicative f => (a -> f b) -> [a] -> f [b]
 --   traverse _ [] = pure []
 --   traverse f (x:xs) = (:) <$> f x <*> traverse f xs
 
@@ -75,7 +78,7 @@ traverse :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
 -}
 
 {-РАЗНИЦА МЕЖДУ Traversable и Foldable
-Основная функция для Foldable - это foldMap или его варианты (foldr, foldl, etc)
+Основная функция для Foldable - это foldMap
 Она позволяет сворачивать структуру данных в одно значение (ну, не то, чтобы прям одно, но смысл примерно такой), используя заданную операцию
 foldMap :: (Foldable t, Monoid m) => (a -> m) -> t a -> m
 
@@ -108,10 +111,13 @@ rejectWithNegatives xs = if any (< 0) xs then Nothing else Just xs
 -- | 3. Рассмотрим представление матриц в виде вложенных списков, в которых внутренние списки являются строками.
 --       Используйте Traversable для реализации транспонирования матриц (0,5 балла)
 --
+-- transpose :: [[a]] -> [[a]]
+-- transpose [] = []
+-- transpose ([]:_) = []
+-- transpose xs = fmap head xs : transpose (fmap tail xs)
+
 transpose :: [[a]] -> [[a]]
-transpose [] = []
-transpose ([]:_) = []
-transpose xs = fmap head xs : transpose (fmap tail xs)
+transpose = getZipList . traverse ZipList
 
 -------------------------------------------------------------------------------
 
@@ -142,6 +148,8 @@ instance Monad (WithData d) where
   return = pure
   w >>= f = WithData $ \d -> runWithData (f (runWithData w d)) d
 
+-- WithData принимает некое окружение d и возвращает значение, которое на этом окружении посчитали, при вызове runWithData
+
 -------------------------------------------------------------------------------
 
 -- 6. Do-нотация (1 балл)
@@ -168,19 +176,20 @@ instance Monad (WithData d) where
 
 --     pure (c, b)
 
--- fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
--- fromDo11 aM bM =
---   fmap (+ 10) aM >>= \a ->
+fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
+fromDo11 aM bM =
+  fmap (+ 10) aM >>= \a ->
 
---   let aL = [a, a, a]
---       a'  = a + length aL
---   in
---     bM >>
---     (Just aL >>= \[a, b, c] ->
+  let aL = [a, a, a]
+      a'  = a + length aL
+  in 
+    return a >>
+    bM >>
+    (Just aL >>= \[a, b, c] ->
 
---     fmap (<> "abcd") bM >>= \b ->
+    fmap (<> "abcd") bM >>= \b ->
 
---     pure (c, b))
+    pure (c, b))
 
 ---------------------------------------
 
@@ -208,20 +217,23 @@ instance Monad (WithData d) where
 --               _         -> fail ""
 --         else pure ('0', 0)
 
--- fromDo12 :: [Int] -> Maybe Char -> [(Char, Int)]
--- fromDo12 isL cM =
---   isL >>= \curI ->
---   tail isL >>= \nextI ->
-  
---   if nextI > curI
---     then
---       let a = curI + nextI
---       in
---         tail (tail isL) >>= \nextNextI ->
---         case (curI, nextI, nextNextI) of
---           (0, 0, 0) -> [cM] >>= \(Just ch) -> pure (ch, a)
---           _         -> fail ""
---     else pure ('0', 0)
+fromDo12 :: [Int] -> Maybe Char -> [(Char, Int)]
+fromDo12 isL cM =
+  isL >>= \curI ->
+  tail isL >>= \nextI ->
+  if nextI > curI
+    then
+      let a = curI + nextI
+      in
+        tail (tail isL) >>= \nextNextI ->
+        [cM] >>= \x -> 
+        case x of
+          (Just ch) ->
+            case (curI, nextI, nextNextI) of
+              (0, 0, 0) -> pure (ch, a)
+              _         -> fail "" 
+          _         -> fail ""
+    else pure ('0', 0)
 
 
 -------------------------------------------------------------------------------
@@ -229,13 +241,14 @@ instance Monad (WithData d) where
 -- 7. С помощью монады списка создайте список, содержащий в себе все пифагоровы тройки. 
 --    В списке не должно быть дублей. Дублирования нужно убрать за счёт дополнительного условия в do-нотации (0,5 балла)
 
-pythagoreanTriples :: [(Integer, Integer, Integer)]
-pythagoreanTriples = do
-  a <- [1..]
-  b <- [a..]
-  let c = floor $ sqrt (fromIntegral (a^2 + b^2))
-  guard (a^2 + b^2 == c^2)
-  return (a, b, c)
+pythagoreanTriples :: Integer -> [(Integer, Integer, Integer)]
+pythagoreanTriples n = do
+  a <- [1..n]  
+  b <- [1..a] 
+  c <- [1..b]
+  if a * a == b * b + c * c
+    then return (a, b, c)
+    else fail "Пифагоровы штаны не во все стороны равны получились"
 
 
 -------------------------------------------------------------------------------
@@ -256,11 +269,11 @@ returnExample = do
     let a = 40
         b = 2
 
-    realReturn $ a + b
+    _ <- realReturn $ a + b
 
-    let a = 0
+    let aa = 0
 
-    if a == 0
+    if aa == 0
       then pure 200
       else realReturn 0
 
@@ -294,7 +307,7 @@ realReturn = RealReturn
 
 -- | Зададим свой Writer
 newtype Writer' w a = Writer' { runWriter' :: (Identity a, w) }
-  deriving (Show)
+  deriving (Show, Eq)
 
 ---------------------------------------
 
@@ -446,13 +459,13 @@ eval (Binary leftExpr rightExpr) = do
 -- | Пример запуска вычисления выражения
 --
 testEvalExpr :: Maybe Int -- ожидаем `Just 5`
-testEvalExpr = runIdentity $ runReader' (eval expr) env
+testEvalExpr = runIdentity $ runReader' (eval eexpr) env
   where
     env :: Environment
     env = M.fromList [("x", 3)]
 
-    expr :: Expr
-    expr = Binary (Primary . Val $ 2) (Primary . Var $ "x")
+    eexpr :: Expr
+    eexpr = Binary (Primary . Val $ 2) (Primary . Var $ "x")
 
 -- | Утверждение будем задавать как декларацию переменной
 --
@@ -465,10 +478,12 @@ data Stmt = Stmt
 --   В качестве результата вычисления всего списка договоримся возвращать результат вычисления последнего выражения в списке
 --
 evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
-evalStmts [] = pure Nothing
-evalStmts (stmt:rest) = do
-    val <- eval (expr stmt)
-    if null rest then pure val else evalStmts rest
+evalStmts []                        = return Nothing
+evalStmts [Stmt _ exprr]            = eval exprr
+evalStmts ((Stmt nname exprr) : xs) = do
+    maybeVal <- eval exprr
+    _ <- ask
+    local (maybe id (M.insert nname) maybeVal) (evalStmts xs)
 
 -- | Пример запуска вычисления списка утверждений
 --
