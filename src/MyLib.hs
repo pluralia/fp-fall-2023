@@ -5,7 +5,7 @@ import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
 import qualified Data.Map.Strict as M
 import qualified System.Random as R
-import Data.List (find)
+import           Data.List (find)
 
 -------------------------------------------------------------------------------
 
