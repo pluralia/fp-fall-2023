@@ -10,25 +10,8 @@ import qualified Data.Vector as V
 import qualified Data.Map.Strict as M
 
 import MyHW3
-    ( Either'(..),
-      Pair(..),
-      Tree(Node),
-      List(..),
-      Day(Saturday, Thursday, Tuesday, Monday, Sunday, Wednesday),
-      ChurchNumber(..),
-      nextDay,
-      dayBefore,
-      daysBeforeWeekend )
-
 import MyHW4
-    ( padZero,
-      evenodd,
-      average,
-      gcContent,
-      fromListL,
-      fromListR,
-      nubOrd,
-      buildQuery )
+
 
 spec :: Spec
 spec = do
@@ -195,14 +178,14 @@ spec = do
 -- Task 9
   describe "M.fromList" $ do
     let emptyLst = [] :: [(Int, Int)]
-    let lst1 = [(1, 'a'), (2, 'b'), (3, 'c'), (2, 'd')] :: [(Int, Char)]
+    let lst1 = [(8, 'e'), (1, 'a'), (2, 'b'), (3, 'c'), (2, 'd')] :: [(Int, Char)]
     it "fromListL" $ do
       fromListL emptyLst `shouldBe` (M.empty :: M.Map Int Int)
-      fromListL lst1 `shouldBe` M.fromList [(1, 'a'), (2, 'd'), (3, 'c')]
+      fromListL lst1 `shouldBe` M.fromList [(1, 'a'), (2, 'd'), (3, 'c'), (8, 'e')]
     
-    it "fromListL" $ do
+    it "fromListR" $ do
       fromListR emptyLst `shouldBe` (M.empty :: M.Map Int Int)
-      fromListR lst1 `shouldBe` M.fromList [(1, 'a'), (2, 'b'), (3, 'c')]
+      fromListR lst1 `shouldBe` M.fromList [(1, 'a'), (2, 'b'), (3, 'c'), (8, 'e')]
     
 -- Task 10
   describe "nubOrd" $ do

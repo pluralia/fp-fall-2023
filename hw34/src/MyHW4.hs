@@ -69,10 +69,10 @@ average v = fst $ V.foldl' cntMean (0, 0) v
 gcContent :: T.Text -> Double
 gcContent str | T.length str == 0 = error "Empty sequence!"
               | otherwise         = T.foldl' cntGC 0 str / fromIntegral (T.length str)
+  where
+    cntGC :: Double -> Char -> Double
+    cntGC cnt ch = if ch == 'G' || ch == 'C' then cnt + 1 else cnt
 
-cntGC :: Double -> Char -> Double
-cntGC cnt ch = if ch == 'G' || ch == 'C' then cnt + 1 else cnt
- 
 -----------------------------------------------------------------------------------------------
 
 -- 9. M.fromList (0,75 балл)
