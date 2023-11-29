@@ -81,7 +81,7 @@ spec = do
   describe "ReturnableCalculation" $ do
     it "ReturnableCalculation" $ do
       let 
-        calc :: ReturnableCalculation Int Int
+        calc :: ReturnableCalculation Int
         calc = do
           let 
             a = 40
@@ -92,7 +92,7 @@ spec = do
           return $ aa + b
       runCalculation calc `shouldBe` (Left 42 :: Either Int Int)
       let
-        calc' :: ReturnableCalculation Int Int
+        calc' :: ReturnableCalculation Int
         calc' = do
           let 
             a = 40

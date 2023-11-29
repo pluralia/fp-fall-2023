@@ -248,15 +248,16 @@ fromDo12' :: [Int] -> Maybe Char -> [(Char, Int)]
 fromDo12' isL cM = isL >>= \curI ->
     tail isL >>= \nextI ->
         if nextI > curI
-            then tail (tail isL) >>= \nextNextI ->
-                [cM] >>= \case -- hlint предложил \case
-                -- получается можно не определять переменную для case
-                  Just ch -> 
-                    case (curI, nextI, nextNextI) of
-                      (0, 0, 0) -> pure (ch, curI + nextI)
-                      _         -> fail ""
-                  Nothing -> fail ""
-            else pure ('0', 0)
+          then let a = curI + nextI in
+            tail (tail isL) >>= \nextNextI ->
+            [cM] >>= \case -- hlint предложил \case
+            -- получается можно не определять переменную для case
+              Just ch -> 
+                case (curI, nextI, nextNextI) of
+                  (0, 0, 0) -> pure (ch, a)
+                  _         -> fail ""
+              Nothing -> fail ""
+          else pure ('0', 0)
 
 -------------------------------------------------------------------------------
 
@@ -285,7 +286,7 @@ pifList = do
 -- | Пример использования 'realReturn'.
 --   Должно вернуться 42, завёрнутое в 'ReturnableCalculation'.
 --
-returnExample :: ReturnableCalculation Int Int 
+returnExample :: ReturnableCalculation Int
 returnExample = do
     let a = 40
         b = 2
@@ -298,30 +299,31 @@ returnExample = do
       then pure 200
       else realReturn 0
 
+type ReturnableCalculation a = ReturnableCalculation' a a
 
-newtype ReturnableCalculation a b = ReturnableCalculation { runCalculation :: Either a b }
+newtype ReturnableCalculation' a b = ReturnableCalculation' { runCalculation :: Either a b }
 -- левый тип для досрочного выхода из вычислений
 -- правый тип для результата вычислений
 -- я не додумался как сделать это по другому
 
-instance Functor (ReturnableCalculation a) where
-  fmap :: (b -> c) -> ReturnableCalculation a b -> ReturnableCalculation a c
-  fmap f (ReturnableCalculation x) = ReturnableCalculation (f <$> x)
+instance Functor (ReturnableCalculation' a) where
+  fmap :: (b -> c) -> ReturnableCalculation' a b -> ReturnableCalculation' a c
+  fmap f (ReturnableCalculation' x) = ReturnableCalculation' (f <$> x)
 
-instance Applicative (ReturnableCalculation a) where
-  pure :: b -> ReturnableCalculation a b
-  pure = ReturnableCalculation . Right
+instance Applicative (ReturnableCalculation' a) where
+  pure :: b -> ReturnableCalculation' a b
+  pure = ReturnableCalculation' . Right
 
-  (<*>) :: ReturnableCalculation a (b -> c) -> ReturnableCalculation a b -> ReturnableCalculation a c
-  ReturnableCalculation f <*> ReturnableCalculation x = ReturnableCalculation (f <*> x)
+  (<*>) :: ReturnableCalculation' a (b -> c) -> ReturnableCalculation' a b -> ReturnableCalculation' a c
+  ReturnableCalculation' f <*> ReturnableCalculation' x = ReturnableCalculation' (f <*> x)
 
-instance Monad (ReturnableCalculation a) where
-  (>>=) :: ReturnableCalculation a b -> (b -> ReturnableCalculation a c) -> ReturnableCalculation a c
-  ReturnableCalculation (Left x) >>= _ = ReturnableCalculation (Left x)
-  ReturnableCalculation (Right x) >>= f = f x
+instance Monad (ReturnableCalculation' a) where
+  (>>=) :: ReturnableCalculation' a b -> (b -> ReturnableCalculation' a c) -> ReturnableCalculation' a c
+  ReturnableCalculation' (Left x) >>= _ = ReturnableCalculation' (Left x)
+  ReturnableCalculation' (Right x) >>= f = f x
 
-realReturn :: a -> ReturnableCalculation a b
-realReturn = ReturnableCalculation . Left
+realReturn :: a -> ReturnableCalculation' a b
+realReturn = ReturnableCalculation' . Left
 
 -------------------------------------------------------------------------------
 
@@ -390,14 +392,12 @@ data BinaryTree a
   deriving (Show, Eq)
 
 sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
-sumAndTraceInOrder tree = do
-  case tree of
-    Leaf -> pure []
-    Node v l r -> do
-      leftSum <- sumAndTraceInOrder l
-      rightSum <- sumAndTraceInOrder r
-      tell $ Sum v
-      pure $ leftSum ++ [v] ++ rightSum
+sumAndTraceInOrder Leaf = pure []
+sumAndTraceInOrder (Node v l r) = do
+  leftSum <- sumAndTraceInOrder l
+  rightSum <- sumAndTraceInOrder r
+  tell $ Sum v
+  pure $ leftSum ++ [v] ++ rightSum
 
 
 bintree :: BinaryTree Int
@@ -512,17 +512,10 @@ data Stmt = Stmt
 --
 evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
 evalStmts [] = pure Nothing
+evalStmts [x] = eval $ expr x
 evalStmts (x : xs) = do
-  case xs of
-    [] -> eval $ expr x
-    _ -> do
-      env <- ask
-      let env' = M.insert (name x) (unpack . runIdentity $ runReader' (eval $ expr x) env) env
-      local (const env') $ evalStmts xs
-  where
-    unpack :: Maybe Int -> Int
-    unpack (Just val) = val
-    unpack Nothing = 0
+  maybeVal <- eval $ expr x
+  local (maybe id (M.insert (name x)) maybeVal) $ evalStmts xs
 
 
 -- | Пример запуска вычисления списка утверждений
