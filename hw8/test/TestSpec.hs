@@ -5,6 +5,9 @@ import MyLib
 import Data.Functor.Identity
 import qualified Data.Map as M
 import Control.Exception (evaluate)
+import Data.Monoid
+import Control.Monad.Writer ( MonadWriter(tell, listen, pass) )
+import Control.Monad.Reader
 
 spec :: Spec
 spec = do
@@ -67,12 +70,12 @@ spec = do
 
         it "checks the MonadFail instance" $ do
             let wd = fail "This is an error" :: WithData Int Int
-            evaluate (runWithData wd 3) `shouldThrow` errorCall "Sonething went wrong"
+            evaluate (runWithData wd 3) `shouldThrow` errorCall "WithData failed"
 
     -- Task 7 
     describe "pythagoreanTriples" $ do
         it "returns all Pythagorean triples for n=5" $ do
-            pythagoreanTriples 5 `shouldBe` [(3, 4, 5), (4, 3, 5)]
+            pythagoreanTriples 5 `shouldBe` [(3, 4, 5)]
 
         it "returns an empty list for n=2" $ do
             pythagoreanTriples 2 `shouldBe` []
@@ -125,49 +128,49 @@ spec = do
             runWriter' result `shouldBe` (Identity (5 :: Int), "Hello World")
 -- Task 9 b
 -- tell, listen, pass - Variable not in scope:
-    -- describe "MonadWriter for Writer' tests" $ do
-    --     it "checks tell for Writer'" $ do
-    --         let writer' = tell "Hello, " >> tell "world!" :: Writer' String ()
-    --         let (_, w) = runWriter' writer'
-    --         w `shouldBe` "Hello, world!"
+    describe "MonadWriter for Writer' tests" $ do
+        it "checks tell for Writer'" $ do
+            let writer' = tell "Hello, " >> tell "world!" :: Writer' String ()
+            let (_, w) = runWriter' writer'
+            w `shouldBe` "Hello, world!"
 
-    --     it "checks listen for Writer'" $ do
-    --         let writer' = listen (tell "Hello, world!" >> return 42) :: Writer' String (Int, String)
-    --         let (Identity (a, w1), w2) = runWriter' writer'
+        it "checks listen for Writer'" $ do
+            let writer' = listen (tell "Hello, world!" >> return 42) :: Writer' String (Int, String)
+            let (Identity (a, w1), w2) = runWriter' writer'
 
-    --         a `shouldBe` 42
-    --         w1 `shouldBe` "Hello, world!"
-    --         w2 `shouldBe` "Hello, world!"
+            a `shouldBe` 42
+            w1 `shouldBe` "Hello, world!"
+            w2 `shouldBe` "Hello, world!"
 
-    --     it "checks pass for Writer'" $ do
-    --         let writer' = pass (tell "Hello, " >> return ((), (++ "world!"))) :: Writer' String ()
-    --         let (_, w) = runWriter' writer'
-    --         w `shouldBe` "Hello, world!"
+        it "checks pass for Writer'" $ do
+            let writer' = pass (tell "Hello, " >> return ((), (++ "world!"))) :: Writer' String ()
+            let (_, w) = runWriter' writer'
+            w `shouldBe` "Hello, world!"
 
 -- Task 9 c
 -- getSum Variable not in scope
-    -- describe "sumAndTraceInOrder" $ do
+    describe "sumAndTraceInOrder" $ do
 
-    --     it "returns an empty list and sum for an empty tree" $ do
-    --         let tree = Leaf :: BinaryTree Int
-    --         let result = runWriter' (sumAndTraceInOrder tree)
-    --         let (Identity lst, s) = result
-    --         lst `shouldBe` []
-    --         getSum s `shouldBe` 0
+        it "returns an empty list and sum for an empty tree" $ do
+            let tree = Leaf :: BinaryTree Int
+            let result = runWriter' (sumAndTraceInOrder tree)
+            let (Identity lst, s) = result
+            lst `shouldBe` []
+            getSum s `shouldBe` 0
 
-    --     it "returns a list with one element and its sum for a tree with one node" $ do
-    --         let tree = Node 5 Leaf Leaf :: BinaryTree Int
-    --         let result = runWriter' (sumAndTraceInOrder tree)
-    --         let (Identity lst, s) = result
-    --         lst `shouldBe` [5]
-    --         getSum s `shouldBe` 5
+        it "returns a list with one element and its sum for a tree with one node" $ do
+            let tree = Node 5 Leaf Leaf :: BinaryTree Int
+            let result = runWriter' (sumAndTraceInOrder tree)
+            let (Identity lst, s) = result
+            lst `shouldBe` [5]
+            getSum s `shouldBe` 5
 
-    --     it "returns a sorted list and its sum for a complete binary tree" $ do
-    --         let tree = Node 2 (Node 1 Leaf Leaf) (Node 3 Leaf Leaf) :: BinaryTree Int
-    --         let result = runWriter' (sumAndTraceInOrder tree)
-    --         let (Identity lst, s) = result
-    --         lst `shouldBe` [1,2,3]
-    --         getSum s `shouldBe` 6
+        it "returns a sorted list and its sum for a complete binary tree" $ do
+            let tree = Node 2 (Node 1 Leaf Leaf) (Node 3 Leaf Leaf) :: BinaryTree Int
+            let result = runWriter' (sumAndTraceInOrder tree)
+            let (Identity lst, s) = result
+            lst `shouldBe` [1,2,3]
+            getSum s `shouldBe` 6
 
 -- Task 10 a
     describe "Reader'" $ do
@@ -187,20 +190,20 @@ spec = do
 
 -- Task 10 b
 -- local Variable not in scope
-    -- describe "Reader'" $ do
-    --     it "ask returns the environment" $ do
-    --         let reader = Reader' $ \r -> Identity r
-    --         runIdentity (runReader' reader 5) `shouldBe` 5
+    describe "Reader'" $ do
+        it "ask returns the environment" $ do
+            let reader' = Reader' $ \r -> Identity r
+            runIdentity (runReader' reader' 5) `shouldBe` (5 :: Int)
 
-    --     it "local modifies the environment" $ do
-    --         let reader = Reader' $ \r -> Identity r 
-    --         let reader' = local (+1) reader  
-    --         runIdentity (runReader' reader' 5) `shouldBe` 6
+        it "local modifies the environment" $ do
+            let reader1 = Reader' $ \r -> Identity r 
+            let reader' = local (+1) reader1  
+            runIdentity (runReader' reader' 5) `shouldBe` (6 :: Int)
 
-    --     it "local does not affect subsequent computations" $ do
-    --         let reader = Reader' $ \r -> Identity r 
-    --         let reader' = local (+1) reader >> Reader' (\r -> Identity r) 
-    --         runIdentity (runReader' reader' 5) `shouldBe` 5
+        it "local does not affect subsequent computations" $ do
+            let reader1 = Reader' $ \r -> Identity r 
+            let reader' = local (+1) reader1 >> Reader' Identity
+            runIdentity (runReader' reader' 5) `shouldBe` (5 :: Int)
 
 -- Task 10 c
     describe "eval" $ do

@@ -13,7 +13,6 @@ import           Control.Monad.Writer.Strict
 import           Control.Monad.Reader
 import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
-import           Data.List (nub)
 import           Data.Maybe
 import           Control.Applicative
 -------------------------------------------------------------------------------
@@ -46,7 +45,11 @@ newtype List a = List { getList :: [a] } deriving(Show, Eq)
 
 instance Traversable List where
     traverse :: Applicative f => (a -> f b) -> List a -> f (List b)
-    traverse f (List xs) = List <$> traverse f xs
+    traverse f (List xs) = List <$> myTraverse f xs
+      where
+        myTraverse :: Applicative f => (a -> f b) -> [a] -> f [b]
+        myTraverse _ [] = pure []
+        myTraverse g (y:ys) = (:) <$> g y <*> myTraverse g ys
     
 instance Functor List where
   fmap :: (a -> b) -> List a -> List b
@@ -78,7 +81,8 @@ sequenceA' = traverse' id
 --       если в нем нет отрицательных элементов, и Nothing в противном случае (0,5 балла)
 --
 rejectWithNegatives :: (Num a, Ord a) => [a] -> Maybe [a]
-rejectWithNegatives xs = if foldr ((&&) . isJust . deleteIfNegative) True xs then Just xs else Nothing
+--rejectWithNegatives xs = if foldr ((&&) . isJust . deleteIfNegative) True xs then Just xs else Nothing
+rejectWithNegatives = traverse deleteIfNegative
   where
     deleteIfNegative :: (Num a, Ord a) => a -> Maybe a
     deleteIfNegative x = if x < 0 then Nothing else Just x
@@ -122,7 +126,7 @@ instance Monad (WithData d) where
 
 instance MonadFail (WithData d) where
     fail :: String -> WithData d a
-    fail _ = WithData (error "Sonething went wrong")
+    fail _ = error "WithData failed"
 
 -- получается, что мы можем делать какие-то вычисления, таская за собой d. Так же мы можем d использовать его где угодно в процессе вычислений
 -------------------------------------------------------------------------------
@@ -205,10 +209,10 @@ fromDo12 isL cM =
 -- 7. С помощью монады списка создайте список, содержащий в себе все пифагоровы тройки. 
 --    В списке не должно быть дублей. Дублирования нужно убрать за счёт дополнительного условия в do-нотации (0,5 балла)
 pythagoreanTriples :: Int -> [(Int, Int, Int)]
-pythagoreanTriples n = nub $ do
-  a <- [1..n]
-  b <- [1..n]
+pythagoreanTriples n = do
   c <- [1..n]
+  a <- [1..c]
+  b <- [a..c]
   if a*a + b*b == c*c
     then return (a, b, c)
     else []
