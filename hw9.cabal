@@ -1,0 +1,41 @@
+cabal-version:      2.4
+name:               hw9
+version:            0.1.0.0
+synopsis:           HW9
+license:            MIT
+license-file:       LICENSE
+author:             SophiaLaz
+maintainer:         lazareva.sone4ka@yandex.ru
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:  MyLib
+    ghc-options:      -Wall
+    -- other-modules:
+    build-depends:    base ^>=4.18.1.0,
+        mtl,
+        containers,
+        random
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+test-suite hw9-test
+    import:           warnings
+    default-language: Haskell2010
+    ghc-options:      -Wall
+    other-modules:    TestSpec
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          MyLibTest.hs
+    build-depends:
+        base ^>=4.18.1.0,
+        hw9,
+        hspec,
+        mtl,
+        containers,
+        random
