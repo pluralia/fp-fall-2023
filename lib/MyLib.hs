@@ -30,7 +30,6 @@ import           Control.Applicative (ZipList(..))
 
 
 
-
 -------------------------------------------------------------------------------
 
 -- 1. Travserable (1,5 балла)
@@ -135,7 +134,7 @@ transpose = getZipList . traverse ZipList
 newtype WithData d a = WithData { runWithData :: d -> a }
 
 instance MonadFail (WithData d) where
-  fail _ = WithData $ \_ -> error "Houston, we have a problem"
+  fail _ = WithData $ \_ -> error "Ошибка в монаде WithData: не удалось выполнить операцию"
 
 instance Functor (WithData d) where
   fmap f w = WithData $ \d -> f (runWithData w d)
@@ -176,20 +175,20 @@ instance Monad (WithData d) where
 
 --     pure (c, b)
 
-fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
-fromDo11 aM bM =
-  fmap (+ 10) aM >>= \a ->
+-- fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
+-- fromDo11 aM bM =
+--   fmap (+ 10) aM >>= \a ->
 
-  let aL = [a, a, a]
-      a'  = a + length aL
-  in 
-    return a >>
-    bM >>
-    (Just aL >>= \[a, b, c] ->
+--   let aL = [a, a, a]
+--       a'  = a + length aL
+--   in 
+--     return a >>
+--     bM >>
+--     (Just aL >>= \[a, b, c] ->
 
-    fmap (<> "abcd") bM >>= \b ->
+--     fmap (<> "abcd") bM >>= \b ->
 
-    pure (c, b))
+--     pure (c, b))
 
 ---------------------------------------
 
@@ -217,23 +216,23 @@ fromDo11 aM bM =
 --               _         -> fail ""
 --         else pure ('0', 0)
 
-fromDo12 :: [Int] -> Maybe Char -> [(Char, Int)]
-fromDo12 isL cM =
-  isL >>= \curI ->
-  tail isL >>= \nextI ->
-  if nextI > curI
-    then
-      let a = curI + nextI
-      in
-        tail (tail isL) >>= \nextNextI ->
-        [cM] >>= \x -> 
-        case x of
-          (Just ch) ->
-            case (curI, nextI, nextNextI) of
-              (0, 0, 0) -> pure (ch, a)
-              _         -> fail "" 
-          _         -> fail ""
-    else pure ('0', 0)
+-- fromDo12 :: [Int] -> Maybe Char -> [(Char, Int)]
+-- fromDo12 isL cM =
+--   isL >>= \curI ->
+--   tail isL >>= \nextI ->
+--   if nextI > curI
+--     then
+--       let a = curI + nextI
+--       in
+--         tail (tail isL) >>= \nextNextI ->
+--         [cM] >>= \x -> 
+--         case x of
+--           (Just ch) ->
+--             case (curI, nextI, nextNextI) of
+--               (0, 0, 0) -> pure (ch, a)
+--               _         -> fail "" 
+--           _         -> fail ""
+--     else pure ('0', 0)
 
 
 -------------------------------------------------------------------------------
@@ -250,6 +249,13 @@ pythagoreanTriples n = do
     then return (a, b, c)
     else fail "Пифагоровы штаны не во все стороны равны получились"
 
+-- pythagoreanTriples :: [(Integer, Integer, Integer)]
+-- pythagoreanTriples = do
+--   a <- [1..]
+--   b <- [a..]
+--   let c = floor $ sqrt (fromIntegral (a^2 + b^2))
+--   guard (a^2 + b^2 == c^2)
+--   return (a, b, c)
 
 -------------------------------------------------------------------------------
 
@@ -266,12 +272,15 @@ pythagoreanTriples n = do
 --
 returnExample :: ReturnableCalculation Int
 returnExample = do
-    let a = 40
+    let a :: Int
+        a = 40
+        b :: Int
         b = 2
 
-    _ <- realReturn $ a + b
+    realReturn $ a + b
 
-    let aa = 0
+    let aa :: Int
+        aa = 0
 
     if aa == 0
       then pure 200
@@ -291,7 +300,9 @@ instance Applicative ReturnableCalculation where
 
     (<*>) :: ReturnableCalculation (a -> b) -> ReturnableCalculation a -> ReturnableCalculation b
     RealReturn f <*> RealReturn a = RealReturn (f a)
-    _ <*> _ = IgnoredReturn
+    RealReturn _ <*> IgnoredReturn = IgnoredReturn
+    IgnoredReturn <*> RealReturn _ = IgnoredReturn
+    IgnoredReturn <*> IgnoredReturn = IgnoredReturn
 
 instance Monad ReturnableCalculation where
     (>>=) :: ReturnableCalculation a -> (a -> ReturnableCalculation b) -> ReturnableCalculation b
