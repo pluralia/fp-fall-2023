@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections, InstanceSigs #-}
 module MyLib where
 
 import           Control.Monad.Writer.Lazy
@@ -5,7 +6,8 @@ import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
 import qualified Data.Map.Strict as M
 import qualified System.Random as R
-import           Data.List (find, zip)
+import           Data.List (find)
+import           Control.Monad (when)
 
 -------------------------------------------------------------------------------
 
@@ -58,8 +60,15 @@ filterOne :: [Rule] -> Packet -> Writer [Entry] (Maybe Packet)
 filterOne [] _ = writer (Nothing, [])
 filterOne rules packet = do
   let maybeRule = match rules packet
+      messageAcc = "Packet accept: input " <> show (pSource packet) <> "output " <> show (pDestination packet)
+      messageRej = "Packet reject: input " <> show (pSource packet) <> "output " <> show (pDestination packet)
   case maybeRule of
-    Just (Rule Accept _ _) -> pure (Just packet) -- если нужна проверка на Accept/Reject
+    Just (Rule Accept _ _) -> do
+      logMsg messageAcc
+      pure (Just packet)
+    Just (Rule Reject _ _) -> do
+      logMsg messageRej
+      pure Nothing
     _                      -> pure Nothing
 
 -- Немного усложним задачу: теперь мы хотим объединить дублирующиеся последовательные записи в журнале.
@@ -76,7 +85,7 @@ mergeEntries :: [Entry] -> [Entry] -> Writer [Entry] [Entry]
 mergeEntries _ [] = pure []
 mergeEntries [] _ = pure []
 mergeEntries (log1 : logs1) (log2 : logs2) = do
-  if msg log1 == msg log2 
+  if msg log1 == msg log2
     then do
       let res = [Log (count log1 + count log2) (msg log1)]
       resTail <- mergeEntries logs1 logs2
@@ -94,12 +103,24 @@ mergeEntries (log1 : logs1) (log2 : logs2) = do
 -- 'initial' -- изначальное значение лога
 --
 groupSame :: (Monoid a) => a -> (a -> a -> Writer a a) -> [b] -> (b -> Writer a c) -> Writer a [c]
-groupSame initial merge xs fn = undefined
+groupSame initial _ [] _ = tell initial >> pure []
+groupSame initial merge (x :xs) fn = writer (f : v, newLog)
+  where
+    (f, logF)   = runWriter $ fn x
+    (v, logT)   = runWriter $ groupSame initial merge xs fn
+    (_, newLog) = runWriter $ merge logF logT
 
 -- | Фильтрует список пакетов и возвращает список отфильтрованных пакетов и логи
 --
 filterAll :: [Rule] -> [Packet] -> Writer [Entry] [Packet]
-filterAll = undefined
+filterAll _     []                 = pure []
+filterAll rules (packet : packets) = do
+  maybePacket <- filterOne rules packet
+  case maybePacket of
+    Just pack -> do
+      res <- filterAll rules packets
+      pure $ [pack] <> res
+    _         -> filterAll rules packets
 
 -------------------------------------------------------------------------------
 
@@ -146,13 +167,23 @@ addDefs v e = Env (templs e) (M.union v (vars e))
 -- | Резолвит (подставляет все неизвестные) шаблон и выдает в качестве ответа
 --   пару (имя шаблона, значение)
 --
-resolveDef :: Definition -> Reader Environment (String, String)
-resolveDef = undefined
+-- resolveDef :: Definition -> Reader Environment (String, String)
+-- resolveDef (Definition temp1 temp2) = undefined
 
 -- | Резолвит (подставляет все неизвестные) шаблон в строку
 --
-resolve :: Template -> Reader Environment String
-resolve = undefined
+-- resolve :: Template -> Reader Environment String
+-- -- возвращает Reader, где результат - имя шаблона, а в окружение добавляем переменные
+-- resolve (Text tempName) = pure tempName -- ?
+-- resolve (Var varTemp) = do
+--   env <- ask 
+--   -- кажется, шаблон Var должен содержать Text String - имя переменной
+--   case varTemp of
+--     Text varName -> do 
+--       let maybeVar = lookupVar varName env
+--       case maybeVar of
+--         Nothing -> addDefs M.fromList [(varName)]
+-- resolve _ = pure "" -- ?
 
 -------------------------------------------------------------------------------
 
@@ -218,8 +249,16 @@ makeRandomValueST = runState st
 -- | 4.1. Реализуйте функцию `whileM_`, исполняющую заданное вычисление,
 --        пока первое вычисление возвращает 'True'
 --
-whileM_ :: m Bool -> m a -> m ()
-whileM_ = undefined
+whileM_ :: (Monad m) => m Bool -> m a -> m ()
+whileM_ flagM actionM = do
+  flag <- flagM
+  when flag $ do
+    _ <- actionM            -- вычисляем  действие, при этом результат нам не важен
+    whileM_ flagM actionM
+
+  -- на `when` hlint сказал исправить. + добавлены ограничения на класс типов:
+  -- 1. when :: Applicative f => Bool -> f () -> f ()
+  -- 2. add (Monad m) to the context of the type signature in a stmt of a 'do' block: flag <- flagM
 
 ---------------------------------------
 
@@ -228,34 +267,54 @@ whileM_ = undefined
 --        в конце каждой итерации цикла вычисляется nextIter, итерации идут, 
 --        пока выполняется условие cond
 --
-forM_ :: (m (), m Bool, m ()) -> m a -> m ()
-forM_ (init, cond, nextIter) body = undefined
+forM_ :: Monad m => (m (), m Bool, m ()) -> m a -> m ()
+forM_ (initM, condM, nextIterM) bodyM = do
+  _ <- initM
+  helper -- нужен, чтобы не считалось каждый раз init
+  where
+    helper = do
+      cond <- condM
+      when cond $ do
+        _ <- bodyM
+        _ <- nextIterM
+        helper
 
 ---------------------------------------
 
 -- | Окружение / контекст: имя переменной в значение
 --
-type Context = M.Map String Int
+type Context = M.Map String Integer
 
 -- 4.3. Реализуйте следующие функции
 
 -- | Задаёт значение переменной. 
 --   Если переменная есть в контексте, перезаписывает её значение.
 --
-setVar :: String -> Int -> State Context ()
-setVar = undefined
+setVar :: String -> Integer -> State Context ()
+setVar name val = state (\e -> ((), M.insert name val e))
 
 -- | Увеличивает значение переменной. 
 --   Если её нет в контексте, то кидает ошибку.
 --
-incVar :: String -> Int -> State Context ()
-incVar = undefined
+incVar :: String -> Integer -> State Context ()
+incVar name delta = do
+  env <- get
+  let maybeVal = M.lookup name env
+  case maybeVal of
+    Just val -> setVar name (val + delta)
+    Nothing  -> error "Variable not in Context!"
 
 -- | Достаёт из контекста значение заданной переменной.
 --   Если переменной нет в контексте, то кидает ошибку.
 --
-getVar :: String -> State Context Int
-getVar = undefined
+getVar :: String -> State Context Integer
+getVar name = do
+  env <- get
+  let maybeVal = M.lookup name env
+  case maybeVal of
+    -- чтобы была возможность записать не в таком виде `(\e -> (val, e))` подключила прагму TupleSections
+    Just val -> state (val, )
+    Nothing  -> error "Variable not in Context!"
 
 ---------------------------------------
 
@@ -271,15 +330,35 @@ int fib(int n) {
     for (int i = 0; i < n; i = i + 1) {
         int c = cur;
         cur = prev + cur;
-        prev = cur;
+        prev = c;
     }
 
     return cur
 } 
 -}
 
-fib :: Int -> State Context Int
-fib = undefined
+fib :: Integer -> State Context Integer
+fib n = do
+  setVar "prev" 0
+  setVar "cur" 1
+  forM_ (setVar "i" 0, condition, incVar "i" 1) body
+  getVar "cur"
+    where
+      condition :: State Context Bool
+      condition = do
+        i <- getVar "i"
+        pure $ i < n
+
+      body :: State Context ()
+      body = do
+        c <- getVar "cur"
+        setVar "c" c
+
+        prev <- getVar "prev"
+        incVar "cur" prev
+
+        setVar "prev" c
+
 
 -------------------------------------------------------------------------------
 
@@ -290,9 +369,26 @@ fib = undefined
 
 -- | Задайте тип
 --
-data StateWithError = YourImplementation
+newtype StateWithError s a b = MyState {runMyState :: s -> (Either a b, s) }
 
 -- Реализуйте инстанс Monad для StateWithError
+
+instance Functor (StateWithError s a) where
+  fmap :: (b -> c) -> StateWithError s a b -> StateWithError s a c
+  fmap f st = MyState $ \s' -> (fmap f . fst $ runMyState st s', s')
+
+instance Applicative (StateWithError s a) where
+  pure :: b -> StateWithError s a b
+  pure x = MyState (Right x,)
+
+  (<*>) :: StateWithError s a (b -> c) -> StateWithError s a b -> StateWithError s a c
+  (<*>) fSt xSt = MyState $ \s' -> (fst (runMyState fSt s') <*> fst (runMyState xSt s'), s')
+
+instance Monad (StateWithError s a) where
+  (>>=) :: StateWithError s a b -> (b -> StateWithError s a c) -> StateWithError s a c
+  (>>=) xSt k = MyState $ \s' -> case runMyState xSt s' of 
+    (Left x,  s'') -> (Left x, s'')
+    (Right x, s'') -> runMyState (k x) s''
 
 -- Привидите пример использования
 
