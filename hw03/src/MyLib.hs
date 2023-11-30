@@ -5,7 +5,7 @@ import Data.Ix (Ix, range, index, inRange)
 import Data.Bifunctor ( Bifunctor(bimap) ) 
 
 import           Data.Char       ()
-import           Data.Foldable   (foldl', foldr, toList)
+import           Data.Foldable   (foldl')
 import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
 import qualified Data.Text       as T
@@ -88,12 +88,14 @@ instance Ix ChurchNumber where
 -- 4. Сделайте функцию `pointful` бесточечной, объясняя каждый шаг по примеру из практики
 --    (1,5 балла)
 
--- pointful :: (t1 -> t2 -> t3) -> t1 -> (t4 -> t2) -> t4 -> t3
--- pointful a b c d = a b (c d) 
--- pointful a b c d = (a b . c) d -- убираю явный аргумент
--- pointful a b c = (a b . c) = a (.) b c -- использую оператор композиции
--- pointful a = (a .) -- с помощью опрератора композиции избавляюсь от еще двух аргументов
--- pointful = (.)
+-- pointful f x f' y = f x (f' y) = ((f x) . f') y -- можем переделать в композицию и использовать эта-редукцию
+-- pointful f x f' = (f x) . f' -- результат
+-- pointful f x f' = (.) (f x) f' -- преобразуем композицию в операторный стиль и снова используем эта редукцию
+-- pointful f x = (.) (f x) -- результат
+-- pointful f x = ((.) . f) x -- эта-редукция
+-- pointful f = ((.) . f) -- результат
+-- pointful f = ((.) .) f -- операторный стиль, применяем эта-редукцию
+-- pointful = ((.) .) -- ответ
 ------------------------------------------------------------------------------------------------
 
 -- 5. Дни недели и `Enum` (1 балл)
@@ -280,9 +282,9 @@ average vec =
 
 gcContent :: T.Text -> Double
 gcContent text = 
-  let totalChars = fromIntegral $ T.length text
-      gcCount = T.foldl' (\acc c -> if c == 'G' || c == 'C' then acc + 1 else acc) (0 :: Integer) text
-  in if totalChars == 0 then 0 else fromIntegral gcCount / totalChars
+  let totalChars = fromIntegral (T.length text)
+      gcCount = T.foldl' (\acc c -> if c `elem` ['G', 'C'] then acc + 1 else acc) 0 text
+  in if totalChars == 0 then (0 :: Double) else gcCount / totalChars
 
 ------------------------------------------------------------------------------------------------
 
