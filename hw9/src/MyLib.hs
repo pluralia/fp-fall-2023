@@ -1,11 +1,12 @@
-module MyLib where
+{-# LANGUAGE InstanceSigs, TupleSections #-}
 
+module MyLib where
 import           Control.Monad.Writer.Lazy
 import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
 import qualified Data.Map.Strict as M
 import qualified System.Random as R -- cabal install --lib  random
-
+--import           Debug.Trace
 -------------------------------------------------------------------------------
 
 -- 1. Writer: Брандмауэр (3 балла)
@@ -20,7 +21,7 @@ import qualified System.Random as R -- cabal install --lib  random
 data Entry = Log {
       count :: Int     -- количество таких сообщений подряд, идущих друг за другом
     , msg   :: String  -- сообщение
-    } deriving Eq
+    } deriving (Eq, Show)
 
 -- | Добавляет сообщение в лог
 --
@@ -29,8 +30,12 @@ logMsg s = tell [Log 1 s]
 
 -- | Задайте тип, выражающий IP-адрес
 --
-data IP = YourDefinition
-  deriving (Show, Eq)
+data IP = IP Int Int Int Int
+  deriving (Eq)
+
+instance Show IP where
+  show :: IP -> String
+  show (IP a b c d) = show a ++ "." ++ show b ++ "." ++ show c ++ "." ++ show d
 
 data Action = Accept | Reject
   deriving (Show, Eq)
@@ -49,12 +54,27 @@ data Packet = Packet {
 -- | Возвращает первое правило, действующее на пакет
 --
 match :: [Rule] -> Packet -> Maybe Rule
-match = undefined
+match [] _ = Nothing
+match (rule : rules) packet = 
+  if source rule == pSource packet && destination rule == pDestination packet
+    then Just rule
+    else match rules packet
 
 -- | Фильтрует 1 пакет
 -- 
 filterOne :: [Rule] -> Packet -> Writer [Entry] (Maybe Packet)
-filterOne = undefined
+filterOne rules packet = 
+  case match rules packet of
+    Nothing -> do
+      logMsg $ "Packet from " ++ show (pSource packet) ++ " to " ++ show (pDestination packet) ++ " is rejected"
+      return Nothing
+    Just rule -> do
+      case action rule of
+        Accept -> do
+          logMsg $ "Packet from " ++ show (pSource packet) ++ " to " ++ show (pDestination packet) ++ " is accepted"  
+        Reject -> do
+          logMsg $ "Packet from " ++ show (pSource packet) ++ " to " ++ show (pDestination packet) ++ " is rejected"
+      return $ Just packet
 
 -- Немного усложним задачу: теперь мы хотим объединить дублирующиеся последовательные записи в журнале.
 -- Ни одна из существующих функций не позволяет изменять результаты предыдущих этапов вычислений,
@@ -67,7 +87,15 @@ filterOne = undefined
 --   При объединении двух разных сообщений, в лог записывается первое сообщение, а второе возвращается в качестве результата.
 --
 mergeEntries :: [Entry] -> [Entry] -> Writer [Entry] [Entry]
-mergeEntries = undefined
+mergeEntries es [] = return es
+mergeEntries [] es' = tell es' >> return []
+mergeEntries (e : es) (e' : es') = 
+  if msg e == msg e'
+    then 
+      let e'' = Log (count e + count e') (msg e) in
+      tell [e''] >> mergeEntries es es'
+    else 
+      tell [e] >> mergeEntries es (e' : es')
 
 -- | Применяет входную функцию к списку значений, чтобы получить список Writer.
 --   Затем запускает каждый Writer и объединяет результаты.
@@ -77,12 +105,18 @@ mergeEntries = undefined
 -- 'initial' -- изначальное значение лога
 --
 groupSame :: (Monoid a) => a -> (a -> a -> Writer a a) -> [b] -> (b -> Writer a c) -> Writer a [c]
-groupSame initial merge xs fn = undefined
+groupSame initial merge xs fn =
+  do
+    let
+      (ys, logs) = runWriter $ mapM fn xs
+      (_, logs') = runWriter $ merge initial logs
+    tell logs'
+    return ys
 
 -- | Фильтрует список пакетов и возвращает список отфильтрованных пакетов и логи
 --
-filterAll :: [Rule] -> [Packet] -> Writer [Entry] [Packet]
-filterAll = undefined
+filterAll :: [Rule] -> [Packet] -> Writer [Entry] [Maybe Packet]
+filterAll rules packets = groupSame [] mergeEntries packets (filterOne rules)
 
 -------------------------------------------------------------------------------
 
@@ -114,42 +148,81 @@ data Environment = Env {
 -- | Ищет переменную в окружении
 --
 lookupVar :: String -> Environment -> Maybe String
-lookupVar = undefined
+lookupVar var = M.lookup var . vars
 
 -- | Ищет шаблон в окружении
 --
 lookupTemplate :: String -> Environment -> Maybe Template
-lookupTemplate = undefined
+lookupTemplate templ = M.lookup templ . templs
 
 -- | Добавляет новые переменные в окружение
 -- 
 addDefs :: M.Map String String -> Environment -> Environment
-addDefs = undefined
+addDefs new env = env { vars = M.union new (vars env) }
 
 -- | Резолвит (подставляет все неизвестные) шаблон и выдает в качестве ответа
 --   пару (имя шаборна, значение)
 --
 resolveDef :: Definition -> Reader Environment (String, String)
-resolveDef = undefined
+resolveDef (Definition templ val) =
+  do
+    tmp <- resolve templ
+    v <- resolve val
+    return (tmp, v)
 
 -- | Резолвит (подставляет все неизвестные) шаблон в строку
 --
 resolve :: Template -> Reader Environment String
-resolve = undefined
+resolve (Text s) = return s
+resolve (Var templ) = 
+  do
+    env <- ask
+    var <- resolve templ
+    case lookupVar var env of
+      Just val -> return val
+      Nothing -> return $ "No variable " ++ var ++ " found"
+resolve (Quote templ) =
+  do
+    env <- ask
+    case templ of
+      Text s -> return s
+      _ -> do
+        var <- resolve templ
+        case lookupVar var env of
+          Just val -> return val
+          Nothing -> case lookupTemplate var env of
+            Just val -> resolve val
+            Nothing -> return $ "No template " ++ var ++ " found"
+resolve (Include templ defs) = 
+  do
+    env <- ask
+    let 
+      env' = addDefs (M.fromList $ map (\def -> runReader (resolveDef def) env) defs) env
+    local (const env') $ resolve templ
+resolve (Compound ts) =
+  do
+    env <- ask
+    let
+      ts' = map (\t -> runReader (resolve t) env) ts
+    return $ concat ts'
+
 
 -------------------------------------------------------------------------------
 
 -- 3. State: Генерация случайного значения кастомного типа (1 балл)
 
 -- Чистый функциональный язык не может обновлять значения на месте (почему?)
+
+-- По определению)
+
 -- Распространенной идиомой для имитации таких вычислений с сохранением состояния является
 -- "прохождение" параметра состояния через последовательность функций
 -- Рассмотрим пример
 
 data MyType = MT Int Bool Char Int
-  deriving Show
+  deriving (Show, Eq)
 
--- Чтобы запустить: `makeRandomValue (mkStdGen 23)`
+-- Чтобы запустить: `makeRandomValue (R.mkStdGen 23)`
 
 makeRandomValue :: R.StdGen -> (MyType, R.StdGen)
 makeRandomValue g =
@@ -166,19 +239,24 @@ makeRandomValue g =
 
 -- | Возвращает случайное значение и обновляет состояние генератора случайных чисел
 --
-getAny :: (R.Random a) => State R.StdGen a
-getAny = undefined
+getAny' :: (R.Random a) => State R.StdGen a
+getAny' = state R.random
 
 -- | Аналогична getAny, но генерирует значение в границах
 --
-getOne :: (R.Random a) => (a, a) -> State R.StdGen a
-getOne bounds = undefined
+getOne' :: (R.Random a) => (a, a) -> State R.StdGen a
+getOne' bounds = state $ R.randomR bounds
 
 -- | Используя монаду State с StdGen в качестве состояния, мы можем генерировать случаные значения
 --   заданного типа, не передавая состояния генератора случайных чисел в коде вручную
 --
 makeRandomValueST :: R.StdGen -> (MyType, R.StdGen)
-makeRandomValueST = undefined
+makeRandomValueST = runState $ do
+    n <- getOne' (1, 100)
+    b <- getAny'
+    c <- getOne' ('a', 'z')
+    m <- getOne' (-n, n)
+    return $ MT n b c m
 
 -------------------------------------------------------------------------------
 
@@ -189,8 +267,11 @@ makeRandomValueST = undefined
 -- | 4.1. Реализуйте функцию `whileM_`, исполняющую заданное вычисление,
 --        пока первое вычисление возвращает 'True'
 --
-whileM_ :: m Bool -> m a -> m ()
-whileM_ = undefined
+whileM_' :: Monad m => m Bool -> m a -> m ()
+whileM_' cond body =
+  do
+    c <- cond
+    when c $ body >> whileM_' cond body
 
 ---------------------------------------
 
@@ -199,8 +280,11 @@ whileM_ = undefined
 --        в конце каждой итерации цикла вычисляется nextIter, итерации идут, 
 --        пока выполняется условие cond
 --
-forM_ :: (m (), m Bool, m ()) -> m a -> m ()
-forM_ (init, cond, nextIter) body = undefined
+forM_' :: Monad m => (m (), m Bool, m ()) -> m a -> m ()
+forM_' (init', cond, nextIter) body = 
+  do
+    init'
+    whileM_' cond $ body >> nextIter
 
 ---------------------------------------
 
@@ -214,19 +298,32 @@ type Context = M.Map String Int
 --   Если переменная есть в контексте, перезаписывает её значение.
 --
 setVar :: String -> Int -> State Context ()
-setVar = undefined
+setVar s i = 
+  do
+    ctx <- get
+    put $ M.insert s i ctx
 
 -- | Увеличивает значение переменной. 
 --   Если её нет в контексте, то кидает ошибку.
 --
 incVar :: String -> Int -> State Context ()
-incVar = undefined
+incVar s i = 
+  do
+    ctx <- get
+    case M.lookup s ctx of
+      Just val -> setVar s (val + i)
+      Nothing -> error $ "No variable " ++ s ++ " found"
 
 -- | Достаёт из контекста значение заданной переменной.
 --   Если переменной нет в контексте, то кидает ошибку.
 --
 getVar :: String -> State Context Int
-getVar = undefined
+getVar s = 
+  do
+    ctx <- get
+    case M.lookup s ctx of
+      Just val -> return val
+      Nothing -> error $ "No variable " ++ s ++ " found"
 
 ---------------------------------------
 
@@ -250,7 +347,16 @@ int fib(int n) {
 -}
 
 fib :: Int -> State Context Int
-fib = undefined
+fib n = 
+  do
+    setVar "prev" 0
+    setVar "cur" 1
+    forM_' (setVar "i" 0, getVar "i" >>= (\i -> return $ i < n), incVar "i" 1) $ do
+      setVar "c" =<< getVar "cur"
+      setVar "cur" =<< (+) <$> getVar "prev" <*> getVar "cur"
+      setVar "prev" =<< getVar "c"
+    getVar "cur"
+
 
 -------------------------------------------------------------------------------
 
@@ -261,10 +367,73 @@ fib = undefined
 
 -- | Задайте тип
 --
-data StateWithError = YourImplementation
+newtype StateWithError a
+  = StateWithError {runStateWithError :: Int -> (Either String a, Int)}
 
 -- Реализуйте инстанс Monad для StateWithError
 
--- Привидите пример использования
+instance Functor StateWithError where
+  fmap :: (a -> b) -> StateWithError a -> StateWithError b
+  fmap f (StateWithError g) = StateWithError $ \s -> 
+    let (res, s') = g s in
+      (f <$> res, s')
+
+instance Applicative StateWithError where
+  pure :: a -> StateWithError a
+  pure a = StateWithError (Right a,)
+
+  (<*>) :: StateWithError (a -> b) -> StateWithError a -> StateWithError b
+  (StateWithError f) <*> (StateWithError g) = StateWithError $ \s -> 
+    let (res, s') = f s in
+      case res of
+        Left err -> (Left err, s')
+        Right f' -> 
+          let (res', s'') = g s' in
+            case res' of
+              Left err -> (Left err, s'')
+              Right g' -> (Right $ f' g', s'')
+
+instance Monad StateWithError where
+  (>>=) :: StateWithError a -> (a -> StateWithError b) -> StateWithError b
+  (StateWithError f) >>= g = StateWithError $ \s -> 
+    let (res, s') = f s in
+      case res of
+        Left err -> (Left err, s')
+        Right a -> runStateWithError (g a) s'
+
+
+-- | Возвращает текущее состояние
+--
+getSt :: StateWithError Int
+getSt = StateWithError $ \s -> (Right s, s)
+
+-- | Задает новое состояние
+--
+putSt :: Int -> StateWithError ()
+putSt s = StateWithError $ const (Right (), s)
+
+-- | Возвращает текущее состояние и завершает вычисление с ошибкой
+--
+throwErrorSt :: String -> StateWithError a
+throwErrorSt err = StateWithError $ const (Left err, 0)
+
+-- Пример использования:
+
+-- | Возвращает текущее состояние, увеличенное на 1
+--
+getStPlus1 :: StateWithError Int
+getStPlus1 = do
+  s <- getSt
+  putSt $ s + 1
+  return s
+
+-- | Возвращает текущее состояние, увеличенное на 1, если оно не превышает 10
+--
+getStPlus1IfNotTooBig :: StateWithError Int
+getStPlus1IfNotTooBig = do
+  s <- getStPlus1
+  if s <= 10
+    then return s
+    else throwErrorSt "Number is too big"
 
 -------------------------------------------------------------------------------

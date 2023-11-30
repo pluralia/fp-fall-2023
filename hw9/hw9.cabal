@@ -48,4 +48,5 @@ test-suite hw9-test
                  ,    hspec
                  ,    hw9
                  ,    mtl
+                 ,    random
     other-modules:    TestSpec
