@@ -43,12 +43,16 @@ spec = do
   describe "M.fromList with different handling of duplicate keys" $ do
     let emptyLst = [] :: [(Int, Int)]
     let lst1 = [(1, 10), (2, 20), (3, 30), (2, 40)] :: [(Int, Int)]
+    let ls2 = [(1, 'A'), (2, 'B'), (2, 'C')] :: [(Int, Char)]
     it "fromListL (retains last value for duplicate keys)" $ do
         fromListL emptyLst `shouldBe` (M.empty :: M.Map Int Int)
         fromListL lst1 `shouldBe` M.fromList [(1, 10), (2, 40), (3, 30)]     
     it "fromListR (retains first value for duplicate keys)" $ do
         fromListR emptyLst `shouldBe` (M.empty :: M.Map Int Int)
         fromListR lst1 `shouldBe` M.fromList [(1, 10), (2, 20), (3, 30)]
+    it "fromListR (ls2 test)" $ do
+        fromListR ls2 `shouldBe` M.fromList [(1, 'A'), (2, 'B')]
+        fromListL ls2 `shouldBe` M.fromList [(1, 'A'), (2, 'C')]
   
   describe "nubOrd" $ do
     it "check correctness with multiple duplicates" $ do
@@ -70,6 +74,10 @@ spec = do
         let lst6 = [Left 1, Left 2, Left 3, Right 'a', Right 'b', Right 'c', Left 1, Right 'a'] :: [Either Int Char]
         nubOrd lst6 `shouldBe` [Left 1, Left 2, Left 3, Right 'a', Right 'b', Right 'c']
 
+  describe "query parameters" $ do
+    it "check correctness" $ do
+      let map1 = M.fromList [("Today", "is"), ("good", "day")]
+      buildQuery map1 `shouldBe` "Today=is&good=day"
 
 
 

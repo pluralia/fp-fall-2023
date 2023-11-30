@@ -1,3 +1,5 @@
+{-# LANGUAGE InstanceSigs #-}
+
 module MyLib where
 import Data.Ix 
 import Data.Bifunctor ( Bifunctor(bimap) ) 
@@ -10,60 +12,63 @@ data ChurchNumber = Zero | Succ ChurchNumber
   deriving (Show)
 
 instance Eq ChurchNumber where
-    (==) Zero Zero         = True
+    (==) :: ChurchNumber -> ChurchNumber -> Bool
+    (==) Zero Zero = True
+    (==) Zero _    = False
+    (==) _ Zero    = False
     (==) (Succ a) (Succ b) = a == b
-    (==) _ _               = False
+
 
 
 
 instance Ord ChurchNumber where
-  compare Zero Zero = EQ
-  compare Zero _    = LT
-  compare _ Zero    = GT
-  compare (Succ a) (Succ b) = compare a b
+    compare :: ChurchNumber -> ChurchNumber -> Ordering
+    compare Zero Zero = EQ
+    compare Zero _    = LT
+    compare _ Zero    = GT
+    compare (Succ a) (Succ b) = compare a b
 
--- Отдельные функции
-chAdd :: ChurchNumber -> ChurchNumber -> ChurchNumber
-chAdd x Zero = x
-chAdd x (Succ y) = chAdd (Succ x) y
-
-chSub :: ChurchNumber -> ChurchNumber -> ChurchNumber
-chSub x Zero = x
-chSub Zero _ = Zero 
-chSub (Succ x) (Succ y) = chSub x y
-
-chMult :: ChurchNumber -> ChurchNumber -> ChurchNumber
-chMult _ Zero = Zero
-chMult x (Succ y) = chAdd x (chMult x y)
 
 
 instance Num ChurchNumber where
-    (+) = chAdd
-    (-) = chSub
-    (*) = chMult
     abs a = a
     fromInteger n
-      | n == 0    = Zero
-      | n < 0     = error "There are no negative Church numbers"
-      | otherwise = Succ (fromInteger (n - 1))
+        | n == 0    = Zero
+        | n < 0     = error "There are no negative Church numbers"
+        | otherwise = Succ (fromInteger (n - 1))
     signum Zero = Zero
     signum _    = Succ Zero
 
-instance Enum ChurchNumber where
-  toEnum 0 = Zero
-  toEnum n = Succ (toEnum (n - 1))
+    (+) x Zero = x
+    (+) x (Succ y) = (+) (Succ x) y
 
-  fromEnum Zero     = 0
-  fromEnum (Succ n) = 1 + fromEnum n
+    (-) x Zero = x
+    (-) Zero _ = Zero 
+    (-) (Succ x) (Succ y) = (-) x y
+
+    (*) _ Zero = Zero
+    (*) x (Succ y) = (+) x ((*) x y)
+
+
+
+
+instance Enum ChurchNumber where
+    toEnum n
+        | n < 0     = error "Invalid"
+        | n == 0    = Zero
+        | otherwise = Succ (toEnum (n - 1))
+
+    fromEnum Zero     = 0
+    fromEnum (Succ n) = 1 + fromEnum n
              
 instance Ix ChurchNumber where
-  range (a, b)
-    | a > b     = []
-    | otherwise = take (fromEnum (b - a) + 1) $ iterate (\x -> Succ x) a
+    range (a, b)
+        | a > b     = []
+        | otherwise = take (fromEnum (b - a) + 1) $ iterate (\x -> Succ x) a
 
-  index (a, _) b = fromEnum (b - a)
+    index (a, _) b = fromEnum (b - a)
 
-  inRange (a, b) c = c >= a && c <= b
+    inRange (a, b) c = c >= a && c <= b
 
 
 -- Вы можете найти класс `Ix` по ссылке:
@@ -75,12 +80,12 @@ instance Ix ChurchNumber where
 -- 4. Сделайте функцию `pointful` бесточечной, объясняя каждый шаг по примеру из практики
 --    (1,5 балла)
 pointful :: (a -> b -> c) -> a -> (d -> b) -> d -> c
-pointful a b c d = a b (c d)
+pointful f x g y = f x (g y)
 
--- pointful a b c d = a b (c d)
--- pointful a b c = a b . c
--- pointful a b = (a b .)
--- pointful a = (a .)
+-- pointful f x g y = f x (g y)
+-- pointful f x g = f x . g
+-- pointful f x = (f x .)
+-- pointful f = (f .)
 -- pointful = (.)
 
 
@@ -133,8 +138,9 @@ dayBefore d = pred d
 -- | Возвращает количество от текущего до ближайшей субботы
 --
 daysBeforeWeekend :: Day -> Int
-daysBeforeWeekend d = fromEnum Saturday - fromEnum d
-
+daysBeforeWeekend d = if d == Sunday
+                      then 6
+                      else fromEnum Saturday - fromEnum d
 ------------------------------------------------------------------------------------------------
 
 -- 6. Класс типов `Functor` (1,25 балла)
@@ -188,10 +194,12 @@ data Either' a b = Left' a | Right' b
   deriving (Show,Eq)
 
 instance Functor (Either' a) where
-  fmap _ (Left' a) = Left' a
-  fmap f (Right' b) = Right' (f b)
+    fmap :: (b -> c) -> Either' a b -> Either' a c
+    fmap _ (Left' a) = Left' a
+    fmap f (Right' b) = Right' (f b)
 
 instance Bifunctor Either' where
+    bimap :: (a -> c) -> (b -> d) -> Either' a b -> Either' c d
     bimap f _ (Left' a)  = Left' (f a)
     bimap _ g (Right' b) = Right' (g b)
 

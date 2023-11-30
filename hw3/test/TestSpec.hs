@@ -49,7 +49,7 @@ module TestSpec where
           (Zero * Succ (Succ Zero)) `shouldBe` (Zero :: ChurchNumber)
 
         it "Checks 'fromInteger' for a non-zero number" $
-          fromInteger 4 `shouldBe` (Succ (Succ (Succ (Succ Zero))) :: ChurchNumber)
+          fromInteger 4 `shouldBe` (Succ (Succ (Succ (Succ Zero))))
 
         it "Checks 'fromInteger' for zero" $
           fromInteger 0 `shouldBe` (Zero :: ChurchNumber)
@@ -68,10 +68,11 @@ module TestSpec where
           inRange (Zero, Succ (Succ Zero)) (Succ Zero) `shouldBe` True
 
         it "Indexes a Church number" $
-          index (Zero, Succ (Succ Zero)) (Succ (Succ Zero)) `shouldBe` 2
+          index (Zero, Succ (Succ Zero)) (Succ (Succ (Succ Zero)))   `shouldBe` 3
 
         it "Checks inRange for a number outside the range" $
           inRange (Zero, Succ (Succ Zero)) (Succ (Succ (Succ Zero))) `shouldBe` False
+        
 
       describe "Enum instance for Day" $ do
         it "Converts Tue to its enum value" $
@@ -89,11 +90,14 @@ module TestSpec where
         it "Returns Fri for Thue" $
           dayBefore Friday `shouldBe` Thursday
 
+
       describe "daysBeforeWeekend" $ do
         it "Returns 5 for Monday" $
           daysBeforeWeekend Wednesday `shouldBe` 3
         it "Returns 3 for Thursday" $
           daysBeforeWeekend Thursday `shouldBe` 2
+        it "Returns " $
+          daysBeforeWeekend Sunday `shouldBe` 6
       
       describe "Functor instance for List" $ do
         it "Maps a function over an empty list" $

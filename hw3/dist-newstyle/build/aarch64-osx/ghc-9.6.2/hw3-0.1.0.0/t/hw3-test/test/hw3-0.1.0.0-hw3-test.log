@@ -34,6 +34,7 @@ Test
   daysBeforeWeekend
     Returns 5 for Monday [✔]
     Returns 3 for Thursday [✔]
+    Returns  [✔]
   Functor instance for List
     Maps a function over an empty list [✔]
     Maps a function over a non-empty list [✔]
@@ -47,7 +48,7 @@ Test
     Maps a function over the Left side of Either' [✔]
     Maps a function over the Right side of Either' [✔]
 
-Finished in 0.0006 seconds
-34 examples, 0 failures
+Finished in 0.0014 seconds
+35 examples, 0 failures
 Test suite hw3-test: PASS
 Test suite logged to: /Users/denisteresenko/Progamming/Projects/fp-fall-2023/hw3/dist-newstyle/build/aarch64-osx/ghc-9.6.2/hw3-0.1.0.0/t/hw3-test/test/hw3-0.1.0.0-hw3-test.log

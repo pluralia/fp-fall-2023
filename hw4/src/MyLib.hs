@@ -1,10 +1,11 @@
 {- cabal:
 build-depends: base, containers, text, vector
 -}
+{-# LANGUAGE OverloadedStrings #-}
 module MyLib where
 
-import           Data.Char       (ord)
-import           Data.Foldable   (foldl', foldr, toList)
+-- import           Data.Char       (ord)
+import           Data.Foldable   (foldl')
 import qualified Data.Map.Strict as M
 import qualified Data.Text       as T
 import qualified Data.Vector     as V
@@ -55,8 +56,8 @@ evenodd xs = foldr f ([], []) $ zip xs [0..]
 
 average :: V.Vector Double -> Double
 average vec =
-  let (totalSum, count) = V.foldl' (\(sum, cnt) x -> (sum + x, cnt + 1)) (0, 0) vec
-  in if count == 0 then 0 else totalSum / fromIntegral count
+  let (totalSum, count) = V.foldl' (\(s, cnt) x -> (s + x, cnt + 1)) (0, 0) vec
+  in if count == (0 :: Int) then 0.0 else totalSum / fromIntegral count
 
 ------------------------------------------------------------------------------------------------
 
@@ -118,7 +119,10 @@ nubOrd xs = nubOrd' xs Set.empty
 --
 -- Соберите строку "a=1&b=2&c=hello" из `Map Text Text` используя `foldlWithKey'` или `foldrWithKey`.
 
--- buildQuery :: M.Map T.Text T.Text -> T.Text
--- buildQuery parameters = undefined
+buildQuery :: M.Map T.Text T.Text -> T.Text
+buildQuery = T.intercalate "&" . M.foldrWithKey' combineParams []
+  where
+    combineParams :: T.Text -> T.Text -> [T.Text] -> [T.Text]
+    combineParams key value acc = (key <> "=" <> value) : acc
 
 ------------------------------------------------------------------------------------------------
