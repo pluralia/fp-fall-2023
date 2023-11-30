@@ -1,0 +1,49 @@
+Test suite hw5-test: RUNNING...
+
+Test
+  calculateStudentsLog
+    worst and best grades for non-empty list of students [✔]
+  calculateStudentsLog'
+    worst and best grades for non-empty list of students [✔]
+  Tree Foldable instance
+    empty tree [✔]
+    single node [✔]
+    many nodes [✔]
+    different data types [✔]
+  applesInRange
+    in range [✔]
+    out of range [✔]
+  heaviestApple
+    returns the heaviest apple in a tree with multiple apples [✔]
+  maxApple
+    returns the other apple when one is Nothing [✔]
+    returns the heaviest apple when both are Just apples [✔]
+  thisApple
+    returns Just the apple with the specified color and weight range [✔]
+    returns Nothing when no apple matches the specified criteria [✔]
+  sumOfApples
+    sum of weights for apples in a tree [✔]
+    empty tree [✔]
+  collectBasket
+    collects apples into the basket by color [✔]
+  siftDown
+    returns BinLeaf for a leaf node [✔]
+    returns the same single node for a single-node heap [✔]
+    restores the heap property for a small heap [✔]
+  toList
+    returns a list from a branch [✔]
+    returns a list from a branch [✔]
+  tag
+    returns tag from a leaf [✔]
+    returns tag from a branch [✔]
+  head'
+    returns head from a leaf [✔]
+  leafPrio
+    creates a leaf node with priority and value [✔]
+  branchPrio
+    creates a branch node with minimum priority [✔]
+
+Finished in 0.0015 seconds
+26 examples, 0 failures
+Test suite hw5-test: PASS
+Test suite logged to: /Users/denisteresenko/Progamming/Projects/fp-fall-2023/hw5/dist-newstyle/build/aarch64-osx/ghc-9.6.2/hw5-0.1.0.0/t/hw5-test/test/hw5-0.1.0.0-hw5-test.log

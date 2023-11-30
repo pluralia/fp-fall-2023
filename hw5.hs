@@ -17,6 +17,10 @@ import Data.Monoid
 --
 newtype Arrow a b = Arrow (a -> b)
 
+instance Functor (Arrow a) where
+  fmap :: (b -> c) -> Arrow a b -> Arrow a c
+  fmap f (Arrow g) = Arrow (f . g)
+
 -- Напишите инстанс Functor для Arrow и покажите выполнение законов
 
 -------------------------------------------------------------------------------
