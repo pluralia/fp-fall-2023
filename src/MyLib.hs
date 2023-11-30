@@ -5,7 +5,7 @@ import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
 import qualified Data.Map.Strict as M
 import qualified System.Random as R
-import           Data.List (find)
+import           Data.List (find, zip)
 
 -------------------------------------------------------------------------------
 
@@ -72,9 +72,19 @@ filterOne rules packet = do
 --   При объединении двух одинаковых сообщений результатом будет только сообщение с увеличенным счетчиком.
 --   При объединении двух разных сообщений, в лог записывается первое сообщение, а второе возвращается в качестве результата.
 --
--- пусть сначала подаются соообщения, а потом логи
 mergeEntries :: [Entry] -> [Entry] -> Writer [Entry] [Entry]
-mergeEntries logs1 logs2 = undefined
+mergeEntries _ [] = pure []
+mergeEntries [] _ = pure []
+mergeEntries (log1 : logs1) (log2 : logs2) = do
+  if msg log1 == msg log2 
+    then do
+      let res = [Log (count log1 + count log2) (msg log1)]
+      resTail <- mergeEntries logs1 logs2
+      return $ res <> resTail
+    else do
+      res <- writer ([log2], [log1])
+      resTail <- mergeEntries logs1 logs2
+      return $ res <> resTail
 
 -- | Применяет входную функцию к списку значений, чтобы получить список Writer.
 --   Затем запускает каждый Writer и объединяет результаты.
@@ -168,8 +178,9 @@ makeRandomValue g =
     in (MT n b c m, g4)
 
 -- Этот подход работает, но такой код сложен в сопровождении, может содержать ошибки и быть грязным (что делает его грязным?)
---    потому что функция randomR возвращает псевдо-случайно число 
+--    потому что функция randomR возвращает псевдо-случайное число 
 --    а значит может выдавать разный результат на одинаковых входных данных
+
 -- Монада State скрывает потоковую передачу состояния (как вы понимаете слова "потоковая передача состояния") внутри операции >>=,
 -- делая код проще для написания, чтения и модификации.
 
@@ -177,18 +188,26 @@ makeRandomValue g =
 -- | Возвращает случайное значение и обновляет состояние генератора случайных чисел
 --
 getAny :: (R.Random a) => State R.StdGen a
-getAny = undefined
+getAny = state R.random
 
 -- | Аналогична getAny, но генерирует значение в границах
 --
 getOne :: (R.Random a) => (a, a) -> State R.StdGen a
-getOne bounds = undefined
+getOne bounds = state $ R.randomR bounds
 
 -- | Используя монаду State с StdGen в качестве состояния, мы можем генерировать случаные значения
 --   заданного типа, не передавая состояния генератора случайных чисел в коде вручную
 --
 makeRandomValueST :: R.StdGen -> (MyType, R.StdGen)
-makeRandomValueST = undefined
+makeRandomValueST = runState st
+  where
+    st :: State R.StdGen MyType
+    st = do
+      n <- getOne (1, 100)
+      b <- getAny
+      c <- getOne ('a', 'z')
+      m <- getOne (-n, n)
+      return (MT n b c m)
 
 -------------------------------------------------------------------------------
 
