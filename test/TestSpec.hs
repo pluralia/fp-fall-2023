@@ -1,10 +1,10 @@
 module TestSpec where
 
 import qualified Data.Map.Strict as M
-import Data.Monoid
-import MyLib
-import Test.Hspec
-import Prelude hiding (head)
+import           Data.Monoid
+import           MyLib
+import           Prelude         hiding (head)
+import           Test.Hspec
 
 spec :: Spec
 spec = do

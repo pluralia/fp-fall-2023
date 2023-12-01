@@ -2,10 +2,10 @@
 
 module MyLib where
 
-import qualified Data.List as L
+import qualified Data.List       as L
 import qualified Data.Map.Strict as M
-import Data.Monoid
-import Prelude hiding (head)
+import           Data.Monoid
+import           Prelude         hiding (head)
 
 -- Во всех заданиях с инстансами укажите сигнатуры функций
 
@@ -38,15 +38,15 @@ instance Functor (Arrow a) where
 
 -- | Тип данных "Студент"
 data Student = Student
-  { name :: String -- имя студента
+  { name  :: String -- имя студента
   , grade :: Int -- оценка студента по нашему предмету
   }
   deriving (Show, Eq)
 
 data StudentsLog = StudentsLog
   { studentNames :: [String] -- список имён студентов
-  , worstGrade :: Maybe Int -- наименьшая оценка по курсу
-  , bestGrade :: Maybe Int -- наибольшая оценка по курсу
+  , worstGrade   :: Maybe Int -- наименьшая оценка по курсу
+  , bestGrade    :: Maybe Int -- наибольшая оценка по курсу
   }
   deriving (Show, Eq)
 
@@ -77,15 +77,15 @@ instance Semigroup StudentsLog where
       }
    where
     minMaybe :: Maybe Int -> Maybe Int -> Maybe Int
-    minMaybe Nothing Nothing = Nothing
-    minMaybe (Just x) Nothing = Just x
-    minMaybe Nothing (Just y) = Just y
+    minMaybe Nothing Nothing   = Nothing
+    minMaybe (Just x) Nothing  = Just x
+    minMaybe Nothing (Just y)  = Just y
     minMaybe (Just x) (Just y) = Just (min x y)
 
     maxMaybe :: Maybe Int -> Maybe Int -> Maybe Int
-    maxMaybe Nothing Nothing = Nothing
-    maxMaybe (Just x) Nothing = Just x
-    maxMaybe Nothing (Just y) = Just y
+    maxMaybe Nothing Nothing   = Nothing
+    maxMaybe (Just x) Nothing  = Just x
+    maxMaybe Nothing (Just y)  = Just y
     maxMaybe (Just x) (Just y) = Just (max x y)
 
 instance Monoid StudentsLog where
@@ -105,7 +105,7 @@ data Tree a = Node a [Tree a] | Leaf
 -- Сделайте 'Tree' представителем класса типов 'Foldable'
 instance Foldable Tree where
   foldMap :: (Monoid m) => (a -> m) -> Tree a -> m
-  foldMap _ Leaf = mempty
+  foldMap _ Leaf         = mempty
   foldMap toM (Node v c) = mappend (toM v) (mconcat . map (foldMap toM) $ c)
 
 -------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ instance Foldable Tree where
 -- 4. Яблоко и Foldable (1,5 балл)
 
 data Apple = Apple
-  { color :: String -- цвет яблока
+  { color  :: String -- цвет яблока
   , weight :: Float -- вес яблока
   }
   deriving (Eq, Show)
@@ -183,8 +183,8 @@ collectBasket tree = Basket $ M.map L.sort $ foldr diffApple (M.empty :: M.Map S
 --
 data BinaryHeap a
   = BinNode
-      { val :: a
-      , left :: BinaryHeap a
+      { val   :: a
+      , left  :: BinaryHeap a
       , right :: BinaryHeap a
       }
   | BinLeaf
@@ -231,19 +231,19 @@ data BinaryTree v a = BLeaf v a | BBranch v (BinaryTree v a) (BinaryTree v a)
 --     Реализуйте получение списка элементов из дерева (0,25 балла)
 --
 toList :: BinaryTree v a -> [a]
-toList (BLeaf _ a) = [a]
+toList (BLeaf _ a)             = [a]
 toList (BBranch _ ltree rtree) = toList ltree <> toList rtree
 
 -- 7.b Реализуйте tag, возвращающую текущий тег дерева (0,25 балла)
 
 tag :: BinaryTree v a -> v
-tag (BLeaf tagv _) = tagv
+tag (BLeaf tagv _)     = tagv
 tag (BBranch tagv _ _) = tagv
 
 -- 7.c Реализуйте head, которая извлекает самый левый элемент (0,25 балла)
 --
 head :: BinaryTree v a -> a
-head (BLeaf _ a) = a
+head (BLeaf _ a)         = a
 head (BBranch _ ltree _) = head ltree
 
 -- Итак, доступ к первому листу был прост, а как быть со вторым, третьим, n-ым листом?
