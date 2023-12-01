@@ -16,7 +16,7 @@ import Test.Hspec
 spec :: Spec
 spec = do
     describe "Tests" $ do
-      it "sequenceA' tests" $ do
+      it "traverse' tests" $ do
         let 
           multiplyByTwo :: Int -> Maybe Int
           multiplyByTwo x = if x < 0 then Nothing else Just (x * 2)
@@ -24,10 +24,10 @@ spec = do
           inputList :: [Int]
           inputList = [1, 2, 3, 4, 5]
 
-        traverse' (\x -> multiplyByTwo x) inputList    `shouldBe` (Just [2,4,6,8,10] :: Maybe [Int])
+        traverse' multiplyByTwo inputList            `shouldBe` (Just [2,4,6,8,10] :: Maybe [Int])
 
       it "sequenceA' tests" $ do
-        sequenceA' [Just 1, Just 2, Just 3, Just 4, Just 5]    `shouldBe` (Just [1,2,3,4,5] :: Maybe [Int])
+        sequenceA' [Just 1, Just 2, Just 3, Just 4, Just 5]    `shouldBe` (Just [1,2,3,4,5]  :: Maybe [Int])
 
       it "rejectWithNegatives tests" $ do
         rejectWithNegatives [1, 6, 12]     `shouldBe` (Just [1, 6, 12] :: Maybe [Int])
@@ -70,7 +70,7 @@ spec = do
         let exampleTree = Node (1 :: Int) (Node (2 :: Int) Leaf Leaf) (Node (3 :: Int) (Node (4 :: Int) Leaf Leaf) (Node (5 :: Int) Leaf Leaf))
         sumAndTraceInOrder exampleTree `shouldBe` Writer' {runWriter' = (Identity ([2,1,4,3,5] :: [Int]), Sum {getSum = 15 :: Int})}
 
-      it "ReturnableCalculation tests" $ do
+      it "Writer' tests" $ do
         let 
           one :: Writer' String Int
           one = do
@@ -92,8 +92,10 @@ spec = do
             pure 999
         runWriter' two `shouldBe` ((Identity 999, "black") :: (Identity Int, String))
 
+-- Про отсутствие тестов для задания 9 с тоже не очень понял вопрос, вообще вот они:
+
       it "testEvalExpr tests" $ do
         testEvalExpr  `shouldBe` (Just 5 :: Maybe Int)
 
-      it "testEvalExpr tests" $ do
+      it "testEvalStmts tests" $ do -- тут название группы тестов не то написал
         testEvalStmts `shouldBe` (Just 9 :: Maybe Int)
