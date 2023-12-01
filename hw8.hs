@@ -32,12 +32,14 @@ sequenceA' = undefined
 
 ---------------------------------------
 
--- 1.c В чем разница между Traversable и Functor? Между Traversable и Foldable? (0,5 балла)
+-- 1.c Traversable зависит от Functor и Foldable.
+--     В чем разница между Traversable и Functor? Между Traversable и Foldable? (0,5 балла)
 
 -------------------------------------------------------------------------------
 
 -- | 2. Реализуйте `rejectWithNegatives`, которая возвращает исходный список, обернутый в Just,
---       если в нем нет отрицательных элементов, и Nothing в противном случае (0,5 балла)
+--       если в нем нет отрицательных элементов, и Nothing в противном случае.
+--       Используйте Traversable (0,5 балла)
 --
 rejectWithNegatives :: (Num a, Ord a) => [a] -> Maybe [a]
 rejectWithNegatives = undefined
