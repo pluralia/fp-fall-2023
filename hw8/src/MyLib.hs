@@ -1,5 +1,10 @@
 {-# LANGUAGE InstanceSigs, FlexibleInstances, MultiParamTypeClasses #-}
 
+--  MultiParamTypeClasses позволяет нам определять такие классы типов:
+--     instance (Monoid w) => MonadWriter w (Writer' w) where
+-- или instance MonadReader r (Reader' r) where
+-- то есть определяеть классы типов с несолькими параметрами
+
 module MyLib where
 
 {- cabal:
@@ -16,6 +21,7 @@ import           Control.Monad.Reader
 import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
 import           Data.Monoid()
+import           Data.Maybe(fromMaybe)
 
 -------------------------------------------------------------------------------
 
@@ -88,6 +94,7 @@ rejectWithNegatives = traverse deleteIfNegative
 transpose ::  [[a]] -> [[a]]
 transpose = (.) getZipList (traverse ZipList)
 
+-- Не очень понял вопрос. Не знал, что нужны какие-то дополнительные условия, чтобы использовать его как функцию, а не оператор
 -------------------------------------------------------------------------------
 
 -- 4. Для чего нужен класс типов MonadFail? (0,25 балла)
@@ -96,6 +103,17 @@ transpose = (.) getZipList (traverse ZipList)
 --
 -- Например, пусть есть функция, ищущая элемент в списке и возвращающая Either String a,
 -- где String - это сообщение об ошибке, а 'a' - тип элемента.
+
+-- Например, это может случиться при обработке случаев в if then else, тогда может прийти значение, 
+-- которое не удовлетворяет нашим условиям и мы вернем сообщение об ошибке
+--
+-- В do нотации мы на прямую не указываем, что может пойти не так (зафейлится), 
+-- но если что-то все таки пойдет не так, то вызовется fail
+-- 
+-- MonadFail можно использовать не в do- нотации. Это можно делать в тех случаях, когда мы реализуем свой тип данных и реализуем для него инстанс монады,
+-- тогда можно обрабатывать ошибки так, как мы захотим
+
+
 -------------------------------------------------------------------------------
 
 -- | 5. Сделайте (WithData d) монадой и не забудьте про 'MonadFail'.
@@ -161,16 +179,18 @@ fromDo11 aM bM = do
 
 myFromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
 myFromDo11 aM bM =
-  aM >>= (\a ->
-    let
-      aL = [a, a, a]
+    fmap (+ 10) aM >>= \a ->
+    let aL = [a, a, a]
     in
-      bM >> 
-        (case aL of
-          [_, _, c] -> bM >>= (\b'' -> pure (c, b'')) . (<> "abcd")
-          _         -> Nothing)
-  ) . (+ 10)
+        return a >>
+        bM >>
+        case aL of
+            [a, b, c] -> fmap (<> "abcd") bM >>= \b ->
+                            pure (c, b)
+            _ -> Nothing
 
+-- тут много ворнингов на shadows the existing binding,
+-- я их намерено не исправляю, чтобы сделать полное воспроизведение функции
 ---------------------------------------
 
 -- | 6.b Перепешите код без do-нотации, используя bind (>>=), then (>>) и обычные let'ы (0,5 балла)
@@ -199,25 +219,34 @@ fromDo12 isL cM = do
 
 myFromDo12 :: [Int] -> Maybe Char -> [(Char, Int)]
 myFromDo12 isL cM =
-  isL >>= \curI ->
+    isL >>= \curI ->
     tail isL >>= \nextI ->
-      if nextI > curI
+    if nextI > curI
         then let a = curI + nextI
-             in tail (tail isL) >>= \nextNextI ->
-                  case (curI, nextI, nextNextI) of
-                    (0, 0, 0) -> case cM of
-                                    Just ch -> pure (ch, a)
-                                    Nothing -> []
-                    _         -> []
+            in tail (tail isL) >>= \nextNextI ->
+                [cM] >>= \chM ->
+                case (curI, nextI, nextNextI, chM) of
+                    (0, 0, 0, Just ch) -> pure (ch, a)
+                    _ -> fail ""
         else pure ('0', 0)
 
+
+-- очень тяжко объединять требования к отсутсвию ворнингов и замечаний hlint в этом задании.
+-- потому что они есть к исходнику и, соответственно, к нашим версиям.
+-- я их не исправляю, чтобы соответсвовать требованиям задания
 -------------------------------------------------------------------------------
 
 -- 7. С помощью монады списка создайте список, содержащий в себе все пифагоровы тройки. 
 --    В списке не должно быть дублей. Дублирования нужно убрать за счёт дополнительного условия в do-нотации (0,5 балла)
 pythagoreanTriples :: [(Int, Int, Int)]
-pythagoreanTriples =
-  [(a, b, c) | c <- [1..], b <- [1..c], a <- [1..b], a*a + b*b == c*c, a < b]
+pythagoreanTriples = do
+  c <- [1..]
+  b <- [1..c]
+  a <- [1..b]
+  guard $ a*a + b*b == c*c
+  guard $ a < b
+  return (a, b, c)
+
 
 -------------------------------------------------------------------------------
 
@@ -252,10 +281,7 @@ newtype ReturnableCalculation a b = ReturnableCalculation {runCalculation :: Eit
 instance Functor (ReturnableCalculation a) where
   fmap :: (b -> c) -> ReturnableCalculation a b -> ReturnableCalculation a c
   fmap f (ReturnableCalculation calculation) =
-    let result = case calculation of
-                   Left x  -> Left x
-                   Right y -> Right (f y)
-    in ReturnableCalculation result
+    ReturnableCalculation $ fmap f calculation -- точно, можно использовать просто fmap
 
 instance Applicative (ReturnableCalculation a) where
   pure :: b -> ReturnableCalculation a b
@@ -263,19 +289,13 @@ instance Applicative (ReturnableCalculation a) where
 
   (<*>) :: ReturnableCalculation a (b -> c) -> ReturnableCalculation a b -> ReturnableCalculation a c
   ReturnableCalculation func <*> ReturnableCalculation val =
-    let result = case (func, val) of
-                   (Left x, _)          -> Left x
-                   (_, Left x)          -> Left x
-                   (Right f, Right y)   -> Right (f y)
-    in ReturnableCalculation result
+    ReturnableCalculation $ func <*> val
 
 instance Monad (ReturnableCalculation a) where
   (>>=) :: ReturnableCalculation a b -> (b -> ReturnableCalculation a c) -> ReturnableCalculation a c
   ReturnableCalculation calculation >>= f =
-    let result = case calculation of
-                   Left x  -> ReturnableCalculation (Left x)
-                   Right y -> f y
-    in result
+    ReturnableCalculation $ calculation >>= (.) runCalculation f
+
 
 realReturn :: a -> ReturnableCalculation a b
 realReturn = ReturnableCalculation . Left
@@ -425,15 +445,15 @@ type Environment = M.Map String Int
 eval :: Expr -> Reader' Environment (Maybe Int)
 eval (Primary (Var varName)) = do
   asks (M.lookup varName)
-
 eval (Primary (Val value)) = return $ Just value
-
 eval (Binary leftExpr rightExpr) = do
   maybeLeft  <- eval leftExpr
   maybeRight <- eval rightExpr
   return $ (+)
         <$> maybeLeft
         <*> maybeRight
+
+-- пустые строки добавлял для лучшей читабельности кода, их можно убрать на функциональность они не влияют
 
 -- | Пример запуска вычисления выражения
 --
@@ -464,12 +484,14 @@ evalStmts (x : xs) = do
     _ -> do
       env <- ask 
       let newValue   = runIdentity $ runReader' (eval $ expr x) env 
-      let updatedEnv = M.insert (name x) (extractValue newValue) env 
+      let updatedEnv = M.insert (name x) (fromMaybe 0 newValue) env 
       local (const updatedEnv) $ evalStmts xs
-  where
-    extractValue :: Maybe Int -> Int
-    extractValue (Just val) = val
-    extractValue Nothing    = 0
+
+-- hlint предложил использовать fromMaybe
+-- Found:
+--   maybe 0 id
+-- Perhaps:
+--   Data.Maybe.fromMaybe 0
 
 -- | Пример запуска вычисления списка утверждений
 --
