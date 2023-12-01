@@ -79,17 +79,18 @@ spec = do
 
         it "returns an empty list for n=2" $ do
             pythagoreanTriples 2 `shouldBe` []
+
     -- Task 8
     -- describe "ReturnableCalculation Monad" $ do
     --     it "realReturn should return the given value" $ do
     --         let rc = realReturn 42 :: ReturnableCalculation Int
-    --         rc `shouldBe` ReturnableCalculation (Just 42, False)
+    --         rc `shouldBe` ReturnableCalculation 42 False
 
     --     it "realReturn should ignore subsequent computations" $ do
     --         let rc = do
     --                 _ <- realReturn (42 :: Int)
     --                 pure 100 :: ReturnableCalculation Int
-    --         rc `shouldBe` ReturnableCalculation (Just 42, False)
+    --         rc `shouldBe` ReturnableCalculation 42 False
 
     --     it "should perform computations until realReturn is called" $ do
     --         let rc = do
@@ -97,7 +98,7 @@ spec = do
     --                     y = 2
     --                 _ <- realReturn ((x + y) :: Int)
     --                 pure 100 :: ReturnableCalculation Int
-    --         rc `shouldBe` ReturnableCalculation (Just 42, False)
+    --         rc `shouldBe` ReturnableCalculation 42 False
 
     --     it "returnExample should return 42" $ do
     --         let returnExample = do   
@@ -108,7 +109,8 @@ spec = do
     --                 if (a2 == 0) :: Bool
     --                 then pure 200
     --                 else realReturn 0
-    --         returnExample `shouldBe` ReturnableCalculation (Just (42 :: Int), False)
+    --         returnExample `shouldBe` ReturnableCalculation (42 :: Int) False
+
 -- Task 9 a
     describe "Writer' tests" $ do
         it "checks fmap for Writer'" $ do
@@ -175,17 +177,17 @@ spec = do
 -- Task 10 a
     describe "Reader'" $ do
         it "fmap applies a function to the result" $ do
-            let reader = Reader' $ \r -> Identity r
-            let reader' = fmap (*2) reader
+            let reader1 = Reader' $ \r -> Identity r
+            let reader' = fmap (*2) reader1
             runIdentity (runReader' reader' 5) `shouldBe` (10 :: Int)
 
         it "pure returns a Reader' that ignores its environment" $ do
-            let reader = pure 5 :: Reader' Int Int
-            runIdentity (runReader' reader 10) `shouldBe` 5
+            let reader1 = pure 5 :: Reader' Int Int
+            runIdentity (runReader' reader1 10) `shouldBe` 5
 
         it ">>= chains computations that depend on the environment" $ do
-            let reader = Reader' $ \r -> Identity r
-            let reader' = reader >>= \x -> return (x * 2)
+            let reader1 = Reader' $ \r -> Identity r
+            let reader' = reader1 >>= \x -> return (x * 2)
             runIdentity (runReader' reader' 5) `shouldBe` (10 :: Int)
 
 -- Task 10 b

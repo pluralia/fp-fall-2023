@@ -137,7 +137,7 @@ instance MonadFail (WithData d) where
 
 -- | 6.a Перепешите код без do-нотации, используя bind (>>=), then (>>) и обычные let'ы (0,5 балла)
 --
-fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
+--fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
 -- fromDo11 aM bM = do
 --     a <- fmap (+ 10) aM
 
@@ -155,23 +155,40 @@ fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
 
 --     pure (c, b)
 
-fromDo11 aM bM =
-    aM Control.Monad.Reader.>>= f . (+ 10)
-    where
-        f a1 = let aL = [a1, a1, a1]
-                   a  = a1 + length aL
-               in 
-                  bM >>
-                  g aL a
-        g aL _ = case aL of
-            [_, _, c] -> bM Control.Monad.Reader.>>= h c . (<> "abcd")
-            _ -> Nothing 
-        h c b = pure (c, b)
+
+
+-- fromDo11 aM bM =
+--   fmap (+ 10) aM >>= (\a ->
+--               let aL = [a, a, a] in
+--               a' = a + lenght aL
+--               pure a')
+
+--             >> bM
+--             (\aL' ->
+--               case aL' of
+--                 [a, b, c] -> Just aL') >>=(\bM' ->
+--                                             case \bM' of
+--                                               b -> fmap (<> "abcd") bM')
+--                                               _ -> fail ""
+--                 _         -> fail ""
+--             pure (c, b)
+
+    -- aM Control.Monad.Reader.>>= f . (+ 10)
+    -- where
+    --     f a1 = let aL = [a1, a1, a1]
+    --                a  = a1 + length aL
+    --            in 
+    --               bM >>
+    --               g aL a
+    --     g aL _ = case aL of
+    --         [_, _, c] -> bM Control.Monad.Reader.>>= h c . (<> "abcd")
+    --         _ -> Nothing 
+    --     h c b = pure (c, b)
 ---------------------------------------
 
 -- | 6.b Перепешите код без do-нотации, используя bind (>>=), then (>>) и обычные let'ы (0,5 балла)
 --
-fromDo12 :: [Int] -> Maybe Char -> [(Char, Int)]
+--fromDo12 :: [Int] -> Maybe Char -> [(Char, Int)]
 -- fromDo12 isL cM = do
 --     curI  <- isL
 --     nextI <- tail isL
@@ -192,18 +209,33 @@ fromDo12 :: [Int] -> Maybe Char -> [(Char, Int)]
 --               (0, 0, 0) -> pure (ch, a)
 --               _         -> fail ""
 --         else pure ('0', 0)
-fromDo12 isL cM = 
-    isL Control.Monad.Reader.>>= \curI ->
-    tail isL Control.Monad.Reader.>>= \nextI ->
-    if nextI > curI
-        then let a = curI + nextI in
-            tail (tail isL) Control.Monad.Reader.>>= \nextNextI ->
-            case cM of
-                Nothing -> fail ""
-                Just ch -> case (curI, nextI, nextNextI) of
-                    (0, 0, 0) -> pure (ch, a)
-                    _         -> fail ""
-        else pure ('0', 0)
+-- fromDo12 isL cM = 
+--   isL >>= (\curI -> 
+--     tail isL >>= \nextI
+--     if nextI > curI
+--       then 
+--         let a = curI + nextI in
+--         tail $ tail isL >>= \nextNextI ->
+--           case [cM] of
+--             Just ch -> case (curI, nextI, nextNextI) of
+--                             (0, 0, 0) -> pure (ch, a)
+--                             _         -> fail ""
+
+--             _       -> fail ""
+--             )
+
+
+    -- isL Control.Monad.Reader.>>= \curI ->
+    -- tail isL Control.Monad.Reader.>>= \nextI ->
+    -- if nextI > curI
+    --     then let a = curI + nextI in
+    --         tail (tail isL) Control.Monad.Reader.>>= \nextNextI ->
+    --         case cM of
+    --             Nothing -> fail ""
+    --             Just ch -> case (curI, nextI, nextNextI) of
+    --                 (0, 0, 0) -> pure (ch, a)
+    --                 _         -> fail ""
+    --     else pure ('0', 0)
 -------------------------------------------------------------------------------
 
 -- 7. С помощью монады списка создайте список, содержащий в себе все пифагоровы тройки. 
@@ -242,30 +274,38 @@ pythagoreanTriples n = do
 --       then pure 200
 --       else realReturn 0
 
-newtype ReturnableCalculation a = ReturnableCalculation (Maybe a, Bool)
+--newtype ReturnableCalculation a = ReturnableCalculation (Maybe a, Bool)
+data ReturnableCalculation a = ReturnableCalculation { val ::  a, returned :: Bool}
   deriving (Show, Eq)
 
 instance Functor ReturnableCalculation where
   fmap :: (a -> b) -> ReturnableCalculation a -> ReturnableCalculation b
-  fmap f (ReturnableCalculation (Just x, b)) = ReturnableCalculation (Just (f x), b)
-  fmap _ (ReturnableCalculation (Nothing, b)) = ReturnableCalculation (Nothing, b)
+  fmap f (ReturnableCalculation x b) = ReturnableCalculation (f x) b
+  -- fmap f (ReturnableCalculation (Just x, b)) = ReturnableCalculation (Just (f x), b)
+  -- fmap _ (ReturnableCalculation (Nothing, b)) = ReturnableCalculation (Nothing, b)
 
 instance Applicative ReturnableCalculation where
   pure :: a -> ReturnableCalculation a
-  pure x = ReturnableCalculation (Just x, True)
+  pure x = ReturnableCalculation x True
+  -- pure x = ReturnableCalculation (Just x, True)
 
   (<*>) :: ReturnableCalculation (a -> b)-> ReturnableCalculation a -> ReturnableCalculation b
-  ReturnableCalculation (Just f, True) <*> ReturnableCalculation (Just x, True) = ReturnableCalculation (Just (f x), True)
-  _ <*> _ = ReturnableCalculation (Nothing, False)
+  ReturnableCalculation f True <*> ReturnableCalculation x True = ReturnableCalculation (f x) True
+  _ <*> _ = ReturnableCalculation (error "Empty calculation") False
+  -- ReturnableCalculation (Just f, True) <*> ReturnableCalculation (Just x, True) = ReturnableCalculation (Just (f x), True)
+  -- _ <*> _ = ReturnableCalculation (Nothing, False)
 
--- instance Monad ReturnableCalculation where
---   (>>=) :: ReturnableCalculation a-> (a -> ReturnableCalculation b) -> ReturnableCalculation b
---   ReturnableCalculation (Just x, True) >>= f = f x
---   ReturnableCalculation (Just x, False) >>= _ = ReturnableCalculation (Just x, False)
---   _ >>= _ = ReturnableCalculation (Nothing, False)
+instance Monad ReturnableCalculation where
+  (>>=) :: ReturnableCalculation a-> (a -> ReturnableCalculation b) -> ReturnableCalculation b
+  ReturnableCalculation x True >>= f = f x
+  _ >>= _ = ReturnableCalculation (error "Empty calculation") False
+  -- ReturnableCalculation (Just x, True) >>= f = f x
+  -- ReturnableCalculation (Just x, False) >>= _ = ReturnableCalculation (Just x, False)
+  -- _ >>= _ = ReturnableCalculation (Nothing, False)
 
 realReturn :: a -> ReturnableCalculation a
-realReturn x = ReturnableCalculation (Just x, False)
+realReturn x = ReturnableCalculation x False
+--realReturn x = ReturnableCalculation (Just x, False)
 
 -------------------------------------------------------------------------------
 
