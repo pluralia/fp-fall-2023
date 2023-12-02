@@ -140,7 +140,7 @@ data Template = Text String
   deriving (Show, Eq)
 
 data Definition = Definition Template Template
-  deriving (Show, Eq)
+  deriving (Show, Eq)   
 
 -- | Окружение -- это имя шаблона в шаблон и имя переменной в переменную
 --
@@ -167,23 +167,55 @@ addDefs v e = Env (templs e) (M.union v (vars e))
 -- | Резолвит (подставляет все неизвестные) шаблон и выдает в качестве ответа
 --   пару (имя шаблона, значение)
 --
--- resolveDef :: Definition -> Reader Environment (String, String)
--- resolveDef (Definition temp1 temp2) = undefined
+resolveDef :: Definition -> Reader Environment (String, String)
+resolveDef (Definition temp1 temp2) = do
+  resolveTemp1 <- resolve temp1
+  resolveTemp2 <- resolve temp2
+  pure (resolveTemp1, resolveTemp2)
 
 -- | Резолвит (подставляет все неизвестные) шаблон в строку
 --
--- resolve :: Template -> Reader Environment String
--- -- возвращает Reader, где результат - имя шаблона, а в окружение добавляем переменные
--- resolve (Text tempName) = pure tempName -- ?
--- resolve (Var varTemp) = do
---   env <- ask 
---   -- кажется, шаблон Var должен содержать Text String - имя переменной
---   case varTemp of
---     Text varName -> do 
---       let maybeVar = lookupVar varName env
---       case maybeVar of
---         Nothing -> addDefs M.fromList [(varName)]
--- resolve _ = pure "" -- ?
+resolve :: Template -> Reader Environment String
+resolve (Text tempName) = pure tempName -- имя наблона/переменной
+-- находим имя переменной, возвращаем её значение из Env vars
+resolve (Var varTemp) = do
+  varName <- resolve varTemp
+  env     <- ask
+  let maybeVarVal = lookupVar varName env
+  case maybeVarVal of
+    Just varVal -> pure varVal
+    Nothing     -> pure ""
+-- находим имя шаблона, возвращаем его "значение" из Env templs 
+resolve (Quote qTemp) = do
+  qName <- resolve qTemp
+  env   <- ask
+  let maybeQVal = lookupTemplate qName env
+  case maybeQVal of
+    Just tempVal -> pure $ show tempVal
+    Nothing      -> pure ""
+-- находим имя шаблона, возвращаем его "значение" из окружения
+-- + записываем в окружение новые шаблоны (из definition) : имя tempL, значение tempR 
+-- их как (String, String) возьмём из resolveDef
+resolve (Include temp defTemps) = do
+  incName <- resolve temp
+  env <- ask
+  let maybeIncVal = lookupTemplate incName env
+  case maybeIncVal of
+    Just incVal -> do
+      templsPairs <- traverse resolveDef defTemps                     -- находим (имя, значение) для всех Definition
+      local (addDefs $ M.fromList templsPairs) $ pure . show $ incVal -- добавляем их в окружение
+      -- возвращаем зачение __нашего__ шаблона
+    Nothing     -> pure ""
+-- находим имя шаблона, возвращаем сконкатенированные "значения" его вложенных шаблонов
+resolve (Compound temps) = do
+  tempsRes <- traverse resolve temps
+  pure $ mconcat tempsRes
+
+-- Функция для запуска новых Template'ов на изменённом окружении
+mutResolve :: [Definition] -> Reader Environment String -> Reader Environment String
+mutResolve defTemps t = do
+  templsPairs <- traverse resolveDef defTemps 
+  local (addDefs $ M.fromList templsPairs) t
 
 -------------------------------------------------------------------------------
 
@@ -386,7 +418,7 @@ instance Applicative (StateWithError s a) where
 
 instance Monad (StateWithError s a) where
   (>>=) :: StateWithError s a b -> (b -> StateWithError s a c) -> StateWithError s a c
-  (>>=) xSt k = MyState $ \s' -> case runMyState xSt s' of 
+  (>>=) xSt k = MyState $ \s' -> case runMyState xSt s' of
     (Left x,  s'') -> (Left x, s'')
     (Right x, s'') -> runMyState (k x) s''
 
