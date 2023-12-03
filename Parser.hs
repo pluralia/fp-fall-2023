@@ -65,27 +65,6 @@ digitsP :: Parser [Int]
 digitsP = some digitP
 
 
-intP :: Parser Int
-intP = foldl' (\acc x -> acc * 10 + x) 0 <$> some digitP
-
-floatP :: Parser Float
-floatP = (+) . fromIntegral
-  <$> intP
-  <* satisfyP (== ',')
-  <*> helper
-  where
-    helper :: Parser Float
-    helper = foldl' (\ acc x -> 0.1 * (acc + fromIntegral x)) 0.0 . reverse <$> digitsP
-
-sepBy :: Parser a -> Parser b -> Parser [b]
-sepBy sep element = (:)
-  <$> element
-  <*> many (sep *> element)
-  <|> pure []
-
-newLineP :: Parser Char
-newLineP = satisfyP (== '\n')
-
 -- | Как использовать парсер
 --
 parseNumber :: Maybe ([Int], String)
