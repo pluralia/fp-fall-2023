@@ -1,6 +1,7 @@
 {-# LANGUAGE InstanceSigs #-}
 
 import Data.Map.Strict qualified as M
+import Data.Maybe (isNothing)
 import Data.Monoid
 
 -- Во всех заданиях с инстансами укажите сигнатуры функций
@@ -58,30 +59,32 @@ s2 = Student "string2" 2
 
 s3 = Student "string3" 3
 
-students = [s1, s2, s3]
+ss = [s1, s2, s3]
 
 -- 2.a Функция, которая по списку студентов курса рассчитывает информацию по курсу (0,5 балла)
---
+
 calculateStudentsLog :: [Student] -> StudentsLog
-calculateStudentsLog = foldr (\Student {name = name, grade = grade} StudentsLog {studentNames = studentNames, worstGrade = Just worstGrade, bestGrade = Just bestGrade} -> StudentsLog {studentNames = name : studentNames, worstGrade = Just (min grade worstGrade), bestGrade = Just (max grade bestGrade)}) (StudentsLog [] Nothing Nothing)
+calculateStudentsLog = foldr helper mempty
+  where
+    helper Student {name = name, grade = grade} StudentsLog {studentNames = names, worstGrade = Just worstGrade, bestGrade = Just bestGrade} = StudentsLog {studentNames = name : names, worstGrade = Just (min grade worstGrade), bestGrade = Just (max grade bestGrade)}
+    helper Student {name = name, grade = grade} mempty = StudentsLog {studentNames = [name], worstGrade = Just grade, bestGrade = Just grade}
 
 -- 2.b Сделайте 'StudentsLog' представителем класса типов 'Monoid' и реализуйте
 --     calculateStudentsLog', которая делает то же самое, что и calculateStudentsLog
 --     В реализации нужно использовать то, что 'StudentsLog' — моноид. (0,5 балла)
---
+
 instance Semigroup StudentsLog where
   (<>) :: StudentsLog -> StudentsLog -> StudentsLog
-  (<>) StudentsLog {studentNames = studentNames1, worstGrade = Just worstGrade1, bestGrade = Just bestGrade1} StudentsLog {studentNames = studentNames2, worstGrade = Just worstGrade2, bestGrade = Just bestGrade2} = StudentsLog {studentNames = studentNames1 ++ studentNames2, worstGrade = Just (min worstGrade1 worstGrade2), bestGrade = Just (max bestGrade1 bestGrade2)}
-
+  (<>) log1 log2 = StudentsLog {studentNames = studentNames log1 <> studentNames log2, worstGrade = if isNothing (worstGrade log1) || isNothing (worstGrade log2) then max (worstGrade log1) (worstGrade log2) else min (worstGrade log1) (worstGrade log2), bestGrade = max (bestGrade log1) (bestGrade log2)}
 
 instance Monoid StudentsLog where
   mempty :: StudentsLog
   mempty = StudentsLog {studentNames = [] :: [String], worstGrade = Nothing, bestGrade = Nothing}
-  mconcat :: [StudentsLog] -> StudentsLog
-  mconcat = foldr (<>) mempty 
-  
--- calculateStudentsLog' :: [Student] -> StudentsLog
--- calculateStudentsLog' = mconcat 
+
+calculateStudentsLog' :: [Student] -> StudentsLog
+calculateStudentsLog' = foldr helper mempty
+  where
+    helper Student {name = name, grade = grade} acc = StudentsLog {studentNames = [name], worstGrade = Just grade, bestGrade = Just grade} <> acc
 
 -------------------------------------------------------------------------------
 
@@ -89,6 +92,10 @@ instance Monoid StudentsLog where
 
 data Tree a = Node a [Tree a] | Leaf
   deriving (Eq, Show)
+
+instance Foldable Tree where
+  foldMap :: (Monoid m) => (a -> m) -> Tree a -> m
+  foldMap _ Leaf = mempty
 
 -- Сделайте 'Tree' представителем класса типов 'Foldable'
 
