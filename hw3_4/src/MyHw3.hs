@@ -193,17 +193,15 @@ churchIntIsZero (_, _) = False
 -- 4. Сделайте функцию `pointful` бесточечной, объясняя каждый шаг по примеру из практики
 --    (1,5 балла)r
 
--- pointful :: (t1 -> t2 -> t3) -> t1 -> (t4 -> t2) -> t4 -> t3
--- pointful a b c d = a b (c d)
--- pointful a b c d = a b $ (c d) написали доллар
--- pointful a b c d = a b $ c d убрали скобки
--- pointful a b c d = a b $ c убрали d
--- pointful a b c d = a b $ убрали c
--- pointful a b c d = a b убрали $
--- pointful a b c d = a убрали b
--- pointful a b c d = убрали a
--- pointful a b c d = ???
--- pointful a b c d = (.)
+-- pointful f x f' y = f x (f' y) = ((f x) . f') y -- можем переделать в композицию и использовать эта-редукцию
+-- pointful f x f' = (f x) . f' -- результат
+-- pointful f x f' = (.) (f x) f' -- преобразуем композицию в операторный стиль и снова используем эта редукцию
+-- pointful f x = (.) (f x) -- результат
+-- pointful f x = ((.) . f) x -- эта-редукция
+-- pointful f = ((.) . f) -- результат
+-- pointful f = ((.) .) f -- операторный стиль, применяем эта-редукцию
+-- pointful = ((.) .) -- ответ
+------------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------------------------
 
@@ -298,14 +296,10 @@ instance Functor Tree where
 data Pair a b = Pair a b
   deriving (Show, Eq)
 
--- instance Functor Pair where
---   fmap :: (a -> b) -> Pair a -> Pair b
---   fmap = undefined
+instance Functor (Pair a) where
+  fmap :: (a2 -> b) -> Pair a1 a2 -> Pair a1 b
+  fmap f (Pair a b) = Pair a (f b)
 
--- не компилится, наверное, потому что x, y разные типы могут быть,
--- а функция a -> b
-
--- С какими трудностями вы столкнулись?
 
 ------------------------------------------------------------------------------------------------
 
@@ -319,14 +313,17 @@ data Pair a b = Pair a b
 data Either' a b = Left' a | Right' b
   deriving (Show, Eq)
 
+instance Functor (Either' a) where
+  fmap _ (Left' a) = Left' a
+  fmap f (Right' b) = Right' (f b)
+
 instance Bifunctor Either' where
   bimap :: (a -> b) -> (c -> d) -> Either' a c -> Either' b d
-  bimap f _ (Left' a) = Left' (f a)
+  bimap f _ (Left' a)  = Left' (f a)
   bimap _ g (Right' b) = Right' (g b)
 
 instance Bifunctor Pair where
   bimap :: (a -> b) -> (c -> d) -> Pair a c -> Pair b d
   bimap f g (Pair a b) = Pair (f a) (g b)
-
 ------------------------------------------------------------------------------------------------
 
