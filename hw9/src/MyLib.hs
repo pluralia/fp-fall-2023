@@ -6,6 +6,7 @@ import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
 import           Data.List (find)
 import           Data.Maybe (fromMaybe)
+import           Data.Maybe (catMaybes)
 import qualified Data.Map.Strict as M
 import qualified System.Random as R -- cabal install --lib  random
 --import           Debug.Trace
@@ -119,8 +120,8 @@ groupSame initial merge xs fn =
 
 -- | Фильтрует список пакетов и возвращает список отфильтрованных пакетов и логи
 --
-filterAll :: [Rule] -> [Packet] -> Writer [Entry] [Maybe Packet]
-filterAll rules packets = groupSame [] mergeEntries packets (filterOne rules)
+filterAll :: [Rule] -> [Packet] -> Writer [Entry] [Packet]
+filterAll rules packets = catMaybes <$> groupSame [] mergeEntries packets (filterOne rules)
 
 -------------------------------------------------------------------------------
 
