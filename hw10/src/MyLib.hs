@@ -1,9 +1,12 @@
 module MyLib where
-  
+
 import Control.Monad.State
 import System.IO
 
 -------------------------------------------------------------------------------
+
+addition :: Int -> Int -> Int
+addition x y = x + y
 
 -- 1. State (1,5 балла)
 
