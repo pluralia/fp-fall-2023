@@ -195,9 +195,7 @@ resolve (Include templ defs) = do
   body <- resolve $ fromMaybe (Text "") $ lookupTemplate name env
   do
     resolvedDefs <- mapM resolveDef defs
-    let 
-      env' = addDefs (M.fromList resolvedDefs) env 
-    local (const env') $ resolve $ Text body
+    local (addDefs (M.fromList resolvedDefs)) $ resolve $ Text body
      
 resolve (Compound ts) = do
   resolvedTempls <- mapM resolve ts
