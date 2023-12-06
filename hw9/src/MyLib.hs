@@ -179,23 +179,28 @@ resolve :: Template -> Reader Environment String
 resolve (Text s) = return s
 
 resolve (Var templ) = do
-  asks $ \env -> fromMaybe "" . lookupVar (runReader (resolve templ) env) $ env
+  varName  <- resolve templ
+  varValue <- asks (lookupVar varName)
+  return $ fromMaybe "" varValue
 
 resolve (Quote templ) = do
-  env <- ask
   name <- resolve templ
-  resolve $ fromMaybe (Text "") $ lookupTemplate name env
+  body <- asks (lookupTemplate name)
+  resolve $ fromMaybe (Text "") body
 
 resolve (Include templ defs) = do
   env <- ask
   name <- resolve templ
   body <- resolve $ fromMaybe (Text "") $ lookupTemplate name env
-  let
-    env' = addDefs (M.fromList $ runReader (mapM resolveDef defs) env) env
-  return $ runReader (resolve $ Text body) env'
-  
+  do
+    resolvedDefs <- mapM resolveDef defs
+    let 
+      env' = addDefs (M.fromList resolvedDefs) env 
+    local (const env') $ resolve $ Text body
+     
 resolve (Compound ts) = do
-  asks (mconcat . runReader (mapM resolve ts))
+  resolvedTempls <- mapM resolve ts
+  pure $ mconcat resolvedTempls
     
 
 -------------------------------------------------------------------------------
@@ -354,7 +359,8 @@ fib n = do
   setVar "cur" 1
   forM_' (setVar "i" 0, getVar "i" >>= (\i -> return $ i < n), incVar "i" 1) $ do
     setVar "c" =<< getVar "cur"
-    setVar "cur" =<< (+) <$> getVar "prev" <*> getVar "cur"
+    --setVar "cur" =<< (+) <$> getVar "prev" <*> getVar "cur"
+    incVar "cur" =<< getVar "prev" -- верхнее больше похоже на тот плюсовый код. Это больше похоже на cur += prev
     setVar "prev" =<< getVar "c"
   getVar "cur"
 
