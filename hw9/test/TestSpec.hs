@@ -65,7 +65,7 @@ spec = do
     it "should resolve Var" $ do
       let env = Env { templs = M.empty, vars = M.fromList [("name", "Alice")] }
       runReader (resolve (Var (Text "name"))) env `shouldBe` "Alice"
-      runReader (resolve (Var (Text "age"))) env `shouldBe` "No variable age found"
+      runReader (resolve (Var (Text "age"))) env `shouldBe` ""
 
   describe "getAny'" $ do
     it "returns a random value" $ do

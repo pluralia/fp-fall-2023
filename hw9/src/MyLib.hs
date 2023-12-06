@@ -4,6 +4,8 @@ module MyLib where
 import           Control.Monad.Writer.Lazy
 import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
+import           Data.List (find)
+import           Data.Maybe (fromMaybe)
 import qualified Data.Map.Strict as M
 import qualified System.Random as R -- cabal install --lib  random
 --import           Debug.Trace
@@ -49,16 +51,17 @@ data Rule = Rule {
 data Packet = Packet {
       pSource :: IP
     , pDestination :: IP
-    } deriving (Show, Eq)
+    } deriving Eq
+
+instance Show Packet where
+  show :: Packet -> String
+  show (Packet src dst) = "Packet from " ++ show src ++ " to " ++ show dst
+  
 
 -- | Возвращает первое правило, действующее на пакет
 --
 match :: [Rule] -> Packet -> Maybe Rule
-match [] _ = Nothing
-match (rule : rules) packet = 
-  if source rule == pSource packet && destination rule == pDestination packet
-    then Just rule
-    else match rules packet
+match rules packet = find (\rule -> source rule == pSource packet && destination rule == pDestination packet) rules
 
 -- | Фильтрует 1 пакет
 -- 
@@ -66,14 +69,14 @@ filterOne :: [Rule] -> Packet -> Writer [Entry] (Maybe Packet)
 filterOne rules packet = 
   case match rules packet of
     Nothing -> do
-      logMsg $ "Packet from " ++ show (pSource packet) ++ " to " ++ show (pDestination packet) ++ " is rejected"
+      logMsg $ show packet ++ " is rejected"
       return Nothing
     Just rule -> do
       case action rule of
         Accept -> do
-          logMsg $ "Packet from " ++ show (pSource packet) ++ " to " ++ show (pDestination packet) ++ " is accepted"  
+          logMsg $ show packet ++ " is accepted"
         Reject -> do
-          logMsg $ "Packet from " ++ show (pSource packet) ++ " to " ++ show (pDestination packet) ++ " is rejected"
+          logMsg $ show packet ++ " is rejected"
       return $ Just packet
 
 -- Немного усложним задачу: теперь мы хотим объединить дублирующиеся последовательные записи в журнале.
@@ -87,15 +90,16 @@ filterOne rules packet =
 --   При объединении двух разных сообщений, в лог записывается первое сообщение, а второе возвращается в качестве результата.
 --
 mergeEntries :: [Entry] -> [Entry] -> Writer [Entry] [Entry]
-mergeEntries es [] = return es
-mergeEntries [] es' = tell es' >> return []
-mergeEntries (e : es) (e' : es') = 
+mergeEntries [] [] = return []
+mergeEntries (e : es) [] = tell [e] >> return es
+mergeEntries [] (e' : es') = mergeEntries [e'] es'
+mergeEntries (e : es) (e' : es') =
   if msg e == msg e'
     then 
-      let e'' = Log (count e + count e') (msg e) in
-      tell [e''] >> mergeEntries es es'
+      let e'' = Log (count e + count e') (msg e) in mergeEntries (e'' : es) es'
     else 
-      tell [e] >> mergeEntries es (e' : es')
+      tell [e] >> mergeEntries ([e', e] ++ es) es'
+
 
 -- | Применяет входную функцию к списку значений, чтобы получить список Writer.
 --   Затем запускает каждый Writer и объединяет результаты.
@@ -164,48 +168,35 @@ addDefs new env = env { vars = M.union new (vars env) }
 --   пару (имя шаборна, значение)
 --
 resolveDef :: Definition -> Reader Environment (String, String)
-resolveDef (Definition templ val) =
-  do
-    tmp <- resolve templ
-    v <- resolve val
-    return (tmp, v)
+resolveDef (Definition templ val) = do
+  tmp <- resolve templ
+  v <- resolve val
+  return (tmp, v)
 
 -- | Резолвит (подставляет все неизвестные) шаблон в строку
 --
 resolve :: Template -> Reader Environment String
 resolve (Text s) = return s
-resolve (Var templ) = 
-  do
-    env <- ask
-    var <- resolve templ
-    case lookupVar var env of
-      Just val -> return val
-      Nothing -> return $ "No variable " ++ var ++ " found"
-resolve (Quote templ) =
-  do
-    env <- ask
-    case templ of
-      Text s -> return s
-      _ -> do
-        var <- resolve templ
-        case lookupVar var env of
-          Just val -> return val
-          Nothing -> case lookupTemplate var env of
-            Just val -> resolve val
-            Nothing -> return $ "No template " ++ var ++ " found"
-resolve (Include templ defs) = 
-  do
-    env <- ask
-    let 
-      env' = addDefs (M.fromList $ map (\def -> runReader (resolveDef def) env) defs) env
-    local (const env') $ resolve templ
-resolve (Compound ts) =
-  do
-    env <- ask
-    let
-      ts' = map (\t -> runReader (resolve t) env) ts
-    return $ concat ts'
 
+resolve (Var templ) = do
+  asks $ \env -> fromMaybe "" . lookupVar (runReader (resolve templ) env) $ env
+
+resolve (Quote templ) = do
+  env <- ask
+  name <- resolve templ
+  resolve $ fromMaybe (Text "") $ lookupTemplate name env
+
+resolve (Include templ defs) = do
+  env <- ask
+  name <- resolve templ
+  body <- resolve $ fromMaybe (Text "") $ lookupTemplate name env
+  let
+    env' = addDefs (M.fromList $ runReader (mapM resolveDef defs) env) env
+  return $ runReader (resolve $ Text body) env'
+  
+resolve (Compound ts) = do
+  asks (mconcat . runReader (mapM resolve ts))
+    
 
 -------------------------------------------------------------------------------
 
@@ -226,13 +217,16 @@ data MyType = MT Int Bool Char Int
 
 makeRandomValue :: R.StdGen -> (MyType, R.StdGen)
 makeRandomValue g =
-    let (n,g1) = R.randomR (1, 100) g
-        (b,g2) = R.random g1
-        (c,g3) = R.randomR ('a', 'z') g2
-        (m,g4) = R.randomR (-n, n) g3
-    in (MT n b c m, g4)
+  let (n,g1) = R.randomR (1, 100) g
+      (b,g2) = R.random g1
+      (c,g3) = R.randomR ('a', 'z') g2
+      (m,g4) = R.randomR (-n, n) g3
+  in (MT n b c m, g4)
 
 -- Этот подход работает, но такой код сложен в сопровождении, может содержать ошибки и быть грязным (что делает его грязным?)
+
+-- Грязным делает то, что мы не можем отделить чистый код от кода, который изменяет состояние. Наверное
+
 -- Монада State скрывает потоковую передачу состояния (как вы понимаете слова "потоковая передача состояния") внутри операции >>=,
 -- делая код проще для написания, чтения и модификации.
 
@@ -252,12 +246,27 @@ getOne' bounds = state $ R.randomR bounds
 --
 makeRandomValueST :: R.StdGen -> (MyType, R.StdGen)
 makeRandomValueST = runState $ do
-    n <- getOne' (1, 100)
-    b <- getAny'
-    c <- getOne' ('a', 'z')
-    m <- getOne' (-n, n)
-    return $ MT n b c m
+  n <- getOne' (1, 100)
+  b <- getAny'
+  c <- getOne' ('a', 'z')
+  m <- getOne' (-n, n)
+  return $ MT n b c m
 
+makeRandomValueST' :: R.StdGen -> (MyType, R.StdGen)
+makeRandomValueST' = runState $ do
+  b <- getAny'
+  n <- getOne' (1, 100)
+  c <- getOne' ('a', 'z')
+  m <- getOne' (-n, n)
+  return $ MT n b c m
+
+-- Я думаю, что если состояние генератора не обновляется, то порядок вызова функций не важен
+-- и makeRandomValueST' и makeRandomValueST будут возвращать одинаковые результаты
+-- но
+--ghci> makeRandomValueST (R.mkStdGen 23)
+--(MT 25 False 'l' 0,    StdGen {unStdGen = SMGen 6031929740467884236 16778118630780010967})
+--ghci> makeRandomValueST' (R.mkStdGen 23)
+--(MT 25 False 'm' (-22),StdGen {unStdGen = SMGen 7700555183397424885 16778118630780010967})
 -------------------------------------------------------------------------------
 
 -- 4. "Императивное" программирование (2 балла)
@@ -268,10 +277,9 @@ makeRandomValueST = runState $ do
 --        пока первое вычисление возвращает 'True'
 --
 whileM_' :: Monad m => m Bool -> m a -> m ()
-whileM_' cond body =
-  do
-    c <- cond
-    when c $ body >> whileM_' cond body
+whileM_' cond body = do
+  c <- cond
+  when c $ body >> whileM_' cond body
 
 ---------------------------------------
 
@@ -281,10 +289,9 @@ whileM_' cond body =
 --        пока выполняется условие cond
 --
 forM_' :: Monad m => (m (), m Bool, m ()) -> m a -> m ()
-forM_' (init', cond, nextIter) body = 
-  do
-    init'
-    whileM_' cond $ body >> nextIter
+forM_' (init', cond, nextIter) body = do
+  init'
+  whileM_' cond $ body >> nextIter
 
 ---------------------------------------
 
@@ -298,32 +305,27 @@ type Context = M.Map String Int
 --   Если переменная есть в контексте, перезаписывает её значение.
 --
 setVar :: String -> Int -> State Context ()
-setVar s i = 
-  do
-    ctx <- get
-    put $ M.insert s i ctx
+setVar s i = do
+  ctx <- get
+  put $ M.insert s i ctx
 
 -- | Увеличивает значение переменной. 
 --   Если её нет в контексте, то кидает ошибку.
 --
 incVar :: String -> Int -> State Context ()
-incVar s i = 
-  do
-    ctx <- get
-    case M.lookup s ctx of
-      Just val -> setVar s (val + i)
-      Nothing -> error $ "No variable " ++ s ++ " found"
+incVar s i = do
+  ctx <- get
+  put $ M.alter (fmap (+ i)) s ctx
 
 -- | Достаёт из контекста значение заданной переменной.
 --   Если переменной нет в контексте, то кидает ошибку.
 --
 getVar :: String -> State Context Int
-getVar s = 
-  do
-    ctx <- get
-    case M.lookup s ctx of
-      Just val -> return val
-      Nothing -> error $ "No variable " ++ s ++ " found"
+getVar s = do
+  ctx <- get
+  case M.lookup s ctx of
+    Just val -> return val
+    Nothing -> error $ "No variable " ++ s ++ " found"
 
 ---------------------------------------
 
@@ -347,15 +349,14 @@ int fib(int n) {
 -}
 
 fib :: Int -> State Context Int
-fib n = 
-  do
-    setVar "prev" 0
-    setVar "cur" 1
-    forM_' (setVar "i" 0, getVar "i" >>= (\i -> return $ i < n), incVar "i" 1) $ do
-      setVar "c" =<< getVar "cur"
-      setVar "cur" =<< (+) <$> getVar "prev" <*> getVar "cur"
-      setVar "prev" =<< getVar "c"
-    getVar "cur"
+fib n = do
+  setVar "prev" 0
+  setVar "cur" 1
+  forM_' (setVar "i" 0, getVar "i" >>= (\i -> return $ i < n), incVar "i" 1) $ do
+    setVar "c" =<< getVar "cur"
+    setVar "cur" =<< (+) <$> getVar "prev" <*> getVar "cur"
+    setVar "prev" =<< getVar "c"
+  getVar "cur"
 
 
 -------------------------------------------------------------------------------
