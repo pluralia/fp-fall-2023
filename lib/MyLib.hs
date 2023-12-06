@@ -3,7 +3,9 @@ module MyLib where
 import           Control.Monad.Writer.Lazy
 import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
-import           Control.Monad
+import           Control.Monad (when, foldM)
+import           Data.List (find)
+import           Data.Maybe (catMaybes)
 import qualified Data.Map.Strict as M
 import qualified System.Random as R -- cabal install --lib  random
 -- import           Data.Functor.Identity
@@ -32,8 +34,7 @@ logMsg :: String -> Writer [Entry] ()
 logMsg s = tell [Log 1 s]
 
 -- | Задайте тип, выражающий IP-адрес
--- тут Hlint предлагает поменять data на newtype, но это код исходной дз, поэтому я его не меняю
-data IP = IPAddress String
+newtype IP = IPAddress String
   deriving (Show, Eq)
 
 data Action = Accept | Reject
@@ -58,30 +59,29 @@ matchesRule packet rule =
 -- | Возвращает первое правило, действующее на пакет
 --
 match :: [Rule] -> Packet -> Maybe Rule
-match [] _ = Nothing  -- Если список правил пуст, возвращаем Nothing
-match (r:rs) packet = -- Проверяем первое правило
-  if matchesRule packet r
-    then Just r  -- Если пакет соответствует правилу, возвращаем это правило
-    else match rs packet  -- Переходим к следующему правилу
+match rules packet = find (matchesRule packet) rules
+
+-- Вспомогательная функция для вывода сообщения о пакете
+logPacket :: String -> Packet -> String
+logPacket actionMsg packet =
+  "Packet from " ++ show (pSource packet) ++ " to " ++ show (pDestination packet) ++ " " ++ actionMsg
 
 -- | Фильтрует 1 пакет
--- 
 filterOne :: [Rule] -> Packet -> Writer [Entry] (Maybe Packet)
 filterOne rules packet = do
   let maybeMatchedRule = match rules packet -- Находим первое правило, действующее на пакет
-
   case maybeMatchedRule of
     Just matchedRule -> do
       if action matchedRule == Accept
         then do
-          logMsg $ "Packet from " ++ show (pSource packet) ++ " to " ++ show (pDestination packet) ++ " was accepted"
-          return (Just packet) -- Если правило указывает на принятие, возвращаем пакет
+          logMsg $ logPacket "was accepted" packet -- Используем вспомогательную функцию для вывода сообщения о принятом пакете
+          return (Just packet) -- Если правило указывает на аксепт, то возвращаем пакет
         else do
-          logMsg $ "Packet from " ++ show (pSource packet) ++ " to " ++ show (pDestination packet) ++ " was rejected"
-          return Nothing -- Если правило указывает на отклонение, возвращаем Nothing
+          logMsg $ logPacket "was rejected" packet -- Используем вспомогательную функцию для вывода сообщения об отклоненном пакете
+          return Nothing -- Если правило указывает на реджект, то возвращаем Nothing
     Nothing -> do
-      logMsg $ "No matching rule found for packet from " ++ show (pSource packet) ++ " to " ++ show (pDestination packet)
-      return Nothing -- Если нет соответствующего правила, возвращаем Nothing
+      logMsg $ logPacket "has no matching rule" packet -- Используем вспомогательную функцию для вывода сообщения о пакете без соответствующего правила
+      return Nothing -- Если нет соответствующего правила, то возвращаем Nothing
 
 -- Немного усложним задачу: теперь мы хотим объединить дублирующиеся последовательные записи в журнале.
 -- Ни одна из существующих функций не позволяет изменять результаты предыдущих этапов вычислений,
@@ -97,11 +97,10 @@ mergeEntries :: [Entry] -> [Entry] -> Writer [Entry] [Entry]
 mergeEntries [] ys = tell ys >> return []
 mergeEntries xs [] = tell xs >> return []
 mergeEntries (x:xs) (y:ys)
-  | msg x == msg y = do
+  | msg x == msg y = do 
     let merged = Log (count x + count y) (msg x)
-    rest <- mergeEntries xs ys
-    tell [merged]
-    return rest
+    mergeEntries [merged] ys
+    
   | otherwise = do
     tell [x]
     mergeEntries xs (y : ys)
@@ -112,21 +111,30 @@ mergeEntries (x:xs) (y:ys)
 --   а лог -- результат слияния всех логов всех Writer
 --
 -- 'initial' -- изначальное значение лога
---
+
 groupSame :: (Monoid a) => a -> (a -> a -> Writer a a) -> [b] -> (b -> Writer a c) -> Writer a [c]
-groupSame = undefined
+groupSame initial mergeFun values applyFun = do
+  -- Применим applyFun к каждому элементу списка values и создадим список промежуточных Writer (с их логами)
+  let writers = fmap applyFun values
+
+  -- Выполним операцию runWriter для каждого Writer, чтобы получить их значения и логи
+  let (results, logs) = unzip $ fmap runWriter writers
+
+  -- Пройдем по списку логов и объединим их с использованием функции mergeFun
+  finalLog <- foldM (\accLog curLog -> do mergeFun accLog curLog
+                     ) initial logs
+
+  -- Создаем Writer, в котором лог - объединение всех логов, а значение - список значений всех Writer
+  writer (results, finalLog)
 
 -- | Фильтрует список пакетов и возвращает список отфильтрованных пакетов и логи
 --
 filterAll :: [Rule] -> [Packet] -> Writer [Entry] [Packet]
-filterAll _ [] = return [] -- Если список пакетов пуст, возвращаем пустой список пакетов
-filterAll rules (packet:packets) = do
-  filteredPacket <- filterOne rules packet -- Фильтруем первый пакет
-  case filteredPacket of
-    Just p -> do
-      rest <- filterAll rules packets -- Рекурсивно фильтруем остальные пакеты
-      return (p : rest)
-    Nothing -> do filterAll rules packets
+filterAll rules packets = do
+  -- Применяем функцию filterOne ко всем пакетам, собираем логи
+  filteredPackets <- groupSame [] mergeEntries packets (filterOne rules)
+  -- Возвращаем только отфильтрованные пакеты
+  return (catMaybes filteredPackets)
 
 -------------------------------------------------------------------------------
 
@@ -274,11 +282,9 @@ makeRandomValueST = runState $ do
 whileM_ :: Monad m => m Bool -> m a -> m ()
 whileM_ condd actionn = do
   check <- condd
-  if check
-    then do
-      _ <- actionn
-      whileM_ condd actionn
-    else return ()
+  when check
+    $ do _ <- actionn
+         whileM_ condd actionn
 
 ---------------------------------------
 
@@ -293,12 +299,10 @@ forM_ :: Monad m => (m (), m Bool, m ()) -> m a -> m ()
 forM_ (initt, cond, nextIter) body = do
   initt
   check <- cond
-  if check
-    then do
-      _ <- body
-      nextIter
-      MyLib.forM_ (initt, cond, nextIter) body
-    else return ()
+  when check
+    $ do _ <- body
+         nextIter
+         MyLib.forM_ (initt, cond, nextIter) body
 
 ---------------------------------------
 
@@ -390,8 +394,7 @@ int fib(int n) {
 --      b) эффектои монады 'Either' (возможность завершения вычисления ошибкой)
 
 -- | Задайте тип
--- Тут Hlint предлагает заменить data на newtype, но т.к. это изначальный код домашки, я не стал ничего менять
-data StateWithError str err a = StateWithError (str -> Either err (a, str))
+newtype StateWithError str err a = StateWithError (str -> Either err (a, str))
 
 -- Реализуйте инстанс Monad для StateWithError
 
