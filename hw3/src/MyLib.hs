@@ -83,10 +83,18 @@ pointful :: (a -> b -> c) -> a -> (d -> b) -> d -> c
 pointful f x g y = f x (g y)
 
 -- pointful f x g y = f x (g y)
--- pointful f x g = f x . g
--- pointful f x = (f x .)
--- pointful f = (f .)
--- pointful = (.)
+-- pointful f x g y = f x $ g y убираем скобки
+-- pointful f x g y = ((f x) . g)y составляем композицию
+-- pointful f x g y = ((f x) . g$y применим infix чтобы избавиться от скобок
+-- pointful f x g = (f x) . g делаем редукцию
+-- pointful f x g = (.)(f x)g перепишем в операторный стиль
+-- pointful f x  = (.)(f x) редукция
+-- pointful f x  = (.) $ f x избавимся от скобок
+-- pointful f x  = (.) . f $ x составляем композицию
+-- pointful f   = (.) . f редукция
+-- pointful f   = (.) (.) f перепишем в операторный стиль
+-- pointful    = (.) (.)  снова редукция
+-- pointful    = (.) (.) все)
 
 
 ------------------------------------------------------------------------------------------------
