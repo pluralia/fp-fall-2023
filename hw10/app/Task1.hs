@@ -1,7 +1,5 @@
 module Main where
 
-import MyLib
-
 -- REPL (1,5 балла)
 
 -- Реализуйте скрипт, который при запуске в бесконечном цикле считывает с консоли пользователський ввод.
@@ -14,6 +12,14 @@ import MyLib
 
 main :: IO ()
 main = do
-  putStrLn "Hello, Haskell!"
-  print (addition 1 2)
-
+  putStrLn "Enter your text:"
+  loop 0 0
+  where 
+    loop :: Int -> Int -> IO ()
+    loop n m = do
+      text <- getLine
+      putStrLn text
+      appendFile ("text_copy_" ++ show n ++ ".log") (text ++ "\n")
+      if m < 999
+        then loop n (m + 1)
+        else loop (n + 1) 0

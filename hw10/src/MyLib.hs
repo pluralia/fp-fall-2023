@@ -5,9 +5,6 @@ import System.IO
 
 -------------------------------------------------------------------------------
 
-addition :: Int -> Int -> Int
-addition x y = x + y
-
 -- 1. State (1,5 балла)
 
 -- В этом задании мы реализуем конечный автомат, моделирующий турникет с монетоприемником.
@@ -34,13 +31,32 @@ data TurnstileInput = Coin | Push
 data TurnstileOutput = Thank | Open | Tut
   deriving (Eq, Show)
 
+type Turnstile = (TurnstileOutput, TurnstileState)
+
 -- | Реализуйте автомат
 --
-turnstile :: State TurnstileState [TurnstileOutput]
-turnstile = undefined
+translate :: TurnstileInput -> Turnstile -> Turnstile
+translate Coin _             = (Thank, Unlocked)
+translate Push (_, Unlocked) = (Open, Locked)
+translate Push (_, Locked)   = (Tut, Locked)
+
+type FSM s = State s s
+
+fsm :: (a -> s -> s) -> a -> FSM s
+fsm translate act = state $ \s -> (s, translate act s)
+
+actions :: [TurnstileInput]
+actions = [Coin, Coin, Push, Push, Coin]
+
+turnstile :: State Turnstile [Turnstile]
+turnstile = mapM (fsm translate) actions
+  
 
 -- Привидите пример запуска на последовательности действий [Coin, Coin, Push, Push, Coin]
 -- (можете привести свою любой длины и содержания)
+
+res :: ([Turnstile], Turnstile)
+res = runState turnstile (Tut, Locked)
 
 -------------------------------------------------------------------------------
 
@@ -72,6 +88,9 @@ writeToFileWithBuffer = do
       when (i `mod` 10000 == 0) $ hFlush h
 
     hClose h
+
+-- Разница в том, что в первом случае запись происходит сразу, а во втором -- с задержкой, т.к. буферизация
+-- По скорости работы разницы особой я не заметил. Мб с буфером чуть медленнее
 
 -------------------------------------------------------------------------------
 
