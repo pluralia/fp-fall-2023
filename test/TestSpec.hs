@@ -195,7 +195,7 @@ spec = do
     -- Task 7
     --
     describe "A list with random access" $ do
-        let leaf = BLeaf 1 "a" :: BinaryTree Int String
+        let leaf1 = BLeaf 1 "a" :: BinaryTree Int String
         let leftTree = BBranch 1 (BLeaf 1 "h") (BLeaf 1 "e") :: BinaryTree Int String
         let rightTree = BBranch 1 (BLeaf 1 "l") (BBranch 1 (BLeaf 1 "l") (BLeaf 1 "o")) :: BinaryTree Int String
         let tree = BBranch 1 leftTree rightTree :: BinaryTree Int String
@@ -219,19 +219,19 @@ spec = do
         --          c   e
         --
         it "toList: just leaf" $ do
-            toList leaf `shouldBe` (["a"] :: [String])
+            toList leaf1 `shouldBe` (["a"] :: [String])
 
         it "toList: tree" $ do
             toList tree `shouldBe` (["h", "e", "l", "l", "o"] :: [String])
 
         it "tag: just Leaf" $ do
-            tag leaf `shouldBe` 1
+            tag leaf1 `shouldBe` 1
 
         it "tag: tree" $ do
             tag tree `shouldBe` 1
 
         it "head: leaf" $ do
-            head leaf `shouldBe` "a"
+            head leaf1 `shouldBe` "a"
 
         it "head: tree" $ do
             head tree `shouldBe` "h"
@@ -244,3 +244,59 @@ spec = do
             getInd sizeTree 1 `shouldBe` "a"
             getInd sizeTree 3 `shouldBe` "c"
             getInd sizeTree 5 `shouldBe` "d"
+
+    -- Task 8
+    --
+    describe "A priority queue" $ do
+        let leaf1 = leafPrio (8 :: Priority) "Hello!"
+        it "getWinner: leaf" $ do
+            getWinner leaf1 `shouldBe` "Hello!"
+        
+        it "getWinner: tree" $ do
+            getWinner priorityTree `shouldBe` "c"
+
+    -- Task 10
+    --
+    describe "Binary Tree и Monoid" $ do
+        let leaf1 = leaf 3 :: BinaryTree Size' Int
+        let leaf11 = leaf 5 :: BinaryTree Size' Int
+        let leaf2 = leaf 'a' :: BinaryTree Size' Char
+        let leaf22 = leaf 'b' :: BinaryTree Size' Char
+        let leaf3 = leaf 3 :: BinaryTree Priority' Int
+        let leaf33 = leaf 1 :: BinaryTree Priority' Int
+        let leaf4 = leaf 'a' :: BinaryTree Priority' Char
+    
+        it "Size'" $ do
+            getSize (mempty :: Size') `shouldBe` 0
+            getSize (Size' 3) `shouldBe` (3 :: Int)
+            getSize (Size' 3 <> Size' 6) `shouldBe` (9 :: Int)
+
+        it "Priority'" $ do
+            getPriority (mempty :: Priority') `shouldBe` (maxBound :: Int)
+            getPriority (Priority' 30) `shouldBe` (30 :: Int)
+            getPriority (Priority' 10 <> Priority' 1) `shouldBe` (1 :: Int)
+            getPriority (measure True) `shouldBe` 1
+
+        it "Measured Size" $ do
+            measure "List value" `shouldBe` Size' 1
+
+        it "Check leaf" $ do
+            leaf1 `shouldBe` BLeaf (Size' 1) 3
+            leaf2 `shouldBe` BLeaf (Size' 1) 'a'
+            leaf3 `shouldBe` BLeaf (Priority' 3) 3
+            leaf4 `shouldBe` BLeaf (Priority' 97) 'a'
+            branch leaf1 leaf11 `shouldBe` BBranch (Size' 2) leaf1 leaf11
+            branch leaf2 leaf22 `shouldBe` BBranch (Size' 2) leaf2 leaf22
+            branch leaf3 leaf33 `shouldBe` BBranch (Priority' 1) leaf3 leaf33
+
+
+
+
+
+            
+
+        
+
+
+
+

@@ -1,4 +1,6 @@
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE InstanceSigs          #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module MyLib where
 
@@ -77,16 +79,16 @@ instance Semigroup StudentsLog where
       }
    where
     minMaybe :: Maybe Int -> Maybe Int -> Maybe Int
-    minMaybe Nothing Nothing   = Nothing
-    minMaybe (Just x) Nothing  = Just x
-    minMaybe Nothing (Just y)  = Just y
     minMaybe (Just x) (Just y) = Just (min x y)
+    minMaybe (Just x) _        = Just x
+    minMaybe _ (Just y)        = Just y
+    minMaybe _ _               = Nothing
 
     maxMaybe :: Maybe Int -> Maybe Int -> Maybe Int
-    maxMaybe Nothing Nothing   = Nothing
-    maxMaybe (Just x) Nothing  = Just x
-    maxMaybe Nothing (Just y)  = Just y
     maxMaybe (Just x) (Just y) = Just (max x y)
+    maxMaybe (Just x) _        = Just x
+    maxMaybe _ (Just y)        = Just y
+    maxMaybe _ _               = Nothing
 
 instance Monoid StudentsLog where
   mempty :: StudentsLog
@@ -215,7 +217,7 @@ siftDown (BinNode v lnode rnode)
 | Кроме того, каждый узел в этом дереве аннотируется значением типа v (tag)
 -}
 data BinaryTree v a = BLeaf v a | BBranch v (BinaryTree v a) (BinaryTree v a)
-  deriving (Show)
+  deriving (Show, Eq)
 
 -- Тогда наше дерево будет выглядеть так
 --      v
@@ -323,13 +325,29 @@ type Priority = Int
 
 -- 8.a Задайте собственные конструкторы leafPrio и branchPrio (на замену BLeaf и BBranch), чтобы
 --     быть уверенными в корректности аннотаций по аналогии с leafSize и branchSize (0,25 балла)
+leafPrio :: Priority -> a -> BinaryTree Priority a
+leafPrio = BLeaf
+
+branchPrio :: BinaryTree Priority a -> BinaryTree Priority a -> BinaryTree Priority a
+branchPrio l r = BBranch (tag l `min` tag r) l r
 
 -- 8.b Создайте дерево типа `BinaryTree Priority a`, используя leafPrio и branchPrio (0,25 балла)
+priorityTree :: BinaryTree Priority String
+priorityTree = branchPrio (branchPrio (leafPrio 16 "a") (leafPrio 4 "b"))
+                        (branchPrio (leafPrio 2 "c") (leafPrio 8 "e"))
+
+--      2
+--    /   \
+--   4     2
+--  / \   / \
+-- 16  4  2  8
+-- a   b  c  e
 
 -- 8.c Используя Priority-аннотации, найдите самый приоритетный элемент (1 балл)
 
 getWinner :: BinaryTree Priority a -> a
-getWinner = undefined
+getWinner (BLeaf _ a)     = a
+getWinner (BBranch v l r) = if v == tag l then getWinner l else getWinner r
 
 -------------------------------------------------------------------------------
 
@@ -352,6 +370,31 @@ getWinner = undefined
 -- 10.a Обобщите эту функцию, написав инстансы `Monoid Size` и `Monoid Priority` (0,5 балла)
 -- Kакую ошибку вы получили с при текущем определении Size и Priority, попытавшись создать инстансы?
 -- Что нужно изменить в определении Size и Priority?
+-- Получила такую ошибку: Illegal instance declaration for ‘Semigroup Size’
+--    (All instance types must be of the form (T t1 ... tn)
+--     where T is not a synonym.
+
+newtype Size' = Size' {getSize :: Int}
+  deriving (Show, Eq)
+
+newtype Priority' = Priority' {getPriority :: Int}
+  deriving (Show, Eq)
+
+instance Semigroup Size' where
+  (<>) :: Size' -> Size' -> Size'
+  (<>) x y = Size' $ getSize x + getSize y
+
+instance Monoid Size' where
+  mempty :: Size'
+  mempty = Size' 0
+
+instance Semigroup Priority' where
+  (<>) :: Priority' -> Priority' -> Priority'
+  (<>) x y = Priority' $ getPriority x `min` getPriority y
+
+instance Monoid Priority' where
+  mempty :: Priority'
+  mempty = Priority' (maxBound :: Int)
 
 -- | Теперь branchSize и branchPrio могут быть заменены на branch
 branch :: (Monoid v) => BinaryTree v a -> BinaryTree v a -> BinaryTree v a
@@ -362,19 +405,30 @@ branch x y = BBranch (tag x <> tag y) x y
 leaf :: Monoid v => a -> BinaryTree v a
 leaf = BLeaf mempty
 -}
+-- Для листа хотим, чтобы size был равен 1, однако если задавать leaf как в функции выше, там будет лежать 0
 
 -- Чтобы задать leaf унифицированным способом аналогично branch, давайте создадим класс типов Measured
 
--- class Monoid v => Measured v a where
---    measure :: a -> v
+class Monoid v => Measured v a where
+   measure :: a -> v
 
 {- | Написав различные инстансы этого класса для наших `BinaryTree Size a` и `BinaryTree Priority a`,
 | мы сможем по-разному вычислять аннотацию листа по значению. Тогда
+-}
 
 leaf :: Measured v a => a -> BinaryTree v a
 leaf x = BLeaf (measure x) x
--}
 
 -- 10.b Напишите инстансы Measured для Size и Priority (0,5 балла)
+-- на самом деле здесь не абсолютно идентичная реализация, так как раньше мы могли класть в значения
+-- листа что угодно, например String, а теперь не можем, так как их нельзя пересчитать (Enum)
+
+instance Measured Size' a where
+  measure :: a -> Size'
+  measure _ = Size' (1 :: Int)
+
+instance (Enum a) => Measured Priority' a where
+  measure :: (Enum a) => a -> Priority'
+  measure p = Priority' $ fromEnum p
 
 -------------------------------------------------------------------------------
