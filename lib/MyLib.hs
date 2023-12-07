@@ -1,3 +1,5 @@
+{-# LANGUAGE InstanceSigs    #-}
+
 module MyLib where
 
 import           Control.Monad.Writer.Lazy
@@ -5,7 +7,7 @@ import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
 import           Control.Monad (when, foldM)
 import           Data.List (find)
-import           Data.Maybe (catMaybes)
+import           Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Map.Strict as M
 import qualified System.Random as R -- cabal install --lib  random
 -- import           Data.Functor.Identity
@@ -97,9 +99,7 @@ mergeEntries :: [Entry] -> [Entry] -> Writer [Entry] [Entry]
 mergeEntries [] ys = tell ys >> return []
 mergeEntries xs [] = tell xs >> return []
 mergeEntries (x:xs) (y:ys)
-  | msg x == msg y = do 
-    let merged = Log (count x + count y) (msg x)
-    mergeEntries [merged] ys
+  | msg x == msg y = return [Log (count x + count y) (msg x)]
     
   | otherwise = do
     tell [x]
@@ -180,35 +180,32 @@ addDefs newVars env = env { vars = M.union newVars (vars env) }
 
 -- | Резолвит (подставляет все неизвестные) шаблон и выдает в качестве ответа
 --   пару (имя шаблона, значение)
--- не уверен, что правильно понял задание (мне бы 1 пример увидеть) и поэтому не уверен, что правильно написал
+
 resolveDef :: Definition -> Reader Environment (String, String)
 resolveDef (Definition templateName value) = do
-  env <- ask
-  let resolvedValue = runReader (resolveTemplate value) env
-  return (getTemplateName templateName, resolvedValue)
-
-resolveTemplate :: Template -> Reader Environment String
-resolveTemplate (Text s) = return s
-resolveTemplate (Var t) = do
-  env <- ask
-  case t of
-    Text name -> do
-      let maybeValue = lookupVar name env
-      case maybeValue of
-        Just value -> return value
-        Nothing -> return ""
-    _ -> resolveTemplate t
-resolveTemplate _ = return ""
-
-getTemplateName :: Template -> String
-getTemplateName (Text name) = name
-getTemplateName (Var template) = getTemplateName template
-getTemplateName _ = ""
+  resolvedName <- resolve templateName
+  resolvedValue <- resolve value
+  return (resolvedName, resolvedValue)
 
 -- | Резолвит (подставляет все неизвестные) шаблон в строку
 --
 resolve :: Template -> Reader Environment String
-resolve = resolveTemplate
+resolve template = case template of
+  Text s -> return s
+
+  Var t -> resolve t >>= asks . lookupVar >>= return . fromMaybe ""
+
+  Quote t -> resolve t >>= asks . lookupTemplate >>= return . maybe "" show
+
+  Include t def ->
+    resolve t >>= asks . lookupTemplate >>= maybe (return "") resolveWithDefs
+    where
+      resolveWithDefs t' = do
+        defs <- mapM resolveDef def
+        local (addDefs $ M.fromList defs) (resolve t')
+
+  Compound ts -> mapM resolve ts >>= return . concat
+
 
 -------------------------------------------------------------------------------
 
@@ -324,14 +321,20 @@ setVar varName varValue = do
 -- | Увеличивает значение переменной. 
 --   Если её нет в контексте, то кидает ошибку.
 --
+-- incVar :: String -> Int -> State Context ()
+-- incVar varName amount = do
+--   context <- get
+--   case M.lookup varName context of
+--     Just val -> do
+--       let updatedContext = M.insert varName (val + amount) context
+--       put updatedContext
+--     Nothing -> error "Variable not found in context"
+
 incVar :: String -> Int -> State Context ()
 incVar varName amount = do
   context <- get
-  case M.lookup varName context of
-    Just val -> do
-      let updatedContext = M.insert varName (val + amount) context
-      put updatedContext
-    Nothing -> error "Variable not found in context"
+  let updatedContext = M.alter (maybe (error "Variable not found in context") (Just . (+ amount))) varName context
+  put updatedContext
 
 -- | Достаёт из контекста значение заданной переменной.
 --   Если переменной нет в контексте, то кидает ошибку.
@@ -364,27 +367,21 @@ int fib(int n) {
 } 
 -}
 
--- fib :: Int -> State Context Int
--- fib n = do
---   setVar "prev" 0
---   setVar "cur" 1
---   forM_ (1, (checkLessThanOrEqual n), plusOneInState) $ do
---     prev <- getVar "prev"
---     cur <- getVar "cur"
---     let c = cur
---     incVar "cur" (prev + cur)
---     incVar "prev" c
---   getVar "cur"
+fib :: Int -> State Context Int
+fib n = do
+  setVar "prev" 0
+  setVar "cur" 1
+  forM_ (setVar "i" 0, checkLessThanOrEqual n, incVar "i" 1) $ do
+    prevV <- getVar "prev"
+    curV <- getVar "cur"
+    setVar "cur" (curV + prevV)
+    setVar "prev" curV
+  getVar "cur"
 
--- -- Оборачиваем функцию <= n в монадический контекст
--- checkLessThanOrEqual :: Int -> StateT Context Identity Bool
--- checkLessThanOrEqual n = do
---   currentState <- get
---   let result = M.size currentState <= n
---   return result
-
--- plusOneInState :: StateT Context Identity ()
--- plusOneInState = state $ \currentState -> ((), M.map (+1) currentState)
+checkLessThanOrEqual :: Int -> State Context Bool
+checkLessThanOrEqual n = do
+  i <- getVar "i"
+  pure $ i < n
 
 -------------------------------------------------------------------------------
 
@@ -399,12 +396,16 @@ newtype StateWithError str err a = StateWithError (str -> Either err (a, str))
 -- Реализуйте инстанс Monad для StateWithError
 
 instance Functor (StateWithError str err) where
+  fmap :: (a -> b) -> StateWithError str err a -> StateWithError str err b
   fmap f (StateWithError g) = StateWithError $ \s -> case g s of
     Left err -> Left err
     Right (a, s') -> Right (f a, s')
 
 instance Applicative (StateWithError str err) where
+  pure :: a -> StateWithError str err a
   pure a = StateWithError $ \s -> Right (a, s)
+
+  (<*>) :: StateWithError str err (a -> b) -> StateWithError str err a -> StateWithError str err b
   StateWithError mf <*> StateWithError mx = StateWithError $ \s -> case mf s of
     Left err -> Left err
     Right (f, s') -> case mx s' of
@@ -412,7 +413,10 @@ instance Applicative (StateWithError str err) where
       Right (x, s'') -> Right (f x, s'')
 
 instance Monad (StateWithError str err) where
+  return :: a -> StateWithError str err a
   return = pure
+
+  (>>=) :: StateWithError str err a -> (a -> StateWithError str err b) -> StateWithError str err b
   StateWithError mx >>= f = StateWithError $ \s -> case mx s of
     Left err -> Left err
     Right (x, s') -> let StateWithError g = f x in g s'
@@ -423,6 +427,10 @@ instance Monad (StateWithError str err) where
 modifyState :: str -> StateWithError str err ()
 modifyState newState = StateWithError $ \_ -> Right ((), newState)
 
+-- Функция для вычислений с ошибкой
+errState :: err -> StateWithError str err a
+errState err = StateWithError $ \_ -> Left err
+
 -- Функция, выдающая текущее состояние
 getState :: StateWithError str err str
 getState = StateWithError $ \s -> Right (s, s)
@@ -431,8 +439,9 @@ getState = StateWithError $ \s -> Right (s, s)
 performCalculation :: Int -> StateWithError String String Int
 performCalculation x = do
   sstate <- getState
-  when (length sstate < 5) $ modifyState "Error: State length too short"
-  return (x * 2)
+  if (length sstate < 5) 
+    then errState "Error: State length too short"
+    else return (x * 2)
 
 -- В примере performCalculation пытается выполнить вычисление (изменяемое состояние), завершающееся ошибкой, 
 -- если текущее состояние не удовлетворяет определенному условию (возможность завершения вычисления ошибкой)
