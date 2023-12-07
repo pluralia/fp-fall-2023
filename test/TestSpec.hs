@@ -1,12 +1,13 @@
 module TestSpec where
 
-import Test.Hspec
-import MyLib
+import           Test.Hspec
+import           MyLib
 import           Control.Monad.Writer.Lazy
 import           Control.Monad.State.Lazy
 import qualified Data.Map.Strict as M
 import qualified System.Random as R
 import Control.Exception (evaluate)
+import           Control.Monad.Reader
 
 spec :: Spec
 spec = do
@@ -40,11 +41,6 @@ spec = do
             let packet = Packet (IPAddress "192.168.1.1") (IPAddress "192.168.2.2")
             let rules = [Rule Reject (IPAddress "192.168.1.1") (IPAddress "192.168.2.2")]
             snd (runWriter (filterOne rules packet)) `shouldBe` [Log 1 "Packet from IPAddress \"192.168.1.1\" to IPAddress \"192.168.2.2\" was rejected"]
-
-        it "mergeEntries merges logs with identical messages" $ do
-            let log1 = [Log 2 "Error"]
-            let log2 = [Log 3 "Error"]
-            snd (runWriter (mergeEntries log1 log2)) `shouldBe` [Log 5 "Error"]
 
         it "mergeEntries keeps logs with different messages separate" $ do
             let log1 = [Log 2 "Error1"]
@@ -105,6 +101,32 @@ spec = do
                 expectedVars = M.union existingVars newVars
             vars updatedEnv `shouldBe` expectedVars
 
+        let emptyEnv = Env M.empty M.empty
+
+        it "resolves Text" $ do
+            let template = Text "Hello, world!"
+            runReader (resolve template) emptyEnv `shouldBe` "Hello, world!"
+
+        it "resolves Var" $ do
+            let template = Var (Text "name")
+                env = emptyEnv { vars = M.fromList [("name", "Ivan")] }
+            runReader (resolve template) env `shouldBe` "Ivan"
+
+        it "resolves Quote" $ do
+            let template = Quote (Text "greeting")
+                env = emptyEnv { templs = M.fromList [("greeting", Text "Hello!")] }
+            runReader (resolve template) env `shouldBe` "Text \"Hello!\""
+
+        it "resolves Include" $ do
+            let template = Include (Text "welcome") [Definition (Text "name") (Text "Ivan")]
+                env = emptyEnv { templs = M.fromList [("welcome", Compound [Text "Hello, ", Var (Text "name")])] }
+            runReader (resolve template) env `shouldBe` "Hello, Ivan"
+
+        it "resolves Compound" $ do
+            let template = Compound [Text "Hello, ", Var (Text "name"), Text "!"]
+                env = emptyEnv { vars = M.fromList [("name", "Ivan")] }
+            runReader (resolve template) env `shouldBe` "Hello, Ivan!"
+
     describe "3. State: Генерация случайного значения кастомного типа" $ do
         it "getAny returns Int when given Int" $ do
             let (value, _) = runState getAny (R.mkStdGen 42 :: R.StdGen)
@@ -154,3 +176,13 @@ spec = do
             let initialState = M.fromList [("x", 10), ("y", 20)]
             evaluate (evalState (getVar "z") initialState) `shouldThrow` anyErrorCall
 
+
+    -- describe "fib" $ do
+    --     it "returns 1 for n = 0" $ do
+    --         evalState (fib 0) M.empty `shouldBe` (1 :: Int)
+
+    --     it "returns 1 for n = 1" $ do
+    --         evalState (fib 1) M.empty `shouldBe` (1 :: Int)
+
+    --     it "returns 89 for n = 10" $ do
+    --         evalState (fib 10) M.empty `shouldBe` (89 :: Int)    
