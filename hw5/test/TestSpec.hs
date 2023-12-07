@@ -14,13 +14,7 @@ spec :: Spec
 spec = do
   -- for tests
   let one = Succ Zero
-  let two = Succ one
-  let three = Succ two
-  let four = Succ three
-  let five = Succ four
-
-  -- HW3
-
+  -- HW5
   describe "Eq ChurchNumber'" $ do
     it "go" $ do
       one == three `shouldBe` False
