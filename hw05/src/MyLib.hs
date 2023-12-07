@@ -1,11 +1,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module MyLib where
 
 import qualified Data.Map.Strict as M
 import Data.Monoid (All(..), Sum(..), getSum, getAll)
-import Data.Maybe (isNothing)
+import Data.Maybe (isNothing, fromJust)
 
 -- Во всех заданиях с инстансами укажите сигнатуры функций
 
@@ -56,8 +57,8 @@ data StudentsLog = StudentsLog
 calculateStudentsLog :: [Student] -> StudentsLog
 calculateStudentsLog students = StudentsLog
   { studentNames = map name students
-  , worstGrade = minimumMaybe $ map grade students
-  , bestGrade = maximumMaybe $ map grade students
+  , worstGrade   = minimumMaybe $ map grade students
+  , bestGrade    = maximumMaybe $ map grade students
   }
   where
     minimumMaybe :: Ord a => [a] -> Maybe a
@@ -72,20 +73,20 @@ calculateStudentsLog students = StudentsLog
 --     calculateStudentsLog', которая делает то же самое, что и calculateStudentsLog
 --     В реализации нужно использовать то, что 'StudentsLog' — моноид. (0,5 балла)
 --
-minMaybe :: Ord a => Maybe a -> Maybe a -> Maybe a
-minMaybe Nothing x = x
-minMaybe x Nothing = x
-minMaybe (Just a) (Just b) = Just (min a b)
-
-maxMaybe :: Ord a => Maybe a -> Maybe a -> Maybe a
-maxMaybe Nothing x = x
-maxMaybe x Nothing = x
-maxMaybe (Just a) (Just b) = Just (max a b)
-
 instance Semigroup StudentsLog where
   (<>) :: StudentsLog -> StudentsLog -> StudentsLog
   StudentsLog names1 worst1 best1 <> StudentsLog names2 worst2 best2 =
     StudentsLog (names1 <> names2) (minMaybe worst1 worst2) (maxMaybe best1 best2)
+    where 
+      minMaybe :: Ord a => Maybe a -> Maybe a -> Maybe a
+      minMaybe Nothing  x        = x
+      minMaybe x        Nothing  = x
+      minMaybe (Just a) (Just b) = Just (min a b)
+
+      maxMaybe :: Ord a => Maybe a -> Maybe a -> Maybe a
+      maxMaybe Nothing  x        = x
+      maxMaybe x        Nothing  = x
+      maxMaybe (Just a) (Just b) = Just (max a b)
 
 instance Monoid StudentsLog where
   mempty :: StudentsLog
@@ -108,7 +109,7 @@ data Tree a = Node a [Tree a] | Leaf
 
 instance Foldable Tree where
   foldMap :: Monoid m => (a -> m) -> Tree a -> m
-  foldMap _ Leaf = mempty
+  foldMap _ Leaf              = mempty
   foldMap f (Node x children) = f x <> foldMap (foldMap f) children
 
 -------------------------------------------------------------------------------
@@ -127,21 +128,19 @@ data Apple = Apple
 --     в заданном диапазоне весов (0,25 балла)
 --
 applesInRange :: Tree Apple -> (Float, Float) -> Bool
-applesInRange tree range = getAll $ foldMap (\apple -> All $ weight apple >= fst range && weight apple <= snd range) tree
+applesInRange t range = getAll $ foldMap (\apple -> All $ weight apple >= fst range && weight apple <= snd range) t
 
 -- 4.b Находит яблоко с наибольшим весом (0,25 балла)
 --
 heaviestApple :: Tree Apple -> Maybe Apple
-heaviestApple = foldr (\apple acc -> if isNothing acc || weight apple > weight (unwrapMaybe acc) then Just apple else acc) Nothing
-  where
-    unwrapMaybe (Just x) = x
+heaviestApple = foldr (\apple acc -> if isNothing acc || weight apple > weight (fromJust acc) then Just apple else acc) Nothing
 
 -- 4.c Находит яблоко с цветом из заданного списка цветов и весом,
 --     находящимся в заданном диапазоне весов (0,25 балла)
 --
 thisApple :: Tree Apple -> [String] -> (Float, Float) -> Maybe Apple
-thisApple tree colors range =
-  foldr checkApple Nothing tree
+thisApple t colors range =
+  foldr checkApple Nothing t
   where
     checkApple apple acc =
       if isNothing acc &&
@@ -159,7 +158,7 @@ thisApple tree colors range =
 -- 4.d Считает сумму весов всех яблок в дереве (0,25 балла)
 --
 sumOfApples :: Tree Apple -> Float
-sumOfApples tree = getSum $ foldMap (Sum . weight) tree
+sumOfApples t = getSum $ foldMap (Sum . weight) t
 
 -------------------------------------------------------------------------------
 
@@ -177,11 +176,11 @@ newtype Basket = Basket { apples :: M.Map String [Apple] }
 -- инициализировать и модифицировать мапу
 --      
 collectBasket :: Tree Apple -> Basket
-collectBasket tree = Basket $ foldr collectApple M.empty tree
+collectBasket t = Basket $ foldr collectApple M.empty t
   where
     collectApple :: Apple -> M.Map String [Apple] -> M.Map String [Apple]
-    collectApple (Apple color weight) =
-      M.insertWith (++) color [Apple color weight]
+    collectApple (Apple c w) =
+      M.insertWith (++) c [Apple c w]
 
 -------------------------------------------------------------------------------
 
@@ -200,20 +199,18 @@ data BinaryHeap a
 -- 6.a Реализуйте функцию siftDown, восстанавливающую свойство кучи в куче (0,5 балла)
 --      
 siftDown :: Ord a => BinaryHeap a -> BinaryHeap a
-siftDown BinLeaf = BinLeaf
-siftDown node@(BinNode v l r) =
-  let minChild = findMinChild node
-  in if val minChild < v
-        then BinNode (val minChild) (siftDown l) (siftDown r)
-        else node
-  where
-    findMinChild :: Ord a => BinaryHeap a -> BinaryHeap a
-    findMinChild BinLeaf                = BinLeaf
-    findMinChild (BinNode _ BinLeaf r)  = r
-    findMinChild (BinNode _ l BinLeaf)  = l
-    findMinChild node@(BinNode _ l r)
-      | val l < val r = l
-      | otherwise     = r
+siftDown BinLeaf                     = BinLeaf
+siftDown (BinNode v BinLeaf BinLeaf) = BinNode v BinLeaf BinLeaf
+siftDown node@(BinNode x leftNode@(BinNode lx _ _) BinLeaf)
+  | x < lx    = node
+  | otherwise = BinNode lx (siftDown $ leftNode {val = x}) BinLeaf
+siftDown node@(BinNode x BinLeaf rightNode@(BinNode rx _ _))
+  | x < rx    = node
+  | otherwise = BinNode rx BinLeaf (siftDown $ rightNode {val = x})
+siftDown node@(BinNode x leftNode@(BinNode lx _ _) rightNode@(BinNode rx _ _))
+  | x < min lx rx = node
+  | lx < rx       = BinNode lx (siftDown $ leftNode {val = x}) rightNode
+  | otherwise     = BinNode rx leftNode (siftDown $ rightNode {val = x})
 
 -- 6.b Реализуйте с помощью свёртки функцию buildHeap,
 --     которая за __линейное время__ конструирует на основе спиcка элементов бинарную кучу.
@@ -221,14 +218,15 @@ siftDown node@(BinNode v l r) =
 --     Считайте, что изменение элемента 'Data.Array' происходит за константу (хотя это не так!)
 --     (1 балл)
 --       
-buildHeap :: Ord a => [a] -> BinaryHeap a
-buildHeap [] = BinLeaf
-buildHeap xs = foldr siftDownFromMid BinLeaf (zip xs [0..])
+buildHeap :: Ord a => [a] -> BinaryHeap a -- пока не корректно
+buildHeap = foldr (\x heap -> siftDown (BinNode x BinLeaf BinLeaf `merge` heap)) BinLeaf
   where
-    mid = length xs `div` 2
-    siftDownFromMid (val, idx) heap
-      | idx >= mid = siftDown (BinNode val BinLeaf BinLeaf)
-      | otherwise  = siftDown (BinNode val (left heap) (right heap))
+    merge :: Ord a => BinaryHeap a -> BinaryHeap a -> BinaryHeap a
+    merge BinLeaf heap = heap
+    merge heap BinLeaf = heap
+    merge h1@(BinNode v1 l1 r1) h2@(BinNode v2 l2 r2)
+      | v1 <= v2  = BinNode v1 (merge r1 h2) l1
+      | otherwise = BinNode v2 (merge r2 h1) l2
 
 -------------------------------------------------------------------------------
 
@@ -259,17 +257,20 @@ data BinaryTree v a = BLeaf v a | BBranch v (BinaryTree v a) (BinaryTree v a)
 --     Реализуйте получение списка элементов из дерева (0,25 балла)
 --
 toList :: BinaryTree v a -> [a]
-toList = undefined
+toList (BLeaf _ x)     = [x]
+toList (BBranch _ l r) = toList l ++ toList r
 
 -- 7.b Реализуйте tag, возвращающую текущий тег дерева (0,25 балла)
 
 tag :: BinaryTree v a -> v
-tag = undefined
+tag (BLeaf v _)     = v
+tag (BBranch v _ _) = v
 
 -- 7.c Реализуйте head, которая извлекает самый левый элемент (0,25 балла)
 --
-head :: BinaryTree v a -> a
-head = undefined
+head' :: BinaryTree v a -> a
+head' (BLeaf _ x)     = x
+head' (BBranch _ l _) = head' l
 
 -- Итак, доступ к первому листу был прост, а как быть со вторым, третьим, n-ым листом?
 -- Решение состоит в том, чтобы аннотировать каждое поддерево его размером.
@@ -299,11 +300,18 @@ branchSize :: BinaryTree Size a -> BinaryTree Size a -> BinaryTree Size a
 branchSize x y = BBranch (tag x + tag y) x y
 
 -- 7.d Создайте дерево типа `BinaryTree Size a`, используя leafSize и branchSize (0,25 балла)
+myTree :: BinaryTree Size Char
+myTree = branchSize (branchSize (leafSize 'a') (leafSize 'b')) (branchSize (leafSize 'c') (branchSize (leafSize 'd') (leafSize 'e')))
 
 -- 7.e Используя Size-аннотации, найдите n-й лист (1 балл)
 
 getInd :: BinaryTree Size a -> Int -> a
-getInd = undefined
+getInd (BLeaf _ x) 1 = x
+getInd (BLeaf _ _) _ = error "Leaf index out of bounds"
+getInd (BBranch _ l r) n
+  | n < 0 || n > tag l + tag r = error "Leaf index out of bounds"
+  | n <= tag l                 = getInd l n
+  | otherwise                  = getInd r (n - tag l)
 
 -------------------------------------------------------------------------------
 
@@ -334,13 +342,36 @@ type Priority = Int
 
 -- 8.a Задайте собственные конструкторы leafPrio и branchPrio (на замену BLeaf и BBranch), чтобы
 --     быть уверенными в корректности аннотаций по аналогии с leafSize и branchSize (0,25 балла)
+leafPrio :: Int -> a -> BinaryTree Priority a
+leafPrio = BLeaf
+
+branchPrio :: BinaryTree Priority a -> BinaryTree Priority a -> BinaryTree Priority a
+branchPrio x y = BBranch (min (tag x) (tag y)) x y
 
 -- 8.b Создайте дерево типа `BinaryTree Priority a`, используя leafPrio и branchPrio (0,25 балла)
+
+tree :: BinaryTree Priority Char
+tree = branchPrio
+          (branchPrio
+              (leafPrio 16 'a')
+              (leafPrio 4 'b')
+          )
+          (branchPrio
+              (leafPrio 2 'c')
+              (branchPrio
+                  (leafPrio 32 'd')
+                  (leafPrio 8 'e')
+              )
+          )
+
 
 -- 8.c Используя Priority-аннотации, найдите самый приоритетный элемент (1 балл)
 
 getWinner :: BinaryTree Priority a -> a
-getWinner = undefined
+getWinner (BLeaf _ x) = x
+getWinner (BBranch _ l r)
+  | tag l <= tag r = getWinner l
+  | otherwise      = getWinner r
 
 -------------------------------------------------------------------------------
 
@@ -364,6 +395,29 @@ getWinner = undefined
 -- Kакую ошибку вы получили с при текущем определении Size и Priority, попытавшись создать инстансы?
 -- Что нужно изменить в определении Size и Priority?
 
+-- Ошибка: Multiple declarations of ‘Size’, Multiple declarations of ‘Priority’. Меняем имена.
+
+newtype Size' = Size' Int deriving (Eq, Show)
+
+instance Semigroup Size' where
+  (<>) :: Size' -> Size' -> Size'
+  (<>) (Size' x) (Size' y) = Size' (x + y)
+
+instance Monoid Size' where
+  mempty :: Size'
+  mempty = Size' 0
+
+newtype Priority' = Priority' Int deriving (Eq, Show)
+
+instance Semigroup Priority' where
+  (<>) :: Priority' -> Priority' -> Priority'
+  (<>) (Priority' x) (Priority' y) = Priority' (x `min` y)
+
+instance Monoid Priority' where
+  mempty :: Priority'
+  mempty = Priority' maxBound
+
+
 -- | Теперь branchSize и branchPrio могут быть заменены на branch
 --
 branch :: Monoid v => BinaryTree v a -> BinaryTree v a -> BinaryTree v a
@@ -386,5 +440,13 @@ leaf :: Measured v a => a -> BinaryTree v a
 leaf x = BLeaf (measure x) x
 
 -- 10.b Напишите инстансы Measured для Size и Priority (0,5 балла)
+
+instance Measured Size' a where
+    measure :: a -> Size'
+    measure _ = Size' 1
+
+instance Measured Priority' a where
+    measure :: a -> Priority'
+    measure _ = Priority' maxBound
 
 -------------------------------------------------------------------------------

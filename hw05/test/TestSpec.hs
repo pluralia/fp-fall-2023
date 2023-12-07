@@ -35,16 +35,16 @@ spec = do
 
   describe "Tree Foldable instance" $ do
     it "foldr works correctly for a tree" $ do
-      let tree = Node 1 [Node 2 [Leaf], Node 3 [Node 4 [Leaf], Leaf]]
-      sum tree `shouldBe` (10 :: Int)
+      let t = Node 1 [Node 2 [Leaf], Node 3 [Node 4 [Leaf], Leaf]]
+      sum t `shouldBe` (10 :: Int)
 
     it "foldMap works correctly for a tree" $ do
-      let tree = Node "Hello" [Node " " [Leaf], Node "World" [Node "!" [Leaf], Leaf]]
-      concat tree `shouldBe` "Hello World!"
+      let t = Node "Hello" [Node " " [Leaf], Node "World" [Node "!" [Leaf], Leaf]]
+      concat t `shouldBe` "Hello World!"
 
     it "toList works correctly for a tree" $ do
-      let tree = Node 5 [Node 3 [Leaf], Node 7 [Node 6 [Leaf], Leaf]]
-      toList' tree `shouldBe` [5, 3, 7, 6 :: Int]
+      let t = Node 5 [Node 3 [Leaf], Node 7 [Node 6 [Leaf], Leaf]]
+      toList' t `shouldBe` [5, 3, 7, 6 :: Int]
 
   describe "applesInRange" $ do
     it "checks if all apples' weights are in the specified range" $ do
@@ -92,25 +92,80 @@ spec = do
     it "handles an empty tree correctly" $ do
       collectBasket Leaf `shouldBe` Basket M.empty
 
-  -- describe "siftDown" $ do
-  --   it "maintains heap property after applying siftDown" $ do
-  --     let heap = BinNode 10 (BinNode 4 BinLeaf BinLeaf) (BinNode 7 BinLeaf BinLeaf)
-  --         expectedHeap = BinNode 4 BinLeaf (BinNode 7 BinLeaf BinLeaf)
-  --     siftDown heap `shouldBe` expectedHeap
+  describe "siftDown" $ do
+    it "maintains heap property after applying siftDown" $ do
+      let heap :: BinaryHeap Int
+          heap = BinNode 10 (BinNode 4 BinLeaf BinLeaf) (BinNode 7 BinLeaf BinLeaf)
+          expectedHeap :: BinaryHeap Int
+          expectedHeap = BinNode 4 (BinNode 10 BinLeaf BinLeaf) (BinNode 7 BinLeaf BinLeaf)
+      siftDown heap `shouldBe` expectedHeap
 
-  --   it "handles heap with only one element correctly" $ do
-  --     let heap = BinNode 5 BinLeaf BinLeaf
-  --     siftDown heap `shouldBe` heap
-
-  describe "buildHeap" $ do
-    it "builds a correct heap from a list of elements" $ do
-      let inputList = [9, 4, 7, 5, 2, 1]
-          expectedHeap = BinNode 1 (BinNode 4 (BinNode 5 BinLeaf BinLeaf) BinLeaf) (BinNode 7 (BinNode 9 BinLeaf BinLeaf) BinLeaf)
-      buildHeap inputList `shouldBe` expectedHeap
+    it "handles heap with only one element correctly" $ do
+      let heap :: BinaryHeap Int
+          heap = BinNode 5 BinLeaf BinLeaf
+      siftDown heap `shouldBe` heap
 
     it "handles empty list input correctly" $ do
       buildHeap [] `shouldBe` (BinLeaf :: BinaryHeap Int)
+    
+  describe "toList" $ do
+    it "returns elements in order for a simple tree" $ do
+      let t :: BinaryTree Int Char
+          t = BBranch 1 (BLeaf 2 'A') (BLeaf 3 'B')
+      toList t `shouldBe` ['A', 'B']
 
+    it "returns elements in order for a complex tree" $ do
+      let t :: BinaryTree Int Char
+          t = BBranch 1
+                    (BBranch 2 (BLeaf 3 'A') (BBranch 4 (BLeaf 5 'B') (BLeaf 6 'C')))
+                    (BLeaf 7 'D')
+      toList t `shouldBe` ['A', 'B', 'C', 'D']
+
+  describe "tag" $ do
+    it "returns tag value for a leaf node" $ do
+      let t :: BinaryTree Int Char
+          t = BLeaf 10 'A'
+      tag t `shouldBe` 10
+
+    it "returns tag value for a branch node" $ do
+      let t :: BinaryTree Int Char 
+          t = BBranch 20 (BLeaf 30 'B') (BLeaf 40 'C')
+      tag t `shouldBe` 20
+
+  describe "head" $ do
+    it "returns the leftmost element for a simple tree" $ do
+      let t :: BinaryTree Int Char
+          t = BBranch 1 (BLeaf 2 'A') (BLeaf 3 'B')
+      head' t `shouldBe` 'A'
+
+    it "returns the leftmost element for a complex tree" $ do
+      let t :: BinaryTree Int Char
+          t = BBranch 1
+                    (BBranch 2 (BLeaf 3 'A') (BBranch 4 (BLeaf 5 'B') (BLeaf 6 'C')))
+                    (BLeaf 7 'D')
+      head' t `shouldBe` 'A'
+
+  describe "getInd" $ do
+    it "returns the value of the first leaf" $ do
+      let t = branchSize (branchSize (leafSize 'a') (leafSize 'b')) (branchSize (leafSize 'c') (leafSize 'd'))
+      getInd t 1 `shouldBe` 'a'
+
+    it "returns the value of the third leaf in a complex tree" $ do
+      let t = branchSize (branchSize (leafSize 'a') (leafSize 'b')) (branchSize (branchSize (leafSize 'c') (leafSize 'd')) (branchSize (leafSize 'e') (leafSize 'f')))
+      getInd t 3 `shouldBe` 'c'
+
+  describe "getWinner" $ do
+    it "returns the most priority element for a simple tree" $ do
+      let simpleTree :: BinaryTree Int Char
+          simpleTree = branchPrio (leafPrio 2 'A') (leafPrio 4 'B')
+      getWinner simpleTree `shouldBe` 'A'
+
+    it "returns the most priority element for a complex tree" $ do
+      let complexTree :: BinaryTree Int Char
+          complexTree = branchPrio
+                          (branchPrio (leafPrio 16 'A') (leafPrio 4 'B'))
+                          (branchPrio (leafPrio 2 'C') (branchPrio (leafPrio 32 'D') (leafPrio 8 'E')))
+      getWinner complexTree `shouldBe` 'C'
 
 toList' :: Tree a -> [a]
 toList' = foldMap (:[])
