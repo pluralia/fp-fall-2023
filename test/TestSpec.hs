@@ -251,7 +251,7 @@ spec = do
         let leaf1 = leafPrio (8 :: Priority) "Hello!"
         it "getWinner: leaf" $ do
             getWinner leaf1 `shouldBe` "Hello!"
-        
+
         it "getWinner: tree" $ do
             getWinner priorityTree `shouldBe` "c"
 
@@ -265,7 +265,7 @@ spec = do
         let leaf3 = leaf 3 :: BinaryTree Priority' Int
         let leaf33 = leaf 1 :: BinaryTree Priority' Int
         let leaf4 = leaf 'a' :: BinaryTree Priority' Char
-    
+
         it "Size'" $ do
             getSize (mempty :: Size') `shouldBe` 0
             getSize (Size' 3) `shouldBe` (3 :: Int)
@@ -288,15 +288,3 @@ spec = do
             branch leaf1 leaf11 `shouldBe` BBranch (Size' 2) leaf1 leaf11
             branch leaf2 leaf22 `shouldBe` BBranch (Size' 2) leaf2 leaf22
             branch leaf3 leaf33 `shouldBe` BBranch (Priority' 1) leaf3 leaf33
-
-
-
-
-
-            
-
-        
-
-
-
-
