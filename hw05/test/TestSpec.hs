@@ -10,6 +10,7 @@ import Test.Hspec
   , describe
   )
 import qualified Data.Map.Strict as M
+import Data.Monoid (Sum(..), Product(..))
 
 spec :: Spec
 spec = do
@@ -45,6 +46,15 @@ spec = do
     it "toList works correctly for a tree" $ do
       let t = Node 5 [Node 3 [Leaf], Node 7 [Node 6 [Leaf], Leaf]]
       toList' t `shouldBe` [5, 3, 7, 6 :: Int]
+
+    it "returns mempty for Leaf" $
+      foldMap Sum Leaf `shouldBe` (Sum 0 :: Sum Int)
+
+    it "sums up all elements in the tree" $
+      foldMap Sum testTree `shouldBe` (Sum 15 :: Sum Int)
+
+    it "multiplies all elements in the tree" $
+      foldMap Product testTree `shouldBe` (Product 120 :: Product Int)
 
   describe "applesInRange" $ do
     it "checks if all apples' weights are in the specified range" $ do
@@ -91,6 +101,26 @@ spec = do
 
     it "handles an empty tree correctly" $ do
       collectBasket Leaf `shouldBe` Basket M.empty
+
+    it "collects apples from a tree with single branch" $
+      let t = Node (Apple "Red" 5) [Node (Apple "Red" 8) [Node (Apple "Red" 3) [Leaf]]]
+          expectedBasket = Basket $ M.singleton "Red" [Apple "Red" 5, Apple "Red" 8, Apple "Red" 3]
+      in collectBasket t `shouldBe` expectedBasket
+
+    it "collects apples from a tree with multiple branches and leaves" $
+      let t =
+            Node (Apple "Red" 10)
+              [ Node (Apple "Green" 15) [Leaf]
+              , Node (Apple "Red" 20) [Leaf, Leaf]
+              , Node (Apple "Yellow" 12) [Node (Apple "Yellow" 8) [Leaf]]
+              ]
+          expectedBasket = Basket $
+            M.fromList
+              [ ("Red", [Apple "Red" 10, Apple "Red" 20])
+              , ("Green", [Apple "Green" 15])
+              , ("Yellow", [Apple "Yellow" 12, Apple "Yellow" 8])
+              ]
+      in collectBasket t `shouldBe` expectedBasket
 
   describe "siftDown" $ do
     it "maintains heap property after applying siftDown" $ do
@@ -169,3 +199,6 @@ spec = do
 
 toList' :: Tree a -> [a]
 toList' = foldMap (:[])
+
+testTree :: Tree Int
+testTree = Node 1 [ Node 2 [Leaf, Leaf] , Node 3 [Leaf] , Node 4 [Node 5 [Leaf], Leaf]]

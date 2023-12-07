@@ -445,8 +445,7 @@ instance Measured Size' a where
     measure :: a -> Size'
     measure _ = Size' 1
 
-instance Measured Priority' a where
-    measure :: a -> Priority'
-    measure _ = Priority' maxBound
-
+instance (Enum a) => Measured Priority' a where
+  measure :: Enum a => a -> Priority'
+  measure x = Priority' (fromEnum x)
 -------------------------------------------------------------------------------
