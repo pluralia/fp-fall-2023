@@ -6,8 +6,8 @@ import           Control.Monad.Reader()
 import           Control.Monad.State.Lazy
 import qualified Data.Map.Strict as M
 import qualified System.Random as R -- cabal install --lib  random
-import Data.Functor.Identity (Identity(..))
-
+import           Data.Functor.Identity (Identity(..))
+import           Data.Maybe ()
 
 import Test.Hspec
   (
@@ -33,9 +33,9 @@ spec = do
           packet1 = Packet (IPAddress "192.168.1.1") (IPAddress "192.168.2.2")
           packet2 = Packet (IPAddress "10.0.0.1") (IPAddress "192.168.1.1")
 
-        filterOne rules packet1 `shouldBe` WriterT (Identity (Just (Packet {pSource = IPAddress "192.168.1.1", pDestination = IPAddress "192.168.2.2"}),[Log {count = 1, msg = "Packet accepted: Packet {pSource = IPAddress \"192.168.1.1\", pDestination = IPAddress \"192.168.2.2\"}"}]))
-        filterOne rules packet2 `shouldBe` WriterT (Identity (Nothing,[Log {count = 1, msg = "Packet accepted: Packet {pSource = IPAddress \"10.0.0.1\", pDestination = IPAddress \"192.168.1.1\"}"}]))
-
+        filterOne rules packet1 `shouldBe` WriterT (Identity (Just Packet {pSource = IPAddress "192.168.1.1",pDestination = IPAddress "192.168.2.2"}, [Log {count = 1,msg = "Packet {pSource = IPAddress \"192.168.1.1\", pDestination = IPAddress \"192.168.2.2\"} accepted"}]))
+        filterOne rules packet2 `shouldBe` WriterT (Identity (Nothing, [Log {count = 1, msg = "Packet {pSource = IPAddress \"10.0.0.1\", pDestination = IPAddress \"192.168.1.1\"} rejected"}]))
+      
       it "mergeEntries tests" $ do
         let
           log1 = [Log 1 "Some error"]
@@ -45,11 +45,13 @@ spec = do
         snd (runWriter (mergeEntries log1 log2)) `shouldBe` [Log 3 "Some error"]
         snd (runWriter (mergeEntries log1 log3)) `shouldBe` [Log 3 "All good", Log 1 "Some error"]
 
-      it "mergeEntries tests" $ do
+      it "mergeEntries && groupSame tests" $ do
         let
+          val = [1, 2, 3, 4] :: [Int]
+          (_, logs) = runWriter $ groupSame [] mergeEntries val (\x -> tell [Log 2 (show x)])
           (r, _) = runWriter resultWriter
-        r `shouldBe` [2,4,6,8,10]
-
+        r    `shouldBe` [2,4,6,8,10]
+        logs `shouldBe` [Log 2 "1", Log 2 "2", Log 2 "3", Log 2 "4"]
 
       it "filterAll returns filtered packets along with logs" $ do
         let
