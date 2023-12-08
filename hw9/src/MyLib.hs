@@ -1,6 +1,9 @@
-{-# LANGUAGE LambdaCase #-} --hlint посоветовала
+{-# LANGUAGE InstanceSigs #-}
+--{-# LANGUAGE LambdaCase #-} --hlint посоветовала
+-- нужен для того, чтобы использовать \case
 
 module MyLib where
+import Data.List (find)
 
 {- cabal:
     build-depends: base, mtl, containers
@@ -15,6 +18,7 @@ import           Control.Monad.Writer.Lazy
 import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
 import           Control.Monad()
+import Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Map.Strict as M
 import qualified System.Random as R -- cabal install --lib  random
 
@@ -61,11 +65,7 @@ data Packet = Packet {
 -- | Возвращает первое правило, действующее на пакет
 --
 match :: [Rule] -> Packet -> Maybe Rule
-match []     _      = Nothing
-match (r:rs) packet =
-  if source r == pSource packet && destination r == pDestination packet
-    then Just r
-    else match rs packet
+match rules packet = find (\r -> source r == pSource packet && destination r == pDestination packet) rules
 
 
 -- | Фильтрует 1 пакет
@@ -73,12 +73,15 @@ match (r:rs) packet =
 filterOne :: [Rule] -> Packet -> Writer [Entry] (Maybe Packet)
 filterOne rules packet = do
   case match rules packet of
-    Just rule -> do
-      logMsg $ "Packet accepted: " ++ show packet
-      return $ if action' rule == Accept then Just packet else Nothing
-    Nothing -> do
-      logMsg $ "Packet rejected: " ++ show packet
-      return Nothing
+    Just rule -> logAndReturn $ if action' rule == Accept then " accepted" else " rejected"
+    Nothing -> logAndReturn " rejected"
+  where
+    -- | Функция 'logAndReturn' логгирует сообщение о статусе пакета и возвращает соответствующий результат.
+    logAndReturn status = do
+      logMsg $ show packet ++ status
+      return $ if status == " rejected" then Nothing else Just packet
+
+
 
 -- Немного усложним задачу: теперь мы хотим объединить дублирующиеся последовательные записи в журнале.
 -- Ни одна из существующих функций не позволяет изменять результаты предыдущих этапов вычислений,
@@ -103,6 +106,9 @@ mergeEntries (log1:rest1) (log2:rest2)
       tell [log1] >> return rest
 
 
+
+-- добавил примеров для запуска на списках длины 2 и больше
+
 -- | Применяет входную функцию к списку значений, чтобы получить список Writer.
 --   Затем запускает каждый Writer и объединяет результаты.
 --   Результатом работы функции является Writer, значение которого -- список всех значений из всех Writer,
@@ -110,16 +116,16 @@ mergeEntries (log1:rest1) (log2:rest2)
 --
 -- 'initial' -- изначальное значение лога
 --
-groupSame :: (Monoid a) => a -> (a -> a -> Writer a a) -> [b] -> (b -> Writer a c) -> Writer a [c]
-groupSame initial merge xs fn =
-  let go [] = return []
-      go (x:xs') = do
-        (result, log') <- listen (fn x)
-        mergedLog <- merge initial log'
-        rest <- go xs'
-        tell mergedLog
-        return (result : rest)
-  in go xs
+groupSame :: (Monoid accumulation) => accumulation -> (accumulation -> accumulation -> Writer accumulation accumulation) -> [item] -> (item -> Writer accumulation result) -> Writer accumulation [result]
+groupSame initialAccumulation mergeFunction items processFunction =
+  let
+    (results, logs) = runWriter $ mapM processFunction items
+    (_, updatedLogs) = runWriter $ mergeFunction initialAccumulation logs
+  in
+    tell updatedLogs >> return results
+
+
+-- Оборачивание лога в список (с использованием tell mergedLog) позволяет накапливать лог для каждого элемента списка.
 
 -- Пример использования groupSame
 
@@ -142,12 +148,15 @@ resultWriter = groupSame "Initial Log:\n" mergeLogs values doubleAndLog
 
 -- | Фильтрует список пакетов и возвращает список отфильтрованных пакетов и логи
 filterAll :: [Rule] -> [Packet] -> Writer [Entry] [Packet]
-filterAll _     []               = return []
-filterAll rules (packet:packets) =
-  filterOne rules packet >>=   
-    \case
-      Just p -> filterAll rules packets >>= \ rest -> return (p : rest)
-      Nothing -> filterAll rules packets
+filterAll rules packets = 
+  let processPacket = filterOne rules
+      initialAccumulation = []
+      mergeFunction = mergeEntries
+  in do
+    results <- groupSame initialAccumulation mergeFunction packets processPacket
+    return $ catMaybes results
+
+
 
 
 -------------------------------------------------------------------------------
@@ -196,28 +205,37 @@ addDefs newDefs env = env { vars = M.union (vars env) newDefs }
 --
 resolve :: Template -> Reader Environment String
 resolve (Text textContent) = return textContent
-resolve (Var templateVar) = 
-  ask >>= \env ->
-    case templateVar of
-      Text varName ->
-        let maybeValue = lookupVar varName env
-        in case maybeValue of
-          Just value -> return value
-          Nothing    -> return ""
-      _ -> resolve templateVar
-resolve _ = return ""
+
+resolve (Var (Text varName)) = asks $ fromMaybe "" . lookupVar varName
+
+resolve (Var templateVar) = resolve templateVar
+
+resolve (Quote templ) = resolve templ >>= \name ->
+  asks (lookupTemplate name) >>= \body ->
+    resolve $ fromMaybe (Text "") body
+
+resolve (Include templ defs) = do
+  env <- ask
+  name <- resolve templ
+  body <- resolve $ fromMaybe (Text "") $ lookupTemplate name env
+  resolvedDefs <- mapM resolveDef defs
+  local (addDefs (M.fromList resolvedDefs)) $ resolve $ Text body
+
+resolve (Compound ts) = mconcat <$> mapM resolve ts
+
 
 -- Резолвит (подставляет все неизвестные) шаблон и выдает в качестве ответа
 -- пару (имя шаблона, значение)
 resolveDef :: Definition -> Reader Environment (String, String)
-resolveDef (Definition templateName value) =
-  ask >>= \env ->
-    let resolvedValue = runReader (resolve value) env
-        getTemplateName :: Template -> String
-        getTemplateName (Text name)    = name
-        getTemplateName (Var template) = getTemplateName template
-        getTemplateName _              = ""
-    in return (getTemplateName templateName, resolvedValue)
+resolveDef (Definition templateName value) = do
+  env <- ask
+  let resolvedValue = runReader (resolve value) env
+      getTemplateName :: Template -> String
+      getTemplateName (Text name)    = name
+      getTemplateName (Var template) = runReader (resolve template) env -- точно! добавил
+      getTemplateName _              = ""
+  return (getTemplateName templateName, resolvedValue)
+
 
 -------------------------------------------------------------------------------
 
@@ -378,10 +396,10 @@ int fib(int n) {
     int cur = 1;
 
     for (int i = 0; i < n; i = i + 1) {
-        int c = cur;
+        int temp = cur;
         cur = prev + cur;
-        prev = cur;
-    }
+        prev = temp;          Теперь используется временная переменная temp, 
+    }                         чтобы сохранить значение cur перед обновлением prev
 
     return cur
 } 
@@ -394,8 +412,9 @@ fib n = do
   forM_' (setVar "i" 0, getVar "i" >>= \i -> return (i < n), incVar "i" 1) $ do
     curValue  <- getVar "cur"
     prevValue <- getVar "prev"
+    let tempValue  = curValue
     setVar "cur" (curValue + prevValue) 
-    setVar "prev" curValue     
+    setVar "prev" tempValue     
   getVar "cur"
 
 -------------------------------------------------------------------------------
@@ -415,12 +434,16 @@ newtype StateWithError s e a = StateWithError (s -> Either e (a, s))
 -- Привидите пример использования
 
 instance Functor (StateWithError s e) where
+  fmap :: (a -> b) -> StateWithError s e a -> StateWithError s e b
   fmap f (StateWithError g) = StateWithError $ \s -> case g s of
     Left e         -> Left e
     Right (a, s')  -> Right (f a, s')
 
 instance Applicative (StateWithError s e) where
+  pure :: a -> StateWithError s e a
   pure a = StateWithError $ \s -> Right (a, s)
+  
+  (<*>) :: StateWithError s e (a -> b) -> StateWithError s e a -> StateWithError s e b
   StateWithError mf <*> StateWithError ma = StateWithError $ \s -> case mf s of
     Left e          -> Left e
     Right (f, s')   -> case ma s' of
@@ -428,7 +451,10 @@ instance Applicative (StateWithError s e) where
       Right (a, s'') -> Right (f a, s'')
 
 instance Monad (StateWithError s e) where
+  return :: a -> StateWithError s e a
   return = pure
+
+  (>>=) :: StateWithError s e a -> (a -> StateWithError s e b) -> StateWithError s e b
   StateWithError ma >>= f = StateWithError $ \s -> case ma s of
     Left e          -> Left e
     Right (a, s')   -> case f a of
