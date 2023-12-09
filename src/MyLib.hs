@@ -8,6 +8,9 @@ import qualified Data.Map.Strict as M
 import qualified System.Random as R
 import           Data.List (find)
 import           Control.Monad (when)
+import Data.Maybe (catMaybes)
+import Data.Functor ((<&>))
+import Data.Map.Internal (alter)
 
 -------------------------------------------------------------------------------
 
@@ -23,7 +26,7 @@ import           Control.Monad (when)
 data Entry = Log {
       count :: Int     -- количество таких сообщений подряд, идущих друг за другом
     , msg   :: String  -- сообщение
-    } deriving Eq
+    } deriving (Show, Eq)
 
 -- | Добавляет сообщение в лог
 --
@@ -32,11 +35,16 @@ logMsg s = tell [Log 1 s]
 
 -- | Задайте тип, выражающий IP-адрес
 --
-newtype IP = IP Int
+newtype IP = IPAddress String
   deriving (Show, Eq)
 
 data Action = Accept | Reject
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show Action where
+  show :: Action -> String
+  show Accept = "Packet accept"
+  show Reject = "Packet reject"
 
 data Rule = Rule {
       action :: Action
@@ -47,7 +55,11 @@ data Rule = Rule {
 data Packet = Packet {
       pSource :: IP
     , pDestination :: IP
-    } deriving (Show, Eq)
+    } deriving (Eq)
+
+instance Show Packet where
+  show :: Packet -> String
+  show packet = " input: " <> show (pSource packet) <> " output: " <> show (pDestination packet)
 
 -- | Возвращает первое правило, действующее на пакет
 --
@@ -57,19 +69,15 @@ match rules (Packet ps pd) = find (\ (Rule _ s d) -> s == ps && d == pd) rules
 -- | Фильтрует 1 пакет
 -- 
 filterOne :: [Rule] -> Packet -> Writer [Entry] (Maybe Packet)
-filterOne [] _ = writer (Nothing, [])
 filterOne rules packet = do
   let maybeRule = match rules packet
-      messageAcc = "Packet accept: input " <> show (pSource packet) <> "output " <> show (pDestination packet)
-      messageRej = "Packet reject: input " <> show (pSource packet) <> "output " <> show (pDestination packet)
   case maybeRule of
-    Just (Rule Accept _ _) -> do
-      logMsg messageAcc
+    Just (Rule act _ _) -> do
+      logMsg $ show act <> show packet
       pure (Just packet)
-    Just (Rule Reject _ _) -> do
-      logMsg messageRej
+    _                   -> do
+      logMsg $ "No rules for packet" <> show packet
       pure Nothing
-    _                      -> pure Nothing
 
 -- Немного усложним задачу: теперь мы хотим объединить дублирующиеся последовательные записи в журнале.
 -- Ни одна из существующих функций не позволяет изменять результаты предыдущих этапов вычислений,
@@ -82,18 +90,13 @@ filterOne rules packet = do
 --   При объединении двух разных сообщений, в лог записывается первое сообщение, а второе возвращается в качестве результата.
 --
 mergeEntries :: [Entry] -> [Entry] -> Writer [Entry] [Entry]
-mergeEntries _ [] = pure []
-mergeEntries [] _ = pure []
-mergeEntries (log1 : logs1) (log2 : logs2) = do
-  if msg log1 == msg log2
-    then do
-      let res = [Log (count log1 + count log2) (msg log1)]
-      resTail <- mergeEntries logs1 logs2
-      return $ res <> resTail
-    else do
-      res <- writer ([log2], [log1])
-      resTail <- mergeEntries logs1 logs2
-      return $ res <> resTail
+mergeEntries message []         = writer ([], message)
+mergeEntries []      message    = writer ([], message)
+mergeEntries [l1]  log2@(l2:t2) = do
+  if msg l1 == msg l2
+    then writer ([], Log (count l1 + count l2) (msg l1) : t2)
+    else writer ([l1], log2)
+mergeEntries _       _          = error "Uncorrect logs!"
 
 -- | Применяет входную функцию к списку значений, чтобы получить список Writer.
 --   Затем запускает каждый Writer и объединяет результаты.
@@ -103,24 +106,17 @@ mergeEntries (log1 : logs1) (log2 : logs2) = do
 -- 'initial' -- изначальное значение лога
 --
 groupSame :: (Monoid a) => a -> (a -> a -> Writer a a) -> [b] -> (b -> Writer a c) -> Writer a [c]
-groupSame initial _ [] _ = tell initial >> pure []
-groupSame initial merge (x :xs) fn = writer (f : v, newLog)
-  where
-    (f, logF)   = runWriter $ fn x
-    (v, logT)   = runWriter $ groupSame initial merge xs fn
-    (_, newLog) = runWriter $ merge logF logT
+groupSame initial _ [] _ = writer ([], initial)
+groupSame initial merge (x:xs) fn = do
+  let (f, logF) = runWriter $ fn x
+      (v, logT) = runWriter $ groupSame initial merge xs fn
+      (res, newLog) = runWriter $ merge logF logT
+  writer (f : v, res <> newLog)
 
 -- | Фильтрует список пакетов и возвращает список отфильтрованных пакетов и логи
 --
 filterAll :: [Rule] -> [Packet] -> Writer [Entry] [Packet]
-filterAll _     []                 = pure []
-filterAll rules (packet : packets) = do
-  maybePacket <- filterOne rules packet
-  case maybePacket of
-    Just pack -> do
-      res <- filterAll rules packets
-      pure $ [pack] <> res
-    _         -> filterAll rules packets
+filterAll rules packets = groupSame [] mergeEntries packets (filterOne rules) <&> catMaybes
 
 -------------------------------------------------------------------------------
 
@@ -140,7 +136,7 @@ data Template = Text String
   deriving (Show, Eq)
 
 data Definition = Definition Template Template
-  deriving (Show, Eq)   
+  deriving (Show, Eq)
 
 -- | Окружение -- это имя шаблона в шаблон и имя переменной в переменную
 --
@@ -180,30 +176,23 @@ resolve (Text tempName) = pure tempName -- имя наблона/перемен�
 -- находим имя переменной, возвращаем её значение из Env vars
 resolve (Var varTemp) = do
   varName <- resolve varTemp
-  env     <- ask
-  let maybeVarVal = lookupVar varName env
-  case maybeVarVal of
-    Just varVal -> pure varVal
-    Nothing     -> pure ""
+  maybeVarVal <- asks $ lookupVar varName
+  pure $ maybe "" show maybeVarVal
 -- находим имя шаблона, возвращаем его "значение" из Env templs 
 resolve (Quote qTemp) = do
   qName <- resolve qTemp
-  env   <- ask
-  let maybeQVal = lookupTemplate qName env
-  case maybeQVal of
-    Just tempVal -> pure $ show tempVal
-    Nothing      -> pure ""
+  maybeQVal <- asks $ lookupTemplate qName
+  maybe (pure "") resolve maybeQVal
 -- находим имя шаблона, возвращаем его "значение" из окружения
 -- + записываем в окружение новые шаблоны (из definition) : имя tempL, значение tempR 
 -- их как (String, String) возьмём из resolveDef
 resolve (Include temp defTemps) = do
   incName <- resolve temp
-  env <- ask
-  let maybeIncVal = lookupTemplate incName env
+  maybeIncVal <- asks $ lookupTemplate incName
   case maybeIncVal of
     Just incVal -> do
-      templsPairs <- traverse resolveDef defTemps                     -- находим (имя, значение) для всех Definition
-      local (addDefs $ M.fromList templsPairs) $ pure . show $ incVal -- добавляем их в окружение
+      templsPairs <- traverse resolveDef defTemps               -- находим (имя, значение) для всех Definition
+      local (addDefs $ M.fromList templsPairs) $ resolve incVal -- добавляем их в окружение
       -- возвращаем зачение __нашего__ шаблона
     Nothing     -> pure ""
 -- находим имя шаблона, возвращаем сконкатенированные "значения" его вложенных шаблонов
@@ -214,7 +203,7 @@ resolve (Compound temps) = do
 -- Функция для запуска новых Template'ов на изменённом окружении
 mutResolve :: [Definition] -> Reader Environment String -> Reader Environment String
 mutResolve defTemps t = do
-  templsPairs <- traverse resolveDef defTemps 
+  templsPairs <- traverse resolveDef defTemps
   local (addDefs $ M.fromList templsPairs) t
 
 -------------------------------------------------------------------------------
@@ -253,10 +242,24 @@ makeRandomValue g =
 getAny :: (R.Random a) => State R.StdGen a
 getAny = state R.random
 
+doubleGetAny :: State R.StdGen (Int, Int)
+doubleGetAny = do
+  r1 <- (getAny :: State R.StdGen Int)
+  r2 <- (getAny :: State R.StdGen Int)
+  pure (r1, r2)
+
+-- state :: (s -> (a, s)) -> m a
+-- random :: RandomGen g => g -> (a, g)
 -- | Аналогична getAny, но генерирует значение в границах
 --
 getOne :: (R.Random a) => (a, a) -> State R.StdGen a
 getOne bounds = state $ R.randomR bounds
+
+doubleGetOne :: (Int, Int) -> State R.StdGen (Int, Int)
+doubleGetOne bound = do
+  r1 <- (getOne bound :: State R.StdGen Int)
+  r2 <- (getOne bound :: State R.StdGen Int)
+  pure (r1, r2)
 
 -- | Используя монаду State с StdGen в качестве состояния, мы можем генерировать случаные значения
 --   заданного типа, не передавая состояния генератора случайных чисел в коде вручную
@@ -331,10 +334,7 @@ setVar name val = state (\e -> ((), M.insert name val e))
 incVar :: String -> Integer -> State Context ()
 incVar name delta = do
   env <- get
-  let maybeVal = M.lookup name env
-  case maybeVal of
-    Just val -> setVar name (val + delta)
-    Nothing  -> error "Variable not in Context!"
+  put $ alter (maybe (error "Variable not in Context!") (Just . (+) delta)) name env
 
 -- | Достаёт из контекста значение заданной переменной.
 --   Если переменной нет в контексте, то кидает ошибку.
@@ -342,11 +342,7 @@ incVar name delta = do
 getVar :: String -> State Context Integer
 getVar name = do
   env <- get
-  let maybeVal = M.lookup name env
-  case maybeVal of
-    -- чтобы была возможность записать не в таком виде `(\e -> (val, e))` подключила прагму TupleSections
-    Just val -> state (val, )
-    Nothing  -> error "Variable not in Context!"
+  maybe (error "Variable not in Context!") (\val -> state (val, )) $ M.lookup name env
 
 ---------------------------------------
 
