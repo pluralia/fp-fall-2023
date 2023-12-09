@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DerivingVia #-}
 
@@ -48,11 +49,14 @@ data StudentsLog = StudentsLog
 --
 
 calculateStudentsLog :: [Student] -> StudentsLog
-calculateStudentsLog = foldr helper (StudentsLog [] (Just maxBound) (Just minBound))
+calculateStudentsLog [] = StudentsLog [] Nothing Nothing
+calculateStudentsLog students =
+  foldr helper (StudentsLog [] (Just maxBound) (Just minBound)) students
   where
     helper :: Student -> StudentsLog -> StudentsLog
-    helper (Student n g) (StudentsLog names worst best) = 
+    helper (Student n g) (StudentsLog names worst best) =
       StudentsLog (n : names) (min <$> worst <*> Just g) (max <$> best <*> Just g)
+
 
 
 
@@ -146,9 +150,6 @@ thisApple tree colors weightRange = getFirst $ foldMap checkApple tree
     wInRange :: Float -> (Int, Int) -> Bool
     wInRange weight (low, high) = fromIntegral low <= weight && weight <= fromIntegral high
 
-    getFirst :: First a -> Maybe a
-    getFirst (First a) = a
-
 -- 4.d Считает сумму весов всех яблок в дереве (0,25 балла)
 --
 sumOfApples :: Tree Apple -> Float
@@ -190,22 +191,22 @@ data BinaryHeap a
   | BinLeaf
   deriving (Eq, Show)
 
--- 6.a Реализуйте функцию siftDown, восстанавливающую свойство кучи в куче (0,5 балла)
---      
+-- 6.a Реализуйте функцию siftDown, восстанавливающую свойство кучи в куче (0,5 балла) 
 siftDown :: Ord a => BinaryHeap a -> BinaryHeap a
 siftDown BinLeaf = BinLeaf
-siftDown heap@(BinNode x left' right')
-  | x > minChildVal = BinNode minChildVal (siftDown $ replaceMinChild x) right'
-  | otherwise = heap
-  where
-    minChildVal = min (rootVal left') (rootVal right')
-    replaceMinChild val' = if rootVal left' == minChildVal then replaceVal left' val' else replaceVal right' val'
-    rootVal BinLeaf = x
-    rootVal (BinNode y _ _) = y
-    replaceVal (BinNode _ l r) v = BinNode v l r
-    replaceVal BinLeaf _ = BinLeaf
-
-
+siftDown node@(BinNode v l r) = case (l, r) of
+    (BinLeaf, BinLeaf) -> node
+    (BinLeaf, _) -> if v < val r
+                       then BinNode v BinLeaf r
+                       else BinNode (val r) BinLeaf (siftDown (r {val = v}))
+    (_, BinLeaf) -> if v < val l
+                       then BinNode v l BinLeaf
+                       else BinNode (val l) (siftDown (l {val = v})) BinLeaf
+    (_, _) ->
+        let minChild = if val l < val r then l else r
+        in if v < val minChild
+               then BinNode v l r
+               else BinNode (val minChild) (siftDown (minChild {val = v})) (if minChild == l then r else l)
 
 
 -- 6.b Реализуйте с помощью свёртки функцию buildHeap,
@@ -300,7 +301,9 @@ create =
 
 getInd :: BinaryTree Size a -> Int -> a
 getInd (BLeaf _ val) _ = val
+-- getInd (BLeaf _ _) _ = error "Wrong indx"
 getInd (BBranch _ left right) n
+  | (n < 0) || (n > leftSize + 1) = error "Wrong"
   | n <= leftSize = getInd left n
   | otherwise = getInd right (n - leftSize)
   where
@@ -379,8 +382,8 @@ getWinner (BBranch _ left right)
 
 -- | Теперь branchSize и branchPrio могут быть заменены на branch
 --
--- branch :: Monoid v => BinaryTree v a -> BinaryTree v a -> BinaryTree v a
--- branch x y = BBranch (tag x <> tag y) x y
+branch :: Monoid v => BinaryTree v a -> BinaryTree v a -> BinaryTree v a
+branch x y = BBranch (tag x <> tag y) x y
 
 -- | Однако, мы не можем сделать то же с leaf. Почему?
 --
@@ -389,14 +392,14 @@ getWinner (BBranch _ left right)
 
 -- Чтобы задать leaf унифицированным способом аналогично branch, давайте создадим класс типов Measured
 
--- class Monoid v => Measured v a where
---     measure :: a -> v
+class Monoid v => Measured v a where
+    measure :: a -> v
 
 -- | Написав различные инстансы этого класса для наших `BinaryTree Size a` и `BinaryTree Priority a`,
 -- | мы сможем по-разному вычислять аннотацию листа по значению. Тогда
 -- 
--- leaf :: Measured v a => a -> BinaryTree v a
--- leaf x = BLeaf (measure x) x
+leaf :: Measured v a => a -> BinaryTree v a
+leaf x = BLeaf (measure x) x
 
 -- 10.b Напишите инстансы Measured для Size и Priority (0,5 балла)
 
