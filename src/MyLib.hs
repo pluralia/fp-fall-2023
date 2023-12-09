@@ -342,7 +342,7 @@ incVar name delta = do
 getVar :: String -> State Context Integer
 getVar name = do
   env <- get
-  maybe (error "Variable not in Context!") (\val -> state (val, )) $ M.lookup name env
+  maybe (error "Variable not in Context!") return $ M.lookup name env
 
 ---------------------------------------
 
