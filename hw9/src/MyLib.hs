@@ -18,7 +18,7 @@ import           Control.Monad.Writer.Lazy
 import           Control.Monad.Reader
 import           Control.Monad.State.Lazy
 import           Control.Monad()
-import Data.Maybe (catMaybes, fromMaybe)
+import           Data.Maybe (catMaybes, fromMaybe)
 import qualified Data.Map.Strict as M
 import qualified System.Random as R -- cabal install --lib  random
 
@@ -94,20 +94,22 @@ filterOne rules packet = do
 --   При объединении двух разных сообщений, в лог записывается первое сообщение, а второе возвращается в качестве результата.
 --
 mergeEntries :: [Entry] -> [Entry] -> Writer [Entry] [Entry]
-mergeEntries [] ys = tell ys >> return []
-mergeEntries xs [] = tell xs >> return []
-mergeEntries (log1:rest1) (log2:rest2)
-  | msg log1 == msg log2 =
-    let merged = Log (count log1 + count log2) (msg log1)
-    in mergeEntries rest1 rest2 >>= \mergedRest ->
-        tell [merged] >> return mergedRest
-  | otherwise =
-    mergeEntries rest1 (log2 : rest2) >>= \rest ->
-      tell [log1] >> return rest
-
+mergeEntries [] [] = return []
+mergeEntries (x : xs) [] =
+  tell [x] >> return xs
+mergeEntries [] (log' : rest) =
+  mergeEntries [log'] rest
+mergeEntries (x : xs) (log' : rest) =
+  if msg x == msg log'
+    then
+      let x' = Log (count x + count log') (msg x)
+      in mergeEntries (x' : xs) rest
+    else
+      tell [x] >> mergeEntries ([log', x] ++ xs) rest
 
 
 -- добавил примеров для запуска на списках длины 2 и больше
+-- добавил Ваше тест
 
 -- | Применяет входную функцию к списку значений, чтобы получить список Writer.
 --   Затем запускает каждый Writer и объединяет результаты.
@@ -286,6 +288,9 @@ getAny = state R.random
 getOne :: (R.Random a) => (a, a) -> State R.StdGen a
 getOne bounds = state $ R.randomR bounds
 
+-- Функции getAny и getOne используют монаду State StdGen для передачи состояния генератора случайных чисел.
+-- Мне кажется, что обновление состояния будет автоматически обработано.
+
 -- | Используя монаду State с StdGen в качестве состояния, мы можем генерировать случаные значения
 --   заданного типа, не передавая состояния генератора случайных чисел в коде вручную
 --
@@ -369,10 +374,11 @@ setVar varName value = do
 --
 incVar :: String -> Int -> State Context ()
 incVar varName increment = do
-  context <- get
-  case M.lookup varName context of
-    Just oldValue -> put $ M.insert varName (oldValue + increment) context
-    Nothing       -> error $ "Variable not found: " ++ varName
+  modify $ M.alter updateVar varName -- через alter
+  where
+    updateVar :: Maybe Int -> Maybe Int
+    updateVar (Just oldValue) = Just (oldValue + increment)
+    updateVar Nothing = error $ "Variable not found: " ++ varName  
 
 -- | Достаёт из контекста значение заданной переменной.
 --   Если переменной нет в контексте, то кидает ошибку.
@@ -410,11 +416,10 @@ fib n = do
   setVar "prev" 0
   setVar "cur" 1
   forM_' (setVar "i" 0, getVar "i" >>= \i -> return (i < n), incVar "i" 1) $ do
-    curValue  <- getVar "cur"
     prevValue <- getVar "prev"
-    let tempValue  = curValue
-    setVar "cur" (curValue + prevValue) 
-    setVar "prev" tempValue     
+    tempValue <- getVar "cur" -- точно
+    setVar "cur" (tempValue + prevValue)
+    setVar "prev" tempValue
   getVar "cur"
 
 -------------------------------------------------------------------------------
