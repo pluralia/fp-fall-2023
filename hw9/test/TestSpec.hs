@@ -43,7 +43,7 @@ spec = do
           log3 = [Log 3 "All good"]
 
         snd (runWriter (mergeEntries log1 log2)) `shouldBe` [Log 3 "Some error"]
-        snd (runWriter (mergeEntries log1 log3)) `shouldBe` [Log 3 "All good", Log 1 "Some error"]
+        snd (runWriter (mergeEntries log1 log3)) `shouldBe` [Log 1 "Some error", Log 3 "All good"]
 
       it "mergeEntries && groupSame tests" $ do
         let
@@ -52,6 +52,14 @@ spec = do
           (r, _) = runWriter resultWriter
         r    `shouldBe` [2,4,6,8,10]
         logs `shouldBe` [Log 2 "1", Log 2 "2", Log 2 "3", Log 2 "4"]
+
+      it "mergeEntries && groupSame tests from Git" $ do
+        let
+          rules = [Rule Accept (IPAddress "192.168.1.1") (IPAddress "192.168.1.2")]
+          packets = [Packet (IPAddress "192.168.1.1") (IPAddress "192.168.1.2"), Packet (IPAddress "192.168.1.3") (IPAddress "192.168.1.4"), Packet (IPAddress "192.168.1.3") (IPAddress "192.168.1.4")]
+          result = snd $ runWriter $ groupSame [] mergeEntries packets (filterOne rules)
+        show result `shouldBe`
+          "[Log {count = 1, msg = \"Packet {pSource = IPAddress \\\"192.168.1.1\\\", pDestination = IPAddress \\\"192.168.1.2\\\"} accepted\"},Log {count = 2, msg = \"Packet {pSource = IPAddress \\\"192.168.1.3\\\", pDestination = IPAddress \\\"192.168.1.4\\\"} rejected\"}]"
 
       it "filterAll returns filtered packets along with logs" $ do
         let
