@@ -386,6 +386,23 @@ getWinner (BBranch _ left right)
 -- 10.a Обобщите эту функцию, написав инстансы `Monoid Size` и `Monoid Priority` (0,5 балла)
 -- Kакую ошибку вы получили с при текущем определении Size и Priority, попытавшись создать инстансы?
 -- Что нужно изменить в определении Size и Priority?
+newtype Size' = Size' {getSize :: Int}
+  deriving (Show, Eq)
+
+newtype Priority' = Priority' {getPriority :: Int}
+  deriving (Show, Eq)
+
+instance Semigroup Size' where
+  (<>) (Size' x) (Size' y) = Size' (x + y)
+
+instance Monoid Size' where
+  mempty = Size' 0
+
+instance Semigroup Priority' where
+  (<>) (Priority' x) (Priority' y) = Priority' (min x y)
+
+instance Monoid Priority' where
+  mempty = Priority' maxBound
 
 -- | Теперь branchSize и branchPrio могут быть заменены на branch
 --
@@ -409,5 +426,13 @@ leaf :: Measured v a => a -> BinaryTree v a
 leaf x = BLeaf (measure x) x
 
 -- 10.b Напишите инстансы Measured для Size и Priority (0,5 балла)
+
+
+instance Measured Size' a where
+  measure _ = Size' 1
+
+instance Enum a => Measured Priority' a where
+  measure = Priority' . fromEnum
+
 
 -------------------------------------------------------------------------------
