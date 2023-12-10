@@ -27,6 +27,13 @@ instance Functor (Arrow a) where
   fmap f (Arrow g) = Arrow (f . g)
 
 -- Напишите инстанс Functor для Arrow и покажите выполнение законов
+--  закон  fmap id      == id
+-- fmap id (Arrow h) = Arrow (id . h) = Arrow h
+
+-- закон fmap (g . h) == fmap g . fmap h
+--  fmap (f . g) (Arrow h) = Arrow ((f . g) . h)
+-- Arrow (f . (g . h)) = fmap f (fmap g (Arrow h))
+
 
 -------------------------------------------------------------------------------
 
