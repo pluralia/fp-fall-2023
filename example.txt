@@ -1,0 +1,9 @@
+After the release of Miranda by Research Software Ltd. in 1985, interest in
+lazy functional languages grew. By 1987, more than a dozen non-strict, purely
+functional programming languages existed. Miranda was the most widely used, but
+it was proprietary software. At the conference on Functional Programming
+Languages and Computer Architecture (FPCA '87) in Portland, Oregon, there was a
+strong consensus that a committee be formed to define an open standard for such
+languages. The committee's purpose was to consolidate existing functional
+languages into a common one to serve as a basis for future research in
+functional-language design.
