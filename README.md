@@ -252,12 +252,19 @@ Haskell course homework
 
 ## 11 lecture
 
-#### Monad Transformers
+#### Laziness and eager Haskell [[source](https://web.archive.org/web/20190313085409/https://alpmestan.com/posts/2013-10-02-oh-my-laziness.html)]
+
+- Evaluation strategies: call-by-need vs call-by-value
+- NF vs WHNF
+- thunks
+- BangPatterns extension
+- UNPACK and unboxed types
+- `$!` and `seq`
 
 ---
 
 ## 12 lecture
 
-#### Lenses
+#### Monad Transformers
 
 ---
