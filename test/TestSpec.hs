@@ -1,14 +1,14 @@
 module TestSpec (spec) where
 
-import           Data.Char                    (isDigit)
-import           Data.Map.Strict              (Map, fromList)
+import           Data.Char       (isDigit)
+import           Data.Map.Strict (fromList)
 
 
-import           Test.Hspec                   (Spec, describe, it, shouldBe)
+import           Test.Hspec      (Spec, describe, it, shouldBe, shouldReturn)
 
-import           MyHW6
+import           MyHW6        
+import           MyHW7
 import           Parser
-import           Text.ParserCombinators.ReadP (sepBy)
 
 spec :: Spec
 spec = do
@@ -101,8 +101,8 @@ spec = do
 --
   describe "task 4" $ do
     it "takeWhileP" $ do
-      runParser (takeWhileP (== 'a')) "" `shouldBe` Nothing
-      runParser (takeWhileP (== 'a')) "bcd" `shouldBe` Nothing
+      runParser (takeWhileP (== 'a')) "" `shouldBe` Just ("", "")
+      runParser (takeWhileP (== 'a')) "bcd" `shouldBe` Just ("", "bcd")
       runParser (takeWhileP (== 'a')) "aaabc" `shouldBe` Just ("aaa", "bc")
       runParser (takeWhileP isDigit) "123ABC" `shouldBe` Just ("123", "ABC")
 
@@ -153,3 +153,12 @@ spec = do
       runParser (rowP cols1) ",5" `shouldBe` Just (res3, "")
       runParser (rowP cols1) ",," `shouldBe` Just (res2, "")
       runParser (rowP cols2) "Apple,99.99,2" `shouldBe` Just (res4, "")
+
+-- HW7: task 2
+
+  describe "FASTA" $ do
+    it "fullyParsed" $ do
+      testFullyParsedIO "files_for_parsing/test.fasta" fastaListP `shouldReturn` True
+
+
+

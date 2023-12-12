@@ -10,8 +10,8 @@ import           Parser
 -- В этой домашке вам потребуется подгружать одновременно 2 файла в ghci:
 -- src/Parser.hs и src/MyLib.hs. Это требует 2 шага:
 --
--- ghci> :l src/Parser.hs src/MyLib.hs
--- ghci> :m Parser MyLib
+-- ghci> :l src/Parser.hs src/MyHW6.hs
+-- ghci> :m Parser MyHW6
 
 -------------------------------------------------------------------------------
 
@@ -261,7 +261,7 @@ fmap4 f fa fb fc fd = f <$> fa <*> fb <*> fc <*> fd
 -- | 4.a Парсит весь поток, пока символы потока удовлетворяют заданному условию (0,25 балла)
 --
 takeWhileP :: (Char -> Bool) -> Parser String
-takeWhileP f = some (satisfyP f)
+takeWhileP f = many (satisfyP f)
 
 ---------------------------------------
 

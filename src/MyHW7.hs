@@ -1,24 +1,22 @@
 module MyHW7 where
 import           Control.Applicative
-import qualified Data.Map.Strict     as M
-import           Data.Maybe          (isJust)
+import           MyHW6
 import           Parser
-import qualified Text.Read.Lex       as MyLib
 
 -------------------------------------------------------------------------------
 
 -- В этой домашке вам потребуется подгружать одновременно 2 файла в ghci:
 -- src/Parser.hs и src/MyLib.hs. Это требует 2 шага:
 --
--- ghci> :l src/Parser.hs src/MyLib.hs
--- ghci> :m Parser MyLib
+-- ghci> :l src/Parser.hs src/MyHW7.hs
+-- ghci> :m Parser MyHW7
 
 -------------------------------------------------------------------------------
 
 -- | Для чтения содержимого файлов в заданиях 2 и 3 используйте эту функцию
 --
-testIO :: FilePath -> Parser a -> IO (Maybe (a, String))
-testIO filePath parser = do
+testIO' :: FilePath -> Parser a -> IO (Maybe (a, String))
+testIO' filePath parser = do
     content <- readFile filePath         -- чтение из файла
     return $ runParser parser content    -- запуск парсера на содержимом
 
@@ -26,7 +24,7 @@ testIO filePath parser = do
 --   Здесь мы просто проверяем, что парсер распарсил входную строку полностью
 --
 testFullyParsedIO :: FilePath -> Parser a -> IO Bool
-testFullyParsedIO filePath parser = maybe False (null . snd) <$> testIO filePath parser
+testFullyParsedIO filePath parser = maybe False (null . snd) <$> testIO' filePath parser
 
 -- Вызывать `testFullyParsedIO` в тестах можно так
 --     it "My test" $ do
@@ -64,8 +62,34 @@ data Fasta = Fasta {
 -- | В одном файле можно встретить несколько последовательностей, разделенных произвольным числом переводов строк
 --   Напишите парсер контента такого файла (Пример в файле `test.fasta`)
 --
+
+fastaDescriptionP :: Parser String
+fastaDescriptionP = satisfyP (== '>') *> takeWhileP (/= '\n')
+
+fastaCommentP :: Parser String
+fastaCommentP = (satisfyP (== ';') *> takeWhileP (/= '\n')) <|> pure ""
+
+fastaSubseqP :: Parser [Acid]
+fastaSubseqP = some (satisfyP (\x -> x /= ';' && x /= '>' && x /= '\n'))
+
+fastaSeqP :: Parser [Acid]
+fastaSeqP = concat <$> many (fastaSubseqP <* many newLineP)
+
+fastaP :: Parser Fasta
+fastaP = Fasta
+  <$ fastaCommentP
+  <* many newLineP
+  <*> fastaDescriptionP
+  <* many newLineP
+  <* fastaCommentP
+  <* many newLineP
+  <*> fastaSeqP
+  <* many newLineP
+  <* fastaCommentP
+  <* many newLineP
+
 fastaListP :: Parser [Fasta]
-fastaListP = undefined
+fastaListP = many fastaP
 
 -------------------------------------------------------------------------------
 
