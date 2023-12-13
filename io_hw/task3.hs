@@ -23,6 +23,7 @@ module Main where
 import System.Environment (getArgs)
 import System.Directory (doesDirectoryExist, listDirectory)
 import System.FilePath ((</>))
+import Data.List (isSuffixOf, isPrefixOf)
 
 -- | Главная функция
 main :: IO ()
@@ -55,14 +56,6 @@ findFilesWithPattern dir pattern' = do
 matchPattern :: String -> FilePath -> Bool
 matchPattern pattern' fileName =
   case pattern' of
-    '*':suffix -> fileName `endsWith` suffix
-    prefix:'*':_ -> fileName `startsWith` [prefix]
+    '*':suffix   -> suffix   `isSuffixOf` fileName -- заменил на библиотечную функцию
+    prefix:'*':_ -> [prefix] `isPrefixOf` fileName -- и тут
     _ -> fileName == pattern'
-
--- | Проверка, заканчивается ли строка заданным суффиксом
-endsWith :: FilePath -> String -> Bool
-endsWith filePath suffix = suffix == drop (length filePath - length suffix) filePath
-
--- | Проверка, начинается ли строка заданным префиксом
-startsWith :: FilePath -> String -> Bool
-startsWith filePath prefix = prefix == take (length prefix) filePath
