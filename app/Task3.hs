@@ -4,7 +4,8 @@ import System.Environment (getArgs)
 import System.Directory (doesDirectoryExist, listDirectory)
 import System.FilePath (splitFileName)
 import Control.Monad (when)
-import qualified Data.Text as T
+import Data.List (isPrefixOf, isSuffixOf)
+import Data.Foldable (traverse_)
 
 -- find (1,5 балл)
 
@@ -40,16 +41,14 @@ main = do
             if flagDir
                 then do
                     ls <- listDirectory path
-                    _ <- traverse (\ f -> helper (path ++ "/" ++ f) pat') ls
-                    pure ()
+                    traverse_ (\ f -> helper (path ++ "/" ++ f) pat') ls
                 else do
                     let flagCurFile = isCurrentFile (snd . splitFileName $ path) pat'
                     when flagCurFile $ putStrLn path
-            pure ()
 
         isCurrentFile :: String -> String -> Bool
         isCurrentFile str pat'
           | pat' == ""                        = True
-          | pat' !! (length pat' - 1) == '*'  = T.isPrefixOf (T.pack $ init pat') (T.pack str) 
-          | head pat' == '*'                  = T.isSuffixOf (T.pack $ tail pat') (T.pack str) 
+          | pat' !! (length pat' - 1) == '*'  = init pat' `isPrefixOf` str
+          | head pat' == '*'                  = tail pat' `isSuffixOf` str
           | otherwise                         = str == pat'

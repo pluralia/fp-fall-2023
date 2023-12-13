@@ -8,7 +8,6 @@ module Main where
 import Data.Hashable (Hashable, hash)
 import Control.Applicative (Alternative (..))
 import Parser
-import System.IO
 import System.Directory (doesPathExist)
 
 -- Продвинутый KVS (3 балла)
@@ -143,4 +142,9 @@ instance (Hashable k, Serializable v) => KVS (FileSystemKVS k v) where
         writeFile filePath (toS val)
 
 main :: IO ()
-main = undefined
+main = do
+    let path = "./app/"
+        fs = createFileSystemKVS path :: FileSystemKVS [Char] [Char]
+    put fs "key" "very small test :)"
+    val <- get fs "key"
+    maybe (pure ()) putStrLn val

@@ -20,12 +20,13 @@ import Data.Char (isSpace)
 -- В документации сказано "All Chars will be truncated to 8 bits", значит один символ закодирован одним байтом.
 -- https://hackage.haskell.org/package/bytestring-0.12.0.2/docs/Data-ByteString-Char8.html#v:pack
 --
-main :: String -> IO ()
-main fileName = do
+
+main :: IO ()
+main = do
+    fileName <- getLine
     str <- readFile fileName 
     let (l, w, b) = helper str 0 (0, 0, 0)
     putStrLn $ "\t" ++ show l ++ "\t" ++ show w ++ "\t" ++ show b
-    pure ()
     where
         helper :: String -> Int -> (Int, Int, Int) -> (Int, Int, Int)
         helper s ind (line, word, byte)

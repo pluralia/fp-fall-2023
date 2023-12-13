@@ -37,8 +37,7 @@ data TurnstileOutput = Thank | Open | Tut
 -- | Реализуйте автомат
 --
 switch :: TurnstileState -> TurnstileInput -> (TurnstileOutput, TurnstileState)
-switch Locked   Coin = (Thank, Unlocked)
-switch Unlocked Coin = (Thank, Unlocked)
+switch _        Coin = (Thank, Unlocked)
 switch Unlocked Push = (Open,  Locked)
 switch Locked   Push = (Tut,   Locked)
 
@@ -47,7 +46,7 @@ action = [Coin, Coin, Push, Push, Coin]
 
 fsm :: (TurnstileState -> TurnstileInput -> (TurnstileOutput, TurnstileState)) 
         -> TurnstileInput -> State TurnstileState TurnstileOutput
-fsm trans st = state $ \s -> trans s st
+fsm trans inputAction = state $ \s -> trans s inputAction
 
 turnstile :: State TurnstileState [TurnstileOutput]
 turnstile = mapM (fsm switch) action

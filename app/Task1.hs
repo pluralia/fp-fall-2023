@@ -13,11 +13,8 @@ import Control.Monad (forM_)
 -- то должен создаваться файл text_copy_<N+1>.log.
 -- Запись последующих строк должна производиться в него, а хэндл файла text_copy_<N>.log должен быть закрыт.
 
-main :: IO ()
-main = helper 0
-    where
-        helper :: Integer -> IO ()
-        helper n = do
+writeToOneFile :: Integer -> IO ()
+writeToOneFile n = do
             let fileName = "text_copy_" ++ show n ++ ".log"
             withFile fileName WriteMode (\h -> do           -- withFile сам закрывает файл
                 forM_ [1..1000 :: Integer] $ \_ -> do
@@ -26,4 +23,7 @@ main = helper 0
                     hPutStrLn h str
                     hFlush h                                -- записывает в текущем моменте, а не после завершения программы
                 )
-            helper $ n + 1
+            writeToOneFile $ n + 1
+
+main :: IO ()
+main = writeToOneFile 0
