@@ -16,6 +16,7 @@ import           Control.Monad.Reader
 import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
 import           Data.Monoid (Sum(..))
+import           Data.Maybe
 
 -------------------------------------------------------------------------------
 
@@ -149,6 +150,16 @@ withOutDo12 isL cM =
 
 -- 7. С помощью монады списка создайте список, содержащий в себе все пифагоровы тройки. 
 --    В списке не должно быть дублей. Дублирования нужно убрать за счёт дополнительного условия в do-нотации (0,5 балла)
+-- https://ru.wikipedia.org/wiki/%D0%9F%D0%B8%D1%84%D0%B0%D0%B3%D0%BE%D1%80%D0%BE%D0%B2%D0%B0_%D1%82%D1%80%D0%BE%D0%B9%D0%BA%D0%B0
+
+pythagoreanTriples :: Int -> [(Int, Int, Int)]
+pythagoreanTriples n = do
+  c <- [1..n]
+  b <- [1..c]
+  a <- [1..b]
+  if a^2 + b^2 == c^2
+    then return (a, b, c)
+    else []
 
 -------------------------------------------------------------------------------
 
@@ -176,26 +187,30 @@ returnExample = do
       then pure 200
       else realReturn 0
 
--- я не поняла как задать
-data ReturnableCalculation a = YourImplementation
+-- c предложенным типом как-то так выглядит, но мне не понятно, 
+-- зачем здесь Bool - зачем так задавать, если у нас при проверке на  a == 0 pure возвращается в любом случае, мы же a задаем через let
+data ReturnableCalculation a = ReturnableCalculation { val ::  a, returned :: Bool}
+  deriving (Show, Eq)
 
 instance Functor ReturnableCalculation where
     fmap :: (a -> b) -> ReturnableCalculation a -> ReturnableCalculation b
-    fmap = undefined
+    fmap f (ReturnableCalculation x b) = ReturnableCalculation (f x) b
 
+-- здесь и в Monad c realReturn прописала (ReturnableCalculation x True), потому что у нас тип данных задан таким образом, что обязательно нужен второй аргумент
+-- но я не понимаю, зачем здесь Bool
 instance Applicative ReturnableCalculation where
     pure :: a -> ReturnableCalculation a
-    pure = undefined
+    pure x = ReturnableCalculation x True
 
     (<*>) :: ReturnableCalculation (a -> b) -> ReturnableCalculation a -> ReturnableCalculation b
-    (<*>) = undefined
+    ReturnableCalculation f True <*> ReturnableCalculation x True = ReturnableCalculation (f x) True
 
 instance Monad ReturnableCalculation where
     (>>=) :: ReturnableCalculation a -> (a -> ReturnableCalculation b) -> ReturnableCalculation b
-    (>>=) = undefined
+    ReturnableCalculation x True >>= f = f x
 
 realReturn :: a -> ReturnableCalculation a
-realReturn = undefined
+realReturn x = ReturnableCalculation x True
 
 -------------------------------------------------------------------------------
 
@@ -356,9 +371,7 @@ data Stmt = Stmt
 -- | Вычислите список утверждений, используя Reader' (постарайтесь использовать функции из MonadReader)
 --   В качестве результата вычисления всего списка договоримся возвращать результат вычисления последнего выражения в списке
 --
-{- я не понимаю, что не так
-тут явно что-то не так с несоответсвием типов в (maybe 0 show (newVal)) и env, но когда я использую digitToInt 
-
+--{- 
 evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
 evalStmts [] = pure Nothing
 evalStmts (x : xs) = do
@@ -367,27 +380,23 @@ evalStmts (x : xs) = do
         _ -> do
             env <- ask
             let newVal = runIdentity (runReader' (eval (expr x)) env)
-                updEnv = M.insert (name x) (maybe 0 show (newVal)) env
+                updEnv = M.insert (name x) (maybe 0 fromEnum (newVal)) env
             local (const updEnv) (evalStmts xs)
 
-мне подсказали сделалать отдельной функцией
+--мне подсказали сделалать отдельной функцией
+--}
+{-
+evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
+evalStmts [] = pure Nothing
+evalStmts (x : xs) = do
+    case xs of
+        [] -> eval (expr x)
+        _ -> do
+            env <- ask
+            let newVal = runIdentity (runReader' (eval (expr x)) env)
+                updEnv = M.insert (name x) (fromMaybe 0 newVal) env
+            local (const updEnv) (evalStmts xs)
 -}
-
-evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
-evalStmts [] = pure Nothing
-evalStmts (x : xs) = do
-    case xs of
-        [] -> eval (expr x)
-        _ -> do
-            env <- ask
-            let newVal = runIdentity (runReader' (eval (expr x)) env)
-                updEnv = M.insert (name x) (returnIntVal newVal) env
-            local (const updEnv) (evalStmts xs)
-    where
-        returnIntVal :: Maybe Int -> Int
-        returnIntVal (Just val) = val
-        returnIntVal Nothing = 0
-
 -- | Пример запуска вычисления списка утверждений
 --
 testEvalStmts :: Maybe Int
