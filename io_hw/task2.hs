@@ -1,3 +1,7 @@
+-- {-# OPTIONS_GHC -package base #-}
+-- {-# OPTIONS_GHC -package text #-}
+-- {-# OPTIONS_GHC -package bytestring #-}
+
 module Main where
 
 -- wc (2 балла)
@@ -19,6 +23,7 @@ import Data.ByteString (ByteString)
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
+import System.Environment (getArgs)
 
 -- Функция для подсчета строк, слов и байтов в файле
 countFile :: FilePath -> IO ()
@@ -31,5 +36,5 @@ countFile path = do
 
 main :: IO ()
 main = do
-  let filePath = "example.txt" -- устанавливаем путь к файлу, который нужно обработать
+  [filePath] <- getArgs -- устанавливаем путь к файлу, который нужно обработать
   countFile filePath -- вызов функции подсчета строки, слов и байтов в файле
