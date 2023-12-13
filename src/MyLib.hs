@@ -8,6 +8,7 @@ import           Control.Applicative
 import           Data.List
 import           Data.Maybe (isJust)
 import           Parser
+import           Data.Char (digitToInt, isAlphaNum, isAlpha, isSpace, isDigit)
 -------------------------------------------------------------
 -- HW 3 -- про паттерны и инстансы классов, для отработки взяла еще и первое задание с несделанным Ix
 
@@ -48,13 +49,12 @@ instance Ix ChurchNumber where
 
     index :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Int
     index (l, r) i | l > r = error "Wrong limits"
-                   | i < l || i > r = error "Wrong index"
+                   | i < l || i > r = error "Number out of range"
                    | i == l = 0
                    | otherwise = 1 + index (l, r) (i - 1)
     
     inRange :: (ChurchNumber, ChurchNumber) -> ChurchNumber -> Bool
-    inRange (l, r) i | l > r = error "Wrong limits"
-                     | otherwise = i >= l && i <= r
+    inRange (l, r) i = i >= l && i <= r
 
 
 
@@ -224,21 +224,22 @@ fastaListP = many fastaP
 
 data PDBAtom = PDBAtom 
     { 
-        serial_num :: Int
+        record_name :: String
+      , serial_num :: Int
       , name       :: String
       , altLoc     :: Char
       , resName    :: String
       , chainID    :: Char
       , resSeq     :: Int
-      , iCode      :: Char
-      , xx          :: Float
-      , yy          :: Float
-      , zz          :: Float
+      , iCode      :: Maybe Char -- опционально
+      , xx         :: Float
+      , yy         :: Float
+      , zz         :: Float
       , occupancy  :: Float
       , tempFactor :: Float
-      , element    :: String
-      , charge     :: String
-    } 
+      , element    :: Char
+      , charge     :: Maybe String --- опционально
+    } deriving (Eq, Show)
 
 -- | Тип, представляющий из себя CONNECT
 -- https://www.wwpdb.org/documentation/file-format-content/format33/sect10.html#CONECT
@@ -246,7 +247,8 @@ data PDBAtom = PDBAtom
 
 data PDBBond = PDBBond 
     {
-        atom_num  :: Int 
+        con_name  :: String
+      , atom_num  :: Int 
       , bondedA1  :: Int
       , bondedA2  :: Maybe Int
       , bondedA3  :: Maybe Int
@@ -258,18 +260,66 @@ data PDBModel
   = PDBModel
       { atoms :: [PDBAtom] -- атомы из секции ATOM
       , bonds :: [PDBBond] -- связи из секции CONNECT
-      }
+      } deriving (Eq, Show)
 
 -- | PDB-файл
 --
-newtype PDB = PDB [PDBModel]
+newtype PDB = PDB [PDBModel] deriving (Eq, Show)
 
 -- 3.a Распарсите `only_atoms.pdb` (2,25 балла)
 --     Для выполнения задания фактически нужно научиться парсить только секцию MODEL, 
 --     в которой может содержаться только секция ATOM.
 
+
+atomP :: Parser PDBAtom
+atomP = PDBAtom
+  <$> stringP "ATOM" <* spaceP -- хочу парсить только строчку, без слова ATOM (по аналогии с fasta - чтобы было понятно, какую секцию обрабатываю)
+  <*> intP <* spaceP -- номер атома
+  <*> symbolsP <* spaceP -- имя атома
+  <*> satisfyP isAlpha <* spaceP -- altLoc - одна буква
+  <*> many (satisfyP isAlpha) <* spaceP  -- resName  - много букв - many
+  <*> satisfyP isAlpha <* spaceP --chainID - одна буква
+  <*> intP <* spaceP --resSeq - одна цифирка
+  <*> optional (satisfyP isAlpha) <* spaceP -- iCode - опционально 1 буква
+  <*> myFloatP <* spaceP --x
+  <*> myFloatP <* spaceP --y
+  <*> myFloatP <* spaceP --z
+  <*> myFloatP <* spaceP --occupancy
+  <*> myFloatP <* spaceP --tempFactor
+  <*> symbolP <* spaceP --element
+  <*> optional (some (satisfyP (`elem` ['+', '-'] <> ['1'..'9']))) <* spaceP -- charge опционально несколько символов
+    where
+      -- честно спросила у ребят, что не так с Float - наш floatP умеет только в + числа, поэтому надо проверять '-' отдельно
+      myFloatP :: Parser Float
+      myFloatP = negate <$> (satisfyP (=='-') *> floatP) <|> floatP
+
+
 -- 3.b Распарсите `atoms_and_bonds.pdb` (1,25 балл)
 --     Придётся научиться парсить секцию CONNECT.
+
+connectP :: Parser PDBBond
+connectP = PDBBond
+  <$> stringP "CONNECT" <* spaceP -- аналогично, хочу парсить только строчку, без слова "CONECT"
+  <*> intP <* spaceP
+  <*> intP <* spaceP
+  -- я хотела здесь через some, но оно не заработало
+  <*> optional intP <* spaceP
+  <*> optional intP <* spaceP
+  <*> optional intP <* spaceP
+
+modelP :: Parser PDBModel
+modelP = PDBModel
+  <$  stringP "MODEL" <* many (satisfyP (/='\n')) <* newLineP
+  <*> many (atomP)
+  <*> (some connectP <|> pure [])
+  <*  spaceP <* stringP "ENDMDL"
+
+pdbP :: Parser PDB
+pdbP = PDB
+   <$> many modelP <* spaceP
+   <*  stringP "END" 
+
+
 -------------------------------------------------------------------------------
 
 -- 4. Monad Parser (0,5 балла)
@@ -309,7 +359,7 @@ instance Functor Maybe' where
 
 instance Applicative Maybe' where
   pure :: a -> Maybe' a
-  pure x = Just' x
+  pure = Just'
 
   (<*>) :: Maybe' (a -> b) -> Maybe' a -> Maybe' b
   (<*>) Nothing' _ = Nothing'
@@ -348,7 +398,7 @@ instance Applicative List where
   (<*>) :: List (a -> b) -> List a -> List b
   (<*>) _ Empty = Empty
   (<*>) Empty _ = Empty
-  (<*>) (Cons f fs) (Cons x xs) = Cons (f x) ((<*>) fs xs)
+  (<*>) (Cons f fs) (Cons x xs) = Cons (f x) (fs <*> xs)
 -- последний (<*>) соединяет списки функций и значений, получается zip
 
 {-
