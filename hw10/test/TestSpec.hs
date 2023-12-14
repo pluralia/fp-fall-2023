@@ -10,5 +10,5 @@ spec = do
   describe "turnstile" $ do
     it "should work" $ do
       let 
-        (r, _) = runState turnstile (Tut, Locked)
-      r `shouldBe` [(Tut,Locked),(Thank,Unlocked),(Thank,Unlocked),(Open,Locked),(Tut,Locked)]
+        (r, _) = runState turnstile Locked
+      r `shouldBe` Thank
