@@ -201,19 +201,28 @@ data BinaryHeap a
 -- 6.a Реализуйте функцию siftDown, восстанавливающую свойство кучи в куче (0,5 балла) 
 siftDown :: Ord a => BinaryHeap a -> BinaryHeap a
 siftDown BinLeaf = BinLeaf
-siftDown node@(BinNode v l r) = case (l, r) of
-    (BinLeaf, BinLeaf) -> node
-    (BinLeaf, _) -> if v < val r
-                       then BinNode v BinLeaf r
-                       else BinNode (val r) BinLeaf (siftDown (r {val = v}))
-    (_, BinLeaf) -> if v < val l
-                       then BinNode v l BinLeaf
-                       else BinNode (val l) (siftDown (l {val = v})) BinLeaf
-    (_, _) ->
-        let minChild = if val l < val r then l else r
-        in if v < val minChild
-               then BinNode v l r
-               else BinNode (val minChild) (siftDown (minChild {val = v})) (if minChild == l then r else l)
+siftDown node@(BinNode v l r) =
+    case (l, r) of
+        (BinLeaf, BinLeaf) -> node
+        (BinLeaf, _) ->
+            if v < val r
+                then BinNode v BinLeaf r
+                else BinNode (val r) BinLeaf (siftDown (r {val = v}))
+        (_, BinLeaf) ->
+            if v < val l
+                then BinNode v l BinLeaf
+                else BinNode (val l) (siftDown (l {val = v})) BinLeaf
+        (_, _) ->
+            let minChild = if val l < val r then l else r
+                (newL, newR) =
+                    if minChild == l
+                        then (siftDown (l {val = v}), r)
+                        else (l, siftDown (r {val = v}))
+                (newV, newMinChild) = (val minChild, siftDown (minChild {val = v}))
+                (finalL, finalR) = if val newMinChild < newV then (newMinChild, newR) else (newL, newMinChild)
+            in if v < newV
+                then BinNode v finalL finalR
+                else BinNode newV finalL finalR
 
 
 -- 6.b Реализуйте с помощью свёртки функцию buildHeap,
