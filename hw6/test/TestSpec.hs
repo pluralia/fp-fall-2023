@@ -54,7 +54,19 @@ spec = do
         runParser sumMultFloatsP "*"  `shouldBe` Nothing
 
 -- -- -- Task 4
-    describe "?" $ do
-      it "condition Hello" $ do
+    describe "task4" $ do
+      it "takeWhileP" $ do
         runParser (takeWhileP (== '?')) "a" `shouldBe` Just ("", "a")
         runParser (takeWhileP (== '?')) "?" `shouldBe` Just ("?", "")
+        runParser (takeWhileP isDigit) "123Hello" `shouldBe` Just ("123", "Hello")
+      
+      it "eofP" $ do
+        runParser eofP "" `shouldBe` Just ((), "")
+        runParser eofP "\n" `shouldBe` Nothing
+        runParser eofP "123" `shouldBe` Nothing
+      
+      it "inBetweenP" $ do
+        runParser (inBetweenP "(" ")" intP) "(812)" `shouldBe` Just (812 :: Int, "")
+        runParser (inBetweenP "(" ")" digitP) "(812)" `shouldBe` Nothing
+
+        
