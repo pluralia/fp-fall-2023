@@ -4,7 +4,6 @@ import           Data.Foldable       (foldl')
 import           Data.Map.Strict     (Map, fromList)
 import qualified Data.Text           as T
 import           Parser
-import Control.Applicative
 import Data.Char (digitToInt)
 import Data.List (stripPrefix)
 
