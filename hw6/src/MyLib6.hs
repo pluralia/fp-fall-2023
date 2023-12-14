@@ -1,4 +1,4 @@
--- {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase #-}
 module MyLib6 where
 import           Control.Applicative (Alternative (..))
 import           Data.Foldable       (foldl')
