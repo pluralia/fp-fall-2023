@@ -1,3 +1,4 @@
+-- {-# LANGUAGE LambdaCase #-}
 module MyLib6 where
 import           Control.Applicative (Alternative (..))
 import           Data.Foldable       (foldl')
@@ -226,7 +227,7 @@ takeWhileP p = many (satisfyP p)
 --       В противном случае парсер отрабатывает успешно (0,5 балла)
 --
 eofP :: Parser ()
-eofP = Parser $ \input -> case input of
+eofP = Parser $ \case
   [] -> Just ((), [])
   _  -> Nothing
 
