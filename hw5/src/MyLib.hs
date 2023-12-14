@@ -310,7 +310,7 @@ getInd :: BinaryTree Size a -> Int -> a
 getInd (BLeaf _ val) _ = val
 -- getInd (BLeaf _ _) _ = error "Wrong indx"
 getInd (BBranch _ left right) n
-  | (n < 0) || (n > leftSize + 1) = error "Wrong"
+  | (n < 0) = error "Wrong"
   | n <= leftSize = getInd left n
   | otherwise = getInd right (n - leftSize)
   where
