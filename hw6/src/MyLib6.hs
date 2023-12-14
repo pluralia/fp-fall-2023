@@ -219,7 +219,7 @@ fmap4 = undefined
 -- | 4.a Парсит весь поток, пока символы потока удовлетворяют заданному условию (0,25 балла)
 --
 takeWhileP :: (Char -> Bool) -> Parser String
-takeWhileP p = many (satisfyP p)
+takeWhileP  = many . satisfyP
 
 ---------------------------------------
 
