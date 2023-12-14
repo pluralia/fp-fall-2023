@@ -31,14 +31,8 @@ data TurnstileInput = Coin | Push
 data TurnstileOutput = Thank | Open | Tut
   deriving (Eq, Show)
 
-type Turnstile = (TurnstileOutput, TurnstileState)
-
 -- | Реализуйте автомат
 --
-translate :: TurnstileInput -> Turnstile -> Turnstile
-translate Coin _             = (Thank, Unlocked)
-translate Push (_, Unlocked) = (Open, Locked)
-translate Push (_, Locked)   = (Tut, Locked)
 
 type FSM s = State s s
 
@@ -48,15 +42,29 @@ fsm translate act = state $ \s -> (s, translate act s)
 actions :: [TurnstileInput]
 actions = [Coin, Coin, Push, Push, Coin]
 
-turnstile :: State Turnstile [Turnstile]
-turnstile = mapM (fsm translate) actions
-  
+turnstile :: State TurnstileState TurnstileOutput
+turnstile = do
+  outputs <- mapM singleAct actions
+  return $ last outputs
+  where 
+    singleAct :: TurnstileInput -> State TurnstileState TurnstileOutput
+    singleAct action = do
+      state <- get
+      case (action, state) of
+        (Coin, Locked) -> do
+          put Unlocked
+          return Thank
+        (Coin, Unlocked) -> return Thank
+        (Push, Locked) -> return Tut
+        (Push, Unlocked) -> do
+          put Locked
+          return Open
 
 -- Привидите пример запуска на последовательности действий [Coin, Coin, Push, Push, Coin]
 -- (можете привести свою любой длины и содержания)
 
-res :: ([Turnstile], Turnstile)
-res = runState turnstile (Tut, Locked)
+res :: TurnstileOutput
+res = evalState turnstile Locked
 
 -------------------------------------------------------------------------------
 

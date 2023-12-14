@@ -1,4 +1,5 @@
 module Main where
+import System.IO
 
 -- REPL (1,5 балла)
 
@@ -10,6 +11,9 @@ module Main where
 -- то должен создаваться файл text_copy_<N+1>.log.
 -- Запись последующих строк должна производиться в него, а хэндл файла text_copy_<N>.log должен быть закрыт.
 
+genFileName :: Int -> String
+genFileName n = "text_copy_" ++ show n ++ ".log"
+
 main :: IO ()
 main = do
   putStrLn "Enter your text:"
@@ -19,7 +23,9 @@ main = do
     loop n m = do
       text <- getLine
       putStrLn text
-      appendFile ("text_copy_" ++ show n ++ ".log") (text ++ "\n")
-      if m < 999
-        then loop n (m + 1)
-        else loop (n + 1) 0
+      file <- openFile (genFileName n) AppendMode
+      hPutStrLn file text
+      hClose file
+      if m == 999
+        then loop (n + 1) 0
+        else loop n (m + 1)
