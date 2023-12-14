@@ -35,28 +35,31 @@ data TurnstileOutput = Thank | Open | Tut
 -- | Реализуйте автомат
 --
 -- Функция для обработки входов и генерации выводов
-processInput :: TurnstileState -> TurnstileInput -> (TurnstileState, [TurnstileOutput])
-processInput Locked Coin = (Unlocked, [Thank])
-processInput Unlocked Coin = (Unlocked, [Thank])
-processInput Locked Push = (Locked, [Tut])
-processInput Unlocked Push = (Locked, [Open, Tut])
+processInput :: TurnstileState -> TurnstileInput -> (TurnstileState, TurnstileOutput)
+processInput Locked Coin = (Unlocked, Thank)
+processInput Unlocked Coin = (Unlocked, Thank)
+processInput Locked Push = (Locked, Tut)
+processInput Unlocked Push = (Locked, Open)
 
--- Функция для обработки списка входов
+processInputM :: TurnstileInput -> State TurnstileState TurnstileOutput
+processInputM input = do
+  currentState <- get
+  let (newState, outputs) = processInput currentState input
+  put newState
+  return outputs
+
 turnstile :: [TurnstileInput] -> State TurnstileState [TurnstileOutput]
 turnstile inputs = do
-    currentState <- get
-    let (outputs, newState) = foldl (\(outs, sstate) inp ->
-            let (newsState, newOutputs) = processInput sstate inp
-            in (outs ++ newOutputs, newsState)) ([], currentState) inputs
-    put newState
-    return outputs
+  outputLists <- mapM processInputM inputs
+  return (outputLists)
 
 
 -- Приведите пример запуска на последовательности действий [Coin, Coin, Push, Push, Coin]
 exampleInput :: [TurnstileInput]
 exampleInput = [Coin, Coin, Push, Push, Coin]
--- С учетом моего processInput должна на выходе быть последовательность Thank,Thank,Open,Tut,Tut,Thank
+-- С учетом моего processInput должна на выходе быть последовательность Thank, Thank, Open, Tut, Thank
 -- и финальное состояние Unlocked
+-- запуск произвожу в Main, другие примеры в тестах
 
 -- (можете привести свою любой длины и содержания)
 
@@ -66,12 +69,6 @@ exampleInput = [Coin, Coin, Push, Push, Coin]
 
 --    На лекции мы разбирали 2 этих функции -- запустите их и посмотрите на вывод.
 --    В чем вы видите разницу? Как можете ее объяснить?
-
--- Есть несколько очевидных различий в имплементациях этих функций
--- Первое - это тот факт, что во второй функции мы флашим те значения, которые делятся на 10000, а в первой - нет
--- Второе - это тот момент, что в первой функции мы, грубо говоря, пытаемся сразу же записать строку в файл
--- а во второй функции мы делаем это в обход через буфер
--- На данном примере скорость работы функций не отличается
 
 -- | запись в файл без буфера
 --
