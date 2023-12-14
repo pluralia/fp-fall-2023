@@ -116,10 +116,13 @@ spec = do
             collectBasket tree `shouldBe` expected
     
     describe "siftDown" $ do
-        let leaf = BinLeaf :: BinaryHeap Int 
+        let leaf = BinLeaf :: BinaryHeap Int
             singleNode = BinNode 5 BinLeaf BinLeaf :: BinaryHeap Int
             heap1 = BinNode 3 (BinNode 7 BinLeaf BinLeaf) (BinNode 9 BinLeaf BinLeaf) :: BinaryHeap Int
-        
+            heap2 = BinNode 5
+                        (BinNode 8 (BinNode 12 BinLeaf BinLeaf) BinLeaf)
+                        (BinNode 10 (BinNode 14 BinLeaf BinLeaf) (BinNode 16 BinLeaf BinLeaf)) :: BinaryHeap Int
+
         it "returns BinLeaf for a leaf node" $ do
             siftDown leaf `shouldBe` BinLeaf
 
@@ -129,6 +132,12 @@ spec = do
         it "restores the heap property for a small heap" $ do
             let expectedHeap = BinNode 3 (BinNode 7 BinLeaf BinLeaf) (BinNode 9 BinLeaf BinLeaf)
             siftDown heap1 `shouldBe` expectedHeap
+
+        it "restores the heap property for a larger heap with multiple levels" $ do
+            let expectedHeap = BinNode 5
+                                    (BinNode 8 (BinNode 12 BinLeaf BinLeaf) BinLeaf)
+                                    (BinNode 10 (BinNode 14 BinLeaf BinLeaf) (BinNode 16 BinLeaf BinLeaf))
+            siftDown heap2 `shouldBe` expectedHeap
     
     describe "toList" $ do
         it "returns a list from a branch" $ do
@@ -159,3 +168,30 @@ spec = do
             let branch = branchPrio (leafPrio 10 'a') (leafPrio 15 'b')
             tag branch `shouldBe` 10
             getWinner branch `shouldBe` 'a'
+    
+    describe "getInd" $ do
+        it "returns the value of the first leaf" $ do
+            let t = branchSize
+                        (branchSize (leafSize 'a') (leafSize 'b'))
+                        (branchSize (leafSize 'c') (leafSize 'd'))
+            getInd t 1 `shouldBe` 'a'
+        
+        it "returns the value of the last leaf" $ do
+            let t = branchSize
+                        (branchSize (leafSize 'a') (leafSize 'b'))
+                        (branchSize (leafSize 'c') (leafSize 'd'))
+            getInd t 4 `shouldBe` 'd'
+
+        it "returns the value of the second leaf of the first branch" $ do
+            let t = branchSize
+                    (branchSize (leafSize 'a') (leafSize 'b'))
+                    (branchSize (leafSize 'c') (leafSize 'd'))
+            getInd t 2 `shouldBe` 'b'
+
+        it "returns the value of the second leaf of the second branch" $ do
+            let t = branchSize
+                    (branchSize (leafSize 'a') (leafSize 'b'))
+                    (branchSize (leafSize 'c') (leafSize 'd'))
+            getInd t 3 `shouldBe` 'c'
+    
+

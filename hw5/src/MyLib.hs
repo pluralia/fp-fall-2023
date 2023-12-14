@@ -205,24 +205,20 @@ siftDown node@(BinNode v l r) =
     case (l, r) of
         (BinLeaf, BinLeaf) -> node
         (BinLeaf, _) ->
-            if v < val r
-                then BinNode v BinLeaf r
-                else BinNode (val r) BinLeaf (siftDown (r {val = v}))
+            if v <= val r 
+                then node
+                else BinNode (val r) l (siftDown (BinNode v BinLeaf (right r)))
         (_, BinLeaf) ->
-            if v < val l
-                then BinNode v l BinLeaf
-                else BinNode (val l) (siftDown (l {val = v})) BinLeaf
+            if v <= val l
+                then node
+                else BinNode (val l) (siftDown (BinNode v (left l) BinLeaf)) r
         (_, _) ->
-            let minChild = if val l < val r then l else r
-                (newL, newR) =
-                    if minChild == l
-                        then (siftDown (l {val = v}), r)
-                        else (l, siftDown (r {val = v}))
-                (newV, newMinChild) = (val minChild, siftDown (minChild {val = v}))
-                (finalL, finalR) = if val newMinChild < newV then (newMinChild, newR) else (newL, newMinChild)
-            in if v < newV
-                then BinNode v finalL finalR
-                else BinNode newV finalL finalR
+            if v <= min (val l) (val r)
+                then node
+                else if val l < val r
+                    then BinNode (val l) (siftDown (BinNode v (left l) (right l))) r
+                    else BinNode (val r) l (siftDown (BinNode v (left r) (right r)))
+
 
 
 -- 6.b Реализуйте с помощью свёртки функцию buildHeap,
