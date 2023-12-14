@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module MyLib where
 
 import           Control.Applicative (Alternative (..), optional)
@@ -127,15 +129,14 @@ runMultIntsP' = runParser multDigitsP "33 * 6" -- Nothing
 -- | Реализуйте парсер, который умеет парсить 2 целых числа и перемножать их
 -- 
 multIntsP :: Parser Int
-multIntsP = undefined
+multIntsP = (*) <$> intP <* spaceP <* satisfyP (== '*') <* spaceP <*> intP
 
 -- | Парсит 2 вещественных числа и перемножает их
 -- 
 multFloatsP :: Parser Float
-multFloatsP = undefined
+multFloatsP = (*) <$> floatP <* spaceP <* satisfyP (== '*') <* spaceP <*> floatP
 
 ---------------------------------------
-
 -- 2.b Парсит перемножение/сложение 2 вещественных чисел (0,5 балла)
 
 -- | Зададим простейшее выражение:
@@ -147,7 +148,10 @@ data SimpleExpr = SimpleExpr Float Char Float
 -- | Реализуйте парсер для SimpleExpr; операция может быть '+' и '*'
 --
 simpleExprP :: Parser SimpleExpr
-simpleExprP = undefined
+simpleExprP = SimpleExpr
+  <$> floatP
+  <*> satisfyP (\c -> c == '+' || c == '*')
+  <*> floatP
 
 -- | Более сложное выражение, в котором операция задана типом данных Operation
 --
@@ -162,14 +166,23 @@ data Operation = Mult | Sum
 
 -- | Реализуйте парсер для Expr
 --
+operationP :: Parser Operation
+operationP = (Mult <$ satisfyP (== '*')) <|> (Sum <$ satisfyP (== '+'))
+
 exprP :: Parser Expr
-exprP = undefined
+exprP = Expr
+  <$> floatP
+  <*> operationP
+  <*> floatP
 
 -- | Реализуйте парсер, который парсит перемножение/сложение 2 вещественных чисел.
 --   Используйте exprP
 --
 sumMultFloatsP :: Parser Float
-sumMultFloatsP = undefined
+sumMultFloatsP = (\expr -> case op expr of
+                    Mult -> left expr * right expr
+                    Sum  -> left expr + right expr)
+                    <$> exprP
 
 -------------------------------------------------------------------------------
 
@@ -196,7 +209,9 @@ fmap4 = undefined
 -- | 4.a Парсит весь поток, пока символы потока удовлетворяют заданному условию (0,25 балла)
 --
 takeWhileP :: (Char -> Bool) -> Parser String
-takeWhileP = undefined
+takeWhileP condition = Parser $ \input ->
+  let (matched, remaining) = span condition input
+  in Just (matched, remaining)
 
 ---------------------------------------
 
@@ -204,7 +219,9 @@ takeWhileP = undefined
 --       В противном случае парсер отрабатывает успешно (0,5 балла)
 --
 eofP :: Parser ()
-eofP = undefined
+eofP = Parser $ \case
+  [] -> Just ((), "")
+  _ -> Nothing
 
 ---------------------------------------
 
@@ -212,7 +229,7 @@ eofP = undefined
 --        а потом — правый символ rBorder. Возвращает то, что напарсил парсер p (0,5 балла)
 --
 inBetweenP :: String -> String -> Parser a -> Parser a
-inBetweenP lBorder rBorder p = undefined
+inBetweenP lBorder rBorder p = stringP lBorder *> p <* stringP rBorder
 
 ---------------------------------------
 
@@ -222,12 +239,12 @@ inBetweenP lBorder rBorder p = undefined
 --   принимает на вход 2 парсера: первый парсит элементы, в второй -- разделители
 -- 
 sepByP :: Parser a -> Parser b -> Parser [a]
-sepByP p sep = undefined
+sepByP p sep = (:) <$> p <*> some (spaceP *> sep *> spaceP *> p) <|> pure []
 
 -- | Функция принимает парсер, которым парсятся элементы списка
 --
 listP :: Parser a -> Parser [a]
-listP = undefined
+listP p = inBetweenP "[" "]" (sepByP p (satisfyP (== ',')))
 
 -------------------------------------------------------------------------------
 
