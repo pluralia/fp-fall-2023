@@ -14,7 +14,6 @@ spec :: Spec
 spec = do
 
 -- Task 1
---
   describe "simple parsers from task1" $ do
     it "newLineP" $ do
       runParser newLineP "" `shouldBe` Nothing
@@ -39,7 +38,6 @@ spec = do
 
 
 -- -- Task 2
---
     describe "task 2" $ do
       it "multIntsP" $ do
         runParser multIntsP "1*2"  `shouldBe` Just (2 :: Int, "")
@@ -48,3 +46,15 @@ spec = do
         runParser multIntsP "*1"  `shouldBe` Nothing
         runParser multIntsP "12*2"  `shouldBe` Just (24 :: Int, "")
         runParser multIntsP "12 * 2"  `shouldBe` Just (24 :: Int, "")
+        runParser multFloatsP "1.0 * 3.0" `shouldBe` Just (3.0 :: Float, "")
+        runParser multFloatsP "0.0 * 3.0" `shouldBe` Just (0.0 :: Float, "")
+        runParser multFloatsP "*" `shouldBe` Nothing
+        runParser sumMultFloatsP "3.0+1.4"  `shouldBe` Just (4.4 :: Float, "")
+        runParser sumMultFloatsP "3.0*1.4"  `shouldBe` Just (4.2 :: Float, "")
+        runParser sumMultFloatsP "*"  `shouldBe` Nothing
+
+-- -- -- Task 4
+    describe "?" $ do
+      it "condition Hello" $ do
+        runParser (takeWhileP (== '?')) "a" `shouldBe` Just ("", "a")
+        runParser (takeWhileP (== '?')) "?" `shouldBe` Just ("?", "")
