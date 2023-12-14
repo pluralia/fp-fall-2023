@@ -1,12 +1,11 @@
 module MyLib where
 
-import           Control.Applicative (Alternative (..))
+import           Control.Applicative (Alternative (..), optional)
 import           Data.Foldable       (foldl')
 import           Data.Map.Strict     (Map, fromList)
+import           Data.Maybe ( fromMaybe )
 import qualified Data.Text           as T
 import Parser
-    ( Parser(..), satisfyP, symbolsP, spaceP, digitP, digitsP )
-
 -------------------------------------------------------------------------------
 
 -- В этой домашке вам потребуется подгружать одновременно 2 файла в ghci:
@@ -32,24 +31,32 @@ newLineP = satisfyP (== '\n')
 --       (какой парсер из модуля Parser можно переиспользовать?)
 --
 intP :: Parser Int
-intP = undefined
+intP = (*) <$> signMultiplier <*> (foldl' (\acc d -> acc * 10 + d) 0 <$> digitsP)
+  where
+    signMultiplier = (\s -> if s == Just '-' then (-1) else 1) <$> optional (satisfyP (== '-'))
 
 ---------------------------------------
 
 -- | 1.c Парсит вещественное число формата `-?(0|[1-9]\d*).\d*` (0,75 балла)
 --
 floatP :: Parser Float
-floatP = undefined
-
+floatP = (\sign intPart fracPart -> sign * (fromIntegral intPart + fracPart)) 
+          <$> signMultiplier <*> intP2 <*> helper
+  where
+    signMultiplier = (\s -> if s == Just '-' then (-1) else 1) 
+                      <$> optional (satisfyP (== '-'))
+    
+    intP2 :: Parser Int
+    intP2 = foldl' (\acc d -> acc * 10 + d) 0 <$> digitsP
+    
+    helper :: Parser Float
+    helper = foldr (\x acc -> (acc + fromIntegral x) / 10) 0 <$> (satisfyP (== '.') *> some digitP)
 ---------------------------------------
 
 -- | 1.d Парсит заданную строку (0,25 балла)
 --
 stringP :: String -> Parser String
-stringP str = Parser go
-  where
-    go :: String -> Maybe (String, String)
-    go = undefined
+stringP = foldr (\ x -> (<*>) ((:) <$> satisfyP (== x))) (pure [])
 
 ---------------------------------------
 
@@ -80,9 +87,17 @@ intOrFloatP = Left <$> digitsP
 
 -- | Напишите парсер для 'Value'
 --
-valueP :: Parser Value
-valueP = undefined
+intValueP :: Parser Value
+intValueP = IntValue <$> intP
 
+floatValueP :: Parser Value
+floatValueP = FloatValue <$> floatP
+
+stringValueP :: Parser Value
+stringValueP = StringValue <$> symbolsP
+
+valueP :: Parser Value
+valueP = floatValueP <|> intValueP <|> stringValueP
 -------------------------------------------------------------------------------
 
 -- 2. Парсер-комбинаторы и арифметика (1 балла)

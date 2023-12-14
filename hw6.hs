@@ -2,7 +2,8 @@ import           Control.Applicative (Alternative (..))
 import           Data.Foldable       (foldl')
 import           Data.Map.Strict     (Map, fromList)
 import qualified Data.Text           as T
-import           Parser
+import Parser
+    ( Parser(..), satisfyP, symbolsP, spaceP, digitP, digitsP )
 
 -------------------------------------------------------------------------------
 
