@@ -267,4 +267,20 @@ Haskell course homework
 
 #### Monad Transformers
 
+- `MaybeT`
+- Type class `MonadTrans`
+- Own monad transformer
+- `ExceptT`, `ReaderT`, `WriterT`, `StateT`
+- packages `transformer` vs `mtl`
+
 ---
+
+## 13 lecture (extra)
+
+- homework legacy
+    - `buildHeap`
+    - laziness and exceptions
+    - questions
+- Comondas
+- ML in Haskell
+- GHC
