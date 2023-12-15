@@ -36,8 +36,7 @@ data TurnstileOutput = Thank | Open | Tut
 --
 
 trans :: TurnstileInput -> TurnstileState -> ([TurnstileOutput], TurnstileState)
-trans Coin Locked   = ([Thank], Unlocked)
-trans Coin Unlocked = ([Thank], Unlocked)
+trans Coin _   = ([Thank], Unlocked)
 trans Push Locked   = ([Tut], Locked)
 trans Push Unlocked = ([Open], Locked)
 

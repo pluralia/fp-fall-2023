@@ -44,7 +44,7 @@ processDirectory dir pattern = do
 
 processFile :: String -> FilePath -> IO ()
 processFile pattern file =
-    if matches pattern (takeFileName file)
+    if matches pattern  file
         then putStrLn file
         else return ()
 

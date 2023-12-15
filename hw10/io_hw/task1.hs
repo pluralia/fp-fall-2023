@@ -11,17 +11,21 @@ import System.IO
 -- то должен создаваться файл text_copy_<N+1>.log.
 -- Запись последующих строк должна производиться в него, а хэндл файла text_copy_<N>.log должен быть закрыт.
 
-loop :: Int -> Int -> IO ()
-loop n i = do
+loop :: Int -> Int -> Handle -> IO ()
+loop n i h = do
     input <- getLine
-    appendFile ("text_copy_" ++ show n ++ ".log") (input ++ "\n")
+    hPutStrLn h input
     putStrLn input
     let nextI = i + 1
     if nextI >= 1000
-        then loop (n + 1) 0
-        else loop n nextI
-
+        then do
+            hClose h
+            newH <- openFile ("text_copy_" ++ show (n + 1) ++ ".log") AppendMode
+            loop (n + 1) 0 newH
+        else loop n nextI h
 
 main :: IO ()
-main = loop 0 0
+main = do
+    h <- openFile "text_copy_0.log" AppendMode
+    loop 0 0 h
 
