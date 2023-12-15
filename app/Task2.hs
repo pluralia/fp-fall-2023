@@ -1,6 +1,7 @@
 module Task2 where
     
 import Data.Char (isSpace)
+import System.Environment (getArgs)
 
 -- wc (2 балла)
 
@@ -23,8 +24,9 @@ import Data.Char (isSpace)
 
 main :: IO ()
 main = do
-    fileName <- getLine
-    str <- readFile fileName 
+    args <- getArgs
+    let fileName = head args
+    str <- readFile fileName
     let (l, w, b) = helper str 0 (0, 0, 0)
     putStrLn $ "\t" ++ show l ++ "\t" ++ show w ++ "\t" ++ show b
     where
