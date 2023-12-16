@@ -429,9 +429,11 @@ leaf x = BLeaf (measure x) x
 
 
 instance Measured Size' a where
+  measure :: a -> Size'
   measure _ = Size' 1
 
 instance Enum a => Measured Priority' a where
+  measure :: Enum a => a -> Priority'
   measure = Priority' . fromEnum
 
 
