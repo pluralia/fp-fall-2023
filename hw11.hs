@@ -7,17 +7,23 @@
 -- Подсказка: выражение undefined находится не в NF:
 --            оно может быть вычислено до прерывания программы с сообщением "*** Exception: Prelude.undefined"
 
-    -- (+) (2 * 3 * 4)
+-- An expression is in weak head normal form (WHNF), if it is either:
+-- - a constructor (eventually applied to arguments) like True, Just (square 42) or (:) 1.
+-- - a built-in function applied to too few arguments (perhaps none) like (+) 2 or sqrt.
+-- - or a lambda abstraction \x -> expression.
 
-    -- [undefined, 4 + 5, -1]
 
-    -- (,) undefined
+    -- (+) (2 * 3 * 4) - WHNF - a built-in function applied to too few arguments (perhaps none) like (+) 2 or sqrt.
 
-    -- 3
+    -- [undefined, 4 + 5, -1] - WHNF - второй элемент списка не полностью вычислен.
 
-    -- fst (1,0)
+    -- (,) undefined - WHNF - a constructor (eventually applied to arguments) like True, Just (square 42) or (:) 1.
 
-    -- \x -> x
+    -- 3 - NF - некуда упрощать
+    
+    -- fst (1,0) - WHNF - можно упростить
+
+    -- \x -> x - NF - тоже некуда упрощать. Если бы было типо \x -> x + x - то было бы WHNF
 
 -------------------------------------------------------------------------------
 
@@ -32,6 +38,27 @@ value = foo (3 * 10) (5 - 2)
     bar :: Num a => a -> a -> p -> a
     bar x y z = x + y
 
+-- 1 step
+-- <thunk: foo <thunk: 3 * 10> <thunk: 5 - 2>>
+
+-- 2 step
+-- <thunk: bar <thunk: 3 * 10> <thunk: 3 * 10> <thunk: <thunk: 3 * 10> + <thunk: 5 - 2>>>
+
+-- 3 step
+-- <thunk: <thunk: 3 * 10> + <thunk: 3 * 10>>
+
+-- 4 step
+-- <thunk: <thunk: 30> + <thunk: 30>>
+
+-- 5 step
+-- <thunk: 30 + 30>
+
+-- 6 step
+-- <thunk: 60>
+
+-- 7 step
+-- 60
+
 -------------------------------------------------------------------------------
 
 -- 3. Какие из нижеперечисленных функций не могут привести к расходимости (неостановке вычисления)? Почему? (2 балла)
@@ -39,32 +66,61 @@ value = foo (3 * 10) (5 - 2)
 wow :: p -> p
 wow a = a
 
+-- Может. например wow [1..]
+
 con :: b -> Integer -> Integer -> Integer
 con = const foo
+
+-- может. например con 1 (- 1) 10
+-- con x y z = foo y z
+-- если y < 0 то расходится тк при каждом вызове con
+-- y <- y - 1 и так до бесконечности тк единственный способ остановиться это y == 0
 
 bazz :: p -> b -> Bool
 bazz x = const True
 
+-- не может
+-- bazz x = const True
+-- bazz x y = True
+-- bazz _ _ = True
+
 qux :: t
 qux = let x = x in x
 
+-- точно расходится. бесконечная рекурсия
+
 corge :: String
 corge = "Sorry, my value was changed"
+
+-- не может. corge - константа
 
 grault :: (Eq a, Num a) => p -> a -> p
 grault x 0 = x
 grault x y = x
 
+-- может. например grault [1..] _ 
+
 garply :: Integer -> Char
 garply = grault 'q'
 
+-- не может. 
+-- garply x = grault 'q' x
+-- garply x = 'q'
+-- garply _ = 'q'
+
 waldo :: Integer -> Integer -> Integer
 waldo = foo
+
+-- может. например waldo (- 1) 10
 
 -------------------------------------------------------------------------------
 
 -- 4. BangPatterns  (0,5 балла)
 --    Реализуйте `foldl'`, форсировав вычисление с помощью ! аналогично `sumBang` из лекции
+
+foldl' :: (b -> a -> b) -> b -> [a] -> b
+foldl' _  z []     = z
+foldl' f !z (x:xs) = foldl' f (f z x) xs
 
 -------------------------------------------------------------------------------
 
@@ -93,11 +149,17 @@ foo 0 x = x
 foo n x = let x' = foo (n - 1) (x + 1)
           in x' `seq` x'
 
+-- никак не поможет. тк x' уже вычислено до WHNF. 
+-- К тому же hlint предлагает заменить x' `seq` x' на просто x' )))
+
+
 bar :: (Eq t1, Num t1) => t1 -> (t1 -> t2) -> t1 -> t2
 bar 0 f = f
 bar x f = let f' = \a -> f (x + a)
               x' = x - 1
           in f' `seq` x' `seq` bar x' f'
+
+-- поможет. тк f' и x' будут вычислены до WHNF
 
 baz :: (Eq t, Num t, Num a) => t -> (a, a) -> a
 baz 0 (x, y) = x + y
@@ -107,6 +169,8 @@ baz n (x, y) = let x' = x + 1
                    n' = n - 1
                in p `seq` n' `seq` baz n' p
 
+-- поможет. тк p и n' будут вычислены до WHNF
+
 quux :: (Eq t, Num t, Num a) => t -> (a, a) -> a
 quux 0 (x, y) = x + y
 quux n (x, y) = let x' = x + 1
@@ -114,6 +178,8 @@ quux n (x, y) = let x' = x + 1
                     p  = (x', y')
                     n' = n - 1
                 in x' `seq` y' `seq` n' `seq` quux n' p
+
+-- поможет. тк x', y' и n' используются в вычислении quux n' p
 
 -------------------------------------------------------------------------------
 
@@ -127,8 +193,14 @@ quux n (x, y) = let x' = x + 1
 
 mySum :: (Eq a, Num a) => (a, ()) -> a -> (a, ())
 mySum acc 0 = acc
+
 -- 6.a Почему Haskell говорит здесь, что $! -- redundant?
 mySum (result, ()) n = (mySum $! (result + n, ())) $ n - 1
+
+-- потому, что (result + n, ()) уже вычислено до WHNF тк:
+
+-- An expression is in weak head normal form (WHNF), if it is either:
+-- - a constructor (eventually applied to arguments) like True, Just (square 42) or (:) 1.
 
 goSum :: Integer -> (Integer, ())
 goSum = mySum (0, ())
@@ -136,13 +208,30 @@ goSum = mySum (0, ())
 -- 6.b Будут ли накапливаться отложенные вычисления в первом аргументе функции mySum?
 --    Да или нет и почему?
 
+-- Да. !$ не форсит вычисление до определенного конкретного значения. Он просто вычисляет до WHNF.
+-- к тому же тут он бесполезен тк (result + n, ()) уже вычислено до WHNF
+-- Значит будут накапливаться отложенные вычисления в первом аргументе функции mySum
+-- до тех пор пока мы не решимся вычислить их до конца, например, для вывода на экран
+
 -- 6.c Будут ли накапливаться отложенные вычисления во втором аргументе функции mySum?
 --    Да или нет и почему?
+
+-- Нет. Тк мы паттерн матчимся по конкретному значению второго аргумента. 
+-- Значит он будет вычислен до конца
 
 -------------------------------------------------------------------------------
 
 -- 7*. Почему здесь происходит утечка памяти? Как ее исправить? (2 балла)
 
 -- let small' = fst (small, large) in ... small' ...
+
+-- Потому что small' = fst (small, large) 
+-- и даже если мы не будет дальше использовать large, то он все равно будет висеть в памяти
+-- из-за ленивости.
+
+-- Чтобы исправить можно написать
+-- let small' = small in ... small' ...
+-- и если мы не будем использовать large, то он не будет висеть в памяти и
+-- соберется сборщиком мусора
 
 -------------------------------------------------------------------------------
