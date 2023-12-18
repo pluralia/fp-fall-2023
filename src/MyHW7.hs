@@ -62,19 +62,6 @@ data Fasta = Fasta {
 -- | В одном файле можно встретить несколько последовательностей, разделенных произвольным числом переводов строк
 --   Напишите парсер контента такого файла (Пример в файле `test.fasta`)
 --
-
-fastaDescriptionP :: Parser String
-fastaDescriptionP = satisfyP (== '>') *> takeWhileP (/= '\n')
-
-fastaCommentP :: Parser String
-fastaCommentP = (satisfyP (== ';') *> takeWhileP (/= '\n')) <|> pure ""
-
-fastaSubseqP :: Parser [Acid]
-fastaSubseqP = some (satisfyP (\x -> x /= ';' && x /= '>' && x /= '\n'))
-
-fastaSeqP :: Parser [Acid]
-fastaSeqP = concat <$> many (fastaSubseqP <* many newLineP)
-
 fastaP :: Parser Fasta
 fastaP = Fasta
   <$ fastaCommentP
@@ -87,6 +74,19 @@ fastaP = Fasta
   <* many newLineP
   <* fastaCommentP
   <* many newLineP
+
+  where
+    fastaDescriptionP :: Parser String
+    fastaDescriptionP = satisfyP (== '>') *> takeWhileP (/= '\n')
+
+    fastaCommentP :: Parser String
+    fastaCommentP = (satisfyP (== ';') *> takeWhileP (/= '\n')) <|> pure ""
+
+    fastaSubseqP :: Parser [Acid]
+    fastaSubseqP = some (satisfyP (\x -> elem x $ '*': ['A'..'Z']))
+
+    fastaSeqP :: Parser [Acid]
+    fastaSeqP = concat <$> many (fastaSubseqP <* many newLineP)
 
 fastaListP :: Parser [Fasta]
 fastaListP = many fastaP

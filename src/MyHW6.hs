@@ -52,8 +52,7 @@ floatP = (\sign first second -> sign * (first + second))
 -- | 1.d Парсит заданную строку (0,25 балла)
 --
 stringP :: String -> Parser String
-stringP []       = pure []
-stringP (x : xs) = (:) <$> satisfyP (== x) <*> stringP xs
+stringP = foldr (\ x -> (<*>) ((:) <$> satisfyP (== x))) (pure [])
 
 ---------------------------------------
 
@@ -150,7 +149,7 @@ simpleExprP :: Parser SimpleExpr
 simpleExprP = SimpleExpr
   <$> floatP
   <* spaceP
-  <*> satisfyP (\a -> a == '+' || a == '*')
+  <*> satisfyP (\a -> a `elem` ['+', '*'])
   <* spaceP
   <*> floatP
 
@@ -243,10 +242,10 @@ fmap4 f fa fb fc fd = f <$> fa <*> fb <*> fc <*> fd
 -- (*) :: (Int -> Int -> Int)
 -- fmap :: (x -> y) -> Parser x -> Parser y
 -- x = Int, y = (Int -> Int)
--- fmap f :: Parser a -> Parser (Int -> Int)
+-- fmap (*) :: Parser Int -> Parser (Int -> Int)
 
--- Дальше у нас есть digitP :: Parser Int, который парсит цифру, к нему будем применять <*>
--- p1 = f <$> digitP :: Parser (Int -> Int)
+-- Дальше у нас есть digitP :: Parser Int, который парсит цифру, к нему будем применять <$>
+-- p1 = (*) <$> digitP :: Parser (Int -> Int)
 
 -- Получили функцию в контексте (парсер), можно ее применить к значению в контексте и получить новое значение в контексте
 -- В нашем случае это значит, что после применения <$> мы получили частично примененную функцию (* digit) внутри парсера.
@@ -264,7 +263,7 @@ fmap4 f fa fb fc fd = f <$> fa <*> fb <*> fc <*> fd
 -- | 4.a Парсит весь поток, пока символы потока удовлетворяют заданному условию (0,25 балла)
 --
 takeWhileP :: (Char -> Bool) -> Parser String
-takeWhileP f = many (satisfyP f)
+takeWhileP = many . satisfyP
 
 ---------------------------------------
 
@@ -294,9 +293,9 @@ inBetweenP lBorder rBorder p = stringP lBorder *> p <* stringP rBorder
 --   принимает на вход 2 парсера: первый парсит элементы, в второй -- разделители
 --
 sepByP :: Parser a -> Parser b -> Parser [a]
-sepByP p sep = (:) <$> p <*> some helpP
+sepByP p sep = (:) <$> (spaceP *> p) <*> some tailP <* spaceP
   where
-    helpP = spaceP <* sep <* spaceP *> p
+    tailP = spaceP <* sep <* spaceP *> p
 
 
 -- | Функция принимает парсер, которым парсятся элементы списка
@@ -334,9 +333,11 @@ newtype Row = Row (Map String (Maybe Value))
 rowP :: [String] -> Parser Row
 rowP colnames =  Row . fromList . zip colnames <$> rowMaybeP
   where
-    rowMaybeP = (:) <$> ((Just <$> valueP) <|> pure Nothing) <*> many helpP
-      where
-        helpP = spaceP <* satisfyP (== ',') <* spaceP *> ((Just <$> valueP) <|> pure Nothing)
+    rowMaybeP = (:) 
+      <$> optional valueP
+      <*> many tailP
+
+    tailP = spaceP <* satisfyP (== ',') <* spaceP *> optional valueP
 
 
 ---------------------------------------

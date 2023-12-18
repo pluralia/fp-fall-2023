@@ -6,7 +6,7 @@ import           Data.Map.Strict (fromList)
 
 import           Test.Hspec      (Spec, describe, it, shouldBe, shouldReturn)
 
-import           MyHW6        
+import           MyHW6
 import           MyHW7
 import           Parser
 
@@ -39,6 +39,8 @@ spec = do
       runParser (stringP "a") "" `shouldBe` Nothing
       runParser (stringP "a") "abc" `shouldBe` Just ("a", "bc")
       runParser (stringP "a") "bce" `shouldBe` Nothing
+      runParser (stringP "abc") "abc" `shouldBe` Just ("abc", "")
+      runParser (stringP "abc") "abcdef" `shouldBe` Just ("abc", "def")
 
     it "valueP" $ do
       runParser valueP "" `shouldBe` Nothing
@@ -125,7 +127,7 @@ spec = do
       runParser p1 "1,22,33,2" `shouldBe` Just ([1, 22, 33, 2] :: [Int], "")
       runParser p2 "1.3 | 0. | 6.12" `shouldBe` Just ([1.3, 0.0, 6.12] :: [Float], "")
       runParser p2 "1.3| 0.| 6.12aba" `shouldBe` Just ([1.3, 0.0, 6.12] :: [Float], "aba")
-      runParser p3 "col1,col2,col3\n" `shouldBe` Just (["col1", "col2", "col3"] :: [String], "\n")
+      runParser p3 "col1,col2,col3\n" `shouldBe` Just (["col1", "col2", "col3"] :: [String], "")
 
     it "listP" $ do
       let p1 = listP intP
@@ -133,7 +135,7 @@ spec = do
       runParser p1 "" `shouldBe` Nothing
       runParser p1 "[]" `shouldBe` Just ([], "")
       runParser p1 "[1,   2,  3,4, 5]" `shouldBe` Just ([1, 2, 3, 4, 5] :: [Int], "")
-      runParser p1 "[1,   2,  3,4, 5 ]" `shouldBe` Nothing
+      runParser p1 "[ 1,   2,  3,4, 5 ]" `shouldBe` Just ([1, 2, 3, 4, 5] :: [Int], "")
       runParser p2 "[ha, ske   , ll]" `shouldBe` Just (["ha", "ske", "ll"] :: [String], "")
 
     it "rowP" $ do
