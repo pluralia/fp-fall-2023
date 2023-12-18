@@ -1,5 +1,5 @@
 module MyHW6 where
-import           Control.Applicative (Alternative (..))
+import           Control.Applicative (Alternative (..), optional)
 import           Data.Char           (digitToInt)
 import           Data.Foldable       (foldl')
 import           Data.Map.Strict     (Map, fromList)
@@ -30,19 +30,22 @@ newLineP = satisfyP (== '\n')
 --       (какой парсер из модуля Parser можно переиспользовать?)
 --
 intP :: Parser Int
-intP = foldl' (\acc x -> acc * 10 + x) 0 `fmap` digitsP
+intP = foldl' (\acc x -> acc * 10 + x) 0 <$> digitsP
 
 ---------------------------------------
 
 -- | 1.c Парсит вещественное число формата `-?(0|[1-9]\d*).\d*` (0,75 балла)
 --
 floatP :: Parser Float
-floatP = (+)
-    <$> (fromIntegral <$> readFirst)
+floatP = (\sign first second -> sign * (first + second))
+    <$> readSign
+    <*> (fromIntegral <$> readFirst)
     <* satisfyP (== '.')
-    <*> (((\x -> fromIntegral x / 10 ^ length (show x)) <$> intP) <|> pure 0)
+    <*> readSecond <|> pure 0
     where
-      readFirst = digitToInt <$> satisfyP (== '0') <|> intP
+      readSign = (- 1 <$ satisfyP (== '-')) <|> pure 1
+      readFirst  = digitToInt <$> satisfyP (== '0') <|> intP
+      readSecond = foldr (\x acc -> (acc + fromIntegral x) / 10) 0 <$> digitsP
 
 ---------------------------------------
 
