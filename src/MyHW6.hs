@@ -41,7 +41,7 @@ floatP = (\sign first second -> sign * (first + second))
     <$> readSign
     <*> (fromIntegral <$> readFirst)
     <* satisfyP (== '.')
-    <*> readSecond <|> pure 0
+    <*> (readSecond <|> pure 0.0)
     where
       readSign = (- 1 <$ satisfyP (== '-')) <|> pure 1
       readFirst  = digitToInt <$> satisfyP (== '0') <|> intP
