@@ -8,6 +8,7 @@ import Test.Hspec
   , it
   , shouldBe
   , describe
+  , shouldReturn
   )
 import Data.Char       (isDigit, isAsciiLower)
 import Data.Map.Strict (fromList)
@@ -96,6 +97,7 @@ spec = do
       runParser (listP symbolsP) "[abc, def, ghi]" `shouldBe` Just (["abc", "def", "ghi"] :: [String], "")
       runParser (listP symbolsP) "[   abc,   def,  ghi   ]" `shouldBe` Just (["abc", "def", "ghi"] :: [String], "")
       runParser (listP intP) "1, 2, 3]" `shouldBe` Nothing
+
   describe "CSV" $ do
     it "rowP" $ do
       let names = ["Year", "Make", "Model" :: String]
@@ -114,3 +116,7 @@ spec = do
       runParser (rowP names) data1 `shouldBe` Just (res1, "")
       runParser (rowP names) data2 `shouldBe` Just (res2, "")
       runParser (rowP names) data3 `shouldBe` Just (res3, "")
+
+  describe "FASTA" $ do
+    it "fastaListP" $ do
+      testFullyParsedIO "files_for_parsing/test.fasta" fastaListP `shouldReturn` True
