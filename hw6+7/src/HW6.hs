@@ -1,18 +1,9 @@
 module HW6 where
-
-import Control.Applicative (Alternative (..), optional)
-import Data.Char (digitToInt)
-import Data.Foldable (foldl')
-import Data.Map.Strict (Map, fromList)
-import Parser
-  ( Parser (..),
-    digitP,
-    digitsP,
-    satisfyP,
-    spaceP,
-    symbolsP,
-  )
-
+import           Control.Applicative (Alternative (..), optional)
+import           Data.Char           (digitToInt)
+import           Data.Foldable       (foldl')
+import           Data.Map.Strict     (Map, fromList)
+import           Parser
 -------------------------------------------------------------------------------
 
 -- В этой домашке вам потребуется подгружать одновременно 2 файла в ghci:

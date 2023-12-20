@@ -71,5 +71,3 @@ parseNumber = runParser digitsP "123 23 AB" -- Just ([1,2,3], " 23 AB")
 
 -- Atom <$> nameM <*> coordsM
 -- parser -> function that turns string into object
-
--- runParser (pure (+) <*> digitP <*> digitP) -> «12AB» = Just (3, «AB»)

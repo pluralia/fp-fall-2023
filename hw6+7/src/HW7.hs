@@ -1,11 +1,7 @@
 module HW7 where
-import           Control.Monad (void)
-
 import           Control.Applicative
-import qualified Data.Map.Strict as M
-import           Data.Maybe (isJust)
+import           HW6
 import           Parser
-
 -------------------------------------------------------------------------------
 
 -- В этой домашке вам потребуется подгружать одновременно 2 файла в ghci:
@@ -27,7 +23,7 @@ testIO filePath parser = do
 --   Здесь мы просто проверяем, что парсер распарсил входную строку полностью
 -- 
 testFullyParsedIO :: FilePath -> Parser a -> IO Bool
-testFullyParsedIO filePath parser = maybe False (null . snd) <$> testIO filePath parser
+testFullyParsedIO filePath parser = maybe False (null . snd) <$> HW7.testIO filePath parser
 
 -- Вызывать `testFullyParsedIO` в тестах можно так
 --     it "My test" $ do
@@ -66,23 +62,36 @@ data Fasta = Fasta {
 --   Напишите парсер контента такого файла (Пример в файле `test.fasta`)
 --
 
-newLineP :: Parser Char
-newLineP = satisfyP (== '\n')
 
 -- :p, разобрался
-fastaListP :: Parser [Fasta]
-fastaListP = many $ Fasta <$ commentP <*> descriptP <* commentP <*> seqP <* commentP
-    where
-        commentP :: Parser ()
-        commentP = void . many $ (satisfyP (==';') <* many (satisfyP (/='\n')) <* many newLineP)
-        descriptP :: Parser String
-        descriptP =    satisfyP (=='>')
-                    *> many (satisfyP (/='\n'))
-                    <* newLineP
-        seqP :: Parser [Acid]
-        seqP = mconcat <$> some (some (satisfyP (`elem` ('*' : ['A'..'Z']))) <* many newLineP)
+fastaP :: Parser Fasta
+fastaP = Fasta
+  <$ fastaCommentP
+  <* many newLineP
+  <*> fastaDescriptionP
+  <* many newLineP
+  <* fastaCommentP
+  <* many newLineP
+  <*> fastaSeqP
+  <* many newLineP
+  <* fastaCommentP
+  <* many newLineP
 
--------------------
+  where
+    fastaDescriptionP :: Parser String
+    fastaDescriptionP = satisfyP (== '>') *> takeWhileP (/= '\n')
+
+    fastaCommentP :: Parser String
+    fastaCommentP = (satisfyP (== ';') *> takeWhileP (/= '\n')) <|> pure ""
+
+    fastaSubseqP :: Parser [Acid]
+    fastaSubseqP = some (satisfyP (\x -> elem x $ '*': ['A'..'Z']))
+
+    fastaSeqP :: Parser [Acid]
+    fastaSeqP = concat <$> many (fastaSubseqP <* many newLineP)
+
+fastaListP :: Parser [Fasta]
+fastaListP = many fastaP
 -------------------------------------------------------------------------------
 
 -- 3. Парсер PDB (2 балла)
