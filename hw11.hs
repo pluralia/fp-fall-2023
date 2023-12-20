@@ -39,8 +39,8 @@ value = foo (3 * 10) (5 - 2)
 wow :: p -> p
 wow a = a
 
-con :: b -> Integer -> Integer -> Integer
-con = const foo
+con :: b -> p -> p
+con = const wow
 
 bazz :: p -> b -> Bool
 bazz x = const True
@@ -58,8 +58,8 @@ grault x y = x
 garply :: Integer -> Char
 garply = grault 'q'
 
-waldo :: Integer -> Integer -> Integer
-waldo = foo
+waldo :: p -> p
+waldo = wow
 
 -------------------------------------------------------------------------------
 
@@ -127,14 +127,21 @@ quux n (x, y) = let x' = x + 1
 
 mySum :: (Eq a, Num a) => (a, ()) -> a -> (a, ())
 mySum acc 0 = acc
+
+---------------------------------------
+
 -- 6.a Почему Haskell говорит здесь, что $! -- redundant?
 mySum (result, ()) n = (mySum $! (result + n, ())) $ n - 1
 
 goSum :: Integer -> (Integer, ())
 goSum = mySum (0, ())
 
+---------------------------------------
+
 -- 6.b Будут ли накапливаться отложенные вычисления в первом аргументе функции mySum?
 --    Да или нет и почему?
+
+---------------------------------------
 
 -- 6.c Будут ли накапливаться отложенные вычисления во втором аргументе функции mySum?
 --    Да или нет и почему?
