@@ -9,7 +9,9 @@ import Test.Hspec
   , shouldBe
   , describe
   )
-import Data.Char (isDigit, isAsciiLower)
+import Data.Char       (isDigit, isAsciiLower)
+import Data.Map.Strict (fromList)
+import Data.Maybe      ()
 
 spec :: Spec
 spec = do
@@ -87,3 +89,21 @@ spec = do
       runParser (listP intP) "[]" `shouldBe` Just ([] :: [Int], "")
       runParser (listP symbolsP) "[abc, def, ghi]" `shouldBe` Just (["abc", "def", "ghi"] :: [String], "")
       runParser (listP intP) "1, 2, 3]" `shouldBe` Nothing
+  describe "CSV" $ do
+    it "rowP" $ do
+      let names = ["Year","Make","Model" :: String]
+      let data1 = "1997,Ford,E350"
+      let data2 = "2019,,Wow"
+      let data3 = ",,,"
+      let res1 = Row $ fromList [("Year", Just $ IntValue 1997), 
+                                 ("Make", Just $ StringValue "Ford"), 
+                                 ("Model", Just $ StringValue "E350")]
+      let res2 = Row $ fromList [("Year", Just $ IntValue 2019), 
+                                 ("Make", Nothing), 
+                                 ("Model", Just $ StringValue "Wow")]
+      let res3 = Row $ fromList [("Year", Nothing), 
+                                 ("Make", Nothing), 
+                                 ("Model", Nothing)]
+      runParser (rowP names) data1 `shouldBe` Just (res1, "")
+      runParser (rowP names) data2 `shouldBe` Just (res2, "")
+      runParser (rowP names) data3 `shouldBe` Just (res3, "")

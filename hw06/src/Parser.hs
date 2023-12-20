@@ -4,7 +4,6 @@ module Parser where
 
 import Data.Char           (digitToInt, isAlphaNum, isSpace, isDigit)
 import Control.Applicative (Alternative (..))
-import Data.Foldable       (foldl')
 
 newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
 

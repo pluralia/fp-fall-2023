@@ -5,15 +5,15 @@ module MyLib where
 import           Control.Applicative (Alternative (..), optional)
 import           Data.Foldable       (foldl')
 import           Data.Map.Strict     (Map, fromList)
-import           Data.Maybe ( fromMaybe )
-import qualified Data.Text           as T
 import Parser
+-------------------------------------------------------------------------------
+--------------------------------------HW6--------------------------------------
 -------------------------------------------------------------------------------
 
 -- В этой домашке вам потребуется подгружать одновременно 2 файла в ghci:
 -- src/Parser.hs и src/MyLib.hs. Это требует 2 шага:
 --
--- ghci> :l src/Parser.hs src/MyLib.hs
+-- ghci> :l src/Parser.hs src/MyLib:l src/Parser.hs src/MyLib.hs.hs
 -- ghci> :m Parser MyLib
 
 -------------------------------------------------------------------------------
@@ -89,17 +89,17 @@ intOrFloatP = Left <$> digitsP
 
 -- | Напишите парсер для 'Value'
 --
-intValueP :: Parser Value
-intValueP = IntValue <$> intP
-
-floatValueP :: Parser Value
-floatValueP = FloatValue <$> floatP
-
-stringValueP :: Parser Value
-stringValueP = StringValue <$> symbolsP
-
 valueP :: Parser Value
 valueP = floatValueP <|> intValueP <|> stringValueP
+  where 
+    intValueP :: Parser Value
+    intValueP = IntValue <$> intP
+
+    floatValueP :: Parser Value
+    floatValueP = FloatValue <$> floatP
+
+    stringValueP :: Parser Value
+    stringValueP = StringValue <$> symbolsP
 -------------------------------------------------------------------------------
 
 -- 2. Парсер-комбинаторы и арифметика (1 балла)
@@ -166,14 +166,16 @@ data Operation = Mult | Sum
 
 -- | Реализуйте парсер для Expr
 --
-operationP :: Parser Operation
-operationP = (Mult <$ satisfyP (== '*')) <|> (Sum <$ satisfyP (== '+'))
-
 exprP :: Parser Expr
 exprP = Expr
   <$> floatP
+  <* spaceP
   <*> operationP
+  <* spaceP
   <*> floatP
+  where
+    operationP :: Parser Operation
+    operationP = (Mult <$ satisfyP (== '*')) <|> (Sum <$ satisfyP (== '+'))
 
 -- | Реализуйте парсер, который парсит перемножение/сложение 2 вещественных чисел.
 --   Используйте exprP
@@ -192,13 +194,48 @@ sumMultFloatsP = (\expr -> case op expr of
 
 -- 3.a | Реализуйте fmap4 через fmap -- прокомментируйте каждый шаг указанием типов (0,5 балла)
 --
-fmap4 :: Applicative f => (a -> b -> c -> d -> e) -> f a -> f b -> f c -> f d -> f c
-fmap4 = undefined
+fmap4 :: Applicative f => (a -> b -> c -> d -> e) -> f a -> f b -> f c -> f d -> f e
+fmap4 f fa fb fc fd = f <$> fa <*> fb <*> fc <*> fd
+
+-- fmap :: (x -> y) -> f x -> fy
+-- f :: (a -> b -> c -> d -> e) = (a -> (b -> c -> d -> e))
+-- x = a, y = b -> c -> d -> e
+-- fmap :: (a -> (b -> c -> d -> e)) -> f a -> f (b -> c -> d -> e)
+-- fmap f :: f a -> f (b -> c -> d -> e)
+-- ffa = f <$> fa :: f (b -> c -> d -> e)
+
+-- ffa :: f (b -> c -> d -> e)
+-- fb :: f b
+-- fc :: f c
+-- fd :: f d
+-- res :: f e
+
+-- <*> f (x -> y) -> f x -> fy
+-- x = b, y = c -> d -> e
+-- (<*>) :: f (b -> (c -> d -> e)) = f b -> f (c -> d -> e)
+-- ffa <*> :: f b -> f (c -> d -> e)
+-- ffafb = ffa <*> fb :: f (c -> d -> e)
+
+-- <*> f (x -> y) -> f x -> fy
+-- x = c, y = d -> e
+-- (<*>) :: f (c -> (d -> e)) = f c -> f (d -> e)
+-- ffafb <*> :: f c -> f (d -> e)
+-- ffafbfc = ffafb <*> fc :: f (d -> e)
+
+-- <*> f (x -> y) -> f x -> fy
+-- x = d, y = e
+-- (<*>) :: f (d -> e) = f d -> f e
+-- ffafbfc <*> :: f d -> f e
+-- ffafbfcfd = ffafbfc <*> fd :: fe
 
 ---------------------------------------
 
 -- 3.b Сравните реализацию fmap4 и multDigitsP/simpleExprP/exprP -- видите похожий паттерн?
 --     Поделитесь своими мыслями / наблюдениями на этот счет (0,25 балла)
+
+-- Похожий паттерн между fmap4 и парсерами заключается в последовательном применении функций/операций 
+-- к значениям в контексте. В случае fmap4, это применение функции f к значениям в контексте f, а в парсерах 
+-- это преобразование последовательности символов в структурированные данные с помощью парсера.
 
 -------------------------------------------------------------------------------
 
@@ -265,7 +302,7 @@ data CSV = CSV {
 --     x,,y  --> [Just x, Nothing, Just y]
 --
 newtype Row = Row (Map String (Maybe Value))
-  deriving (Show)
+  deriving (Show, Eq)
 
 ---------------------------------------
 
@@ -273,8 +310,7 @@ newtype Row = Row (Map String (Maybe Value))
 --   Названия колонок файла передаются аргументом (0,5 балла)
 --
 rowP :: [String] -> Parser Row
-rowP colNames = undefined
-
+rowP cNames = Row . fromList . zip cNames <$> sepByP (optional valueP) (satisfyP (== ','))
 ---------------------------------------
 
 -- | 6.b Парсер СSV (0,25 балла)
@@ -282,11 +318,25 @@ rowP colNames = undefined
 --       Скорпируйте его и запустите на вашем rowP -- убедитесь, что все работает
 --
 csvP :: Parser CSV
-csvP = undefined
+csvP = Parser f
+  where
+    f :: String -> Maybe (CSV, String)
+    f s = case runParser colNamesP s of
+        Nothing             -> Nothing
+        Just (colNames', s') -> case runParser (rowsP colNames' <|> pure []) s' of
+            Nothing -> Nothing
+            Just (rows', s'') -> Just (CSV colNames' rows', s'')
+
+    colNamesP :: Parser [String]
+    colNamesP = sepByP symbolsP (satisfyP (== ','))
+
+    rowsP :: [String] -> Parser [Row]
+    rowsP cNames = many (satisfyP (== '\n') *> rowP cNames)
+
 
 testIO :: IO (Maybe (CSV, String))
 testIO = do
-    content <- readFile "files_for_parsing/test.csv"
+    content <- readFile "files_for_parsing/test.csv" 
     return $ runParser csvP content
 
 -------------------------------------------------------------------------------
