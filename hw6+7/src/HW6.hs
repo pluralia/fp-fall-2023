@@ -1,13 +1,9 @@
+module HW6 where
+
 import Control.Applicative (Alternative (..), optional)
-import Control.Applicative qualified as Map
-import Data.Char (digitToInt, isAlphaNum)
+import Data.Char (digitToInt)
 import Data.Foldable (foldl')
-import Data.Map (toList)
 import Data.Map.Strict (Map, fromList)
-import Data.Maybe (isNothing)
-import Data.Text qualified as T
-import Distribution.Compat.CharParsing (CharParsing (satisfy), digit)
-import Distribution.Simple.Utils (warn, xargs)
 import Parser
   ( Parser (..),
     digitP,

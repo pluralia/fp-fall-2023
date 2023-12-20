@@ -1,8 +1,10 @@
+module HW7 where
+import           Control.Monad (void)
+
 import           Control.Applicative
 import qualified Data.Map.Strict as M
 import           Data.Maybe (isJust)
 import           Parser
-import qualified Text.Read.Lex as MyLib
 
 -------------------------------------------------------------------------------
 
@@ -63,9 +65,24 @@ data Fasta = Fasta {
 -- | В одном файле можно встретить несколько последовательностей, разделенных произвольным числом переводов строк
 --   Напишите парсер контента такого файла (Пример в файле `test.fasta`)
 --
-fastaListP :: Parser [Fasta]
-fastaListP = undefined
 
+newLineP :: Parser Char
+newLineP = satisfyP (== '\n')
+
+-- :p, разобрался
+fastaListP :: Parser [Fasta]
+fastaListP = many $ Fasta <$ commentP <*> descriptP <* commentP <*> seqP <* commentP
+    where
+        commentP :: Parser ()
+        commentP = void . many $ (satisfyP (==';') <* many (satisfyP (/='\n')) <* many newLineP)
+        descriptP :: Parser String
+        descriptP =    satisfyP (=='>')
+                    *> many (satisfyP (/='\n'))
+                    <* newLineP
+        seqP :: Parser [Acid]
+        seqP = mconcat <$> some (some (satisfyP (`elem` ('*' : ['A'..'Z']))) <* many newLineP)
+
+-------------------
 -------------------------------------------------------------------------------
 
 -- 3. Парсер PDB (2 балла)
