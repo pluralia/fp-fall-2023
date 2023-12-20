@@ -36,6 +36,8 @@ spec = do
       runParser floatP "1234text" `shouldBe` Nothing
       runParser floatP "-222.333text" `shouldBe` Just (-222.333 :: Float, "text")
       runParser floatP "222.333text" `shouldBe` Just (222.333 :: Float, "text")
+      runParser floatP "-222.text" `shouldBe` Just (-222.0 :: Float, "text")
+      runParser floatP "222.text" `shouldBe` Just (222.0 :: Float, "text")
     it "valueP" $ do
       runParser valueP "" `shouldBe` Nothing
       runParser valueP "222text" `shouldBe` Just (IntValue (222 :: Int), "text")
@@ -47,7 +49,9 @@ spec = do
   describe "Parser combinators and arithmetic" $ do
     it "multIntsP" $ do
       runParser multIntsP "3*6text" `shouldBe` Just (18:: Int, "text")
-      runParser multIntsP "-3*6" `shouldBe` Just (-18:: Int, "")
+      runParser multIntsP "12*12" `shouldBe` Just (144 :: Int, "")
+      runParser multIntsP "12123*12" `shouldBe` Just (145476 :: Int, "")
+      runParser multIntsP "-3*6" `shouldBe` Just (-18 :: Int, "")
       runParser multIntsP "text" `shouldBe` Nothing
     it "multFloatsP" $ do
       runParser multFloatsP "3.9*6.1text" `shouldBe` Just (23.79 :: Float, "text")
@@ -59,7 +63,9 @@ spec = do
       runParser simpleExprP "-33.1+560text"  `shouldBe` Nothing
     it "exprP" $ do
       runParser exprP "-3.1*4.5"  `shouldBe` Just (Expr (-3.1) Mult 4.5, "")
+      runParser exprP "-3.1 * 4.5"  `shouldBe` Just (Expr (-3.1) Mult 4.5, "")
       runParser exprP "-33.1+56.0text"  `shouldBe` Just (Expr (-33.1) Sum 56.0,"text")
+      runParser exprP "-33.1  +  56.0   text"  `shouldBe` Just (Expr (-33.1) Sum 56.0,"   text")
       runParser exprP "1.11*"  `shouldBe` Nothing
       runParser exprP "-33.1+560text"  `shouldBe` Nothing
     it "sumMultFloatsP" $ do
@@ -88,10 +94,11 @@ spec = do
       runParser (listP floatP) "[1.5, 2.3, 3.7] abc" `shouldBe` Just ([1.5, 2.3, 3.7] :: [Float], " abc") 
       runParser (listP intP) "[]" `shouldBe` Just ([] :: [Int], "")
       runParser (listP symbolsP) "[abc, def, ghi]" `shouldBe` Just (["abc", "def", "ghi"] :: [String], "")
+      runParser (listP symbolsP) "[   abc,   def,  ghi   ]" `shouldBe` Just (["abc", "def", "ghi"] :: [String], "")
       runParser (listP intP) "1, 2, 3]" `shouldBe` Nothing
   describe "CSV" $ do
     it "rowP" $ do
-      let names = ["Year","Make","Model" :: String]
+      let names = ["Year", "Make", "Model" :: String]
       let data1 = "1997,Ford,E350"
       let data2 = "2019,,Wow"
       let data3 = ",,,"

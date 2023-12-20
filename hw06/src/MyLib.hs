@@ -13,7 +13,7 @@ import Parser
 -- В этой домашке вам потребуется подгружать одновременно 2 файла в ghci:
 -- src/Parser.hs и src/MyLib.hs. Это требует 2 шага:
 --
--- ghci> :l src/Parser.hs src/MyLib:l src/Parser.hs src/MyLib.hs.hs
+-- ghci> :l src/Parser.hs src/MyLib.hs
 -- ghci> :m Parser MyLib
 
 -------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ intP = (*) <$> signMultiplier <*> (foldl' (\acc d -> acc * 10 + d) 0 <$> digitsP
 --
 floatP :: Parser Float
 floatP = (\sign intPart fracPart -> sign * (fromIntegral intPart + fracPart)) 
-          <$> signMultiplier <*> intP2 <*> helper
+          <$> signMultiplier <*> intP2 <* satisfyP (== '.') <*> (helper <|> pure 0)
   where
     signMultiplier = (\s -> if s == Just '-' then (-1) else 1) 
                       <$> optional (satisfyP (== '-'))
@@ -52,7 +52,7 @@ floatP = (\sign intPart fracPart -> sign * (fromIntegral intPart + fracPart))
     intP2 = foldl' (\acc d -> acc * 10 + d) 0 <$> digitsP
     
     helper :: Parser Float
-    helper = foldr (\x acc -> (acc + fromIntegral x) / 10) 0 <$> (satisfyP (== '.') *> some digitP)
+    helper = foldr (\x acc -> (acc + fromIntegral x) / 10) 0 <$> digitsP
 ---------------------------------------
 
 -- | 1.d Парсит заданную строку (0,25 балла)
@@ -276,7 +276,7 @@ inBetweenP lBorder rBorder p = stringP lBorder *> p <* stringP rBorder
 --   принимает на вход 2 парсера: первый парсит элементы, в второй -- разделители
 -- 
 sepByP :: Parser a -> Parser b -> Parser [a]
-sepByP p sep = (:) <$> p <*> some (spaceP *> sep *> spaceP *> p) <|> pure []
+sepByP p sep = (:) <$> (spaceP *> p) <*> some (spaceP *> sep *> spaceP *> p <* spaceP) <|> pure []
 
 -- | Функция принимает парсер, которым парсятся элементы списка
 --
