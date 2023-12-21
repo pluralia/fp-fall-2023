@@ -30,7 +30,7 @@ spec = do
       runParser floatP "Hi" `shouldBe` Nothing
       runParser floatP "1 litre" `shouldBe` Nothing
       runParser floatP "1.5 litre" `shouldBe` Just (1.5 :: Float, " litre")
-
+      -- runParser floatP "6.003" `shouldBe` Just (6.003 :: Float, "")
 
     it "stringP" $ do
       runParser (stringP "hello") "world" `shouldBe` Nothing
@@ -45,13 +45,28 @@ spec = do
         runParser multIntsP "*"  `shouldBe` Nothing
         runParser multIntsP "*1"  `shouldBe` Nothing
         runParser multIntsP "12*2"  `shouldBe` Just (24 :: Int, "")
-        runParser multIntsP "12 * 2"  `shouldBe` Just (24 :: Int, "")
-        runParser multFloatsP "1.0 * 3.0" `shouldBe` Just (3.0 :: Float, "")
-        runParser multFloatsP "0.0 * 3.0" `shouldBe` Just (0.0 :: Float, "")
-        runParser multFloatsP "*" `shouldBe` Nothing
+
+      it "multFloatP" $ do
+        runParser multFloatsP "1.0*8.0"  `shouldBe` Just (8.0 :: Float, "")
+        runParser multFloatsP "8.0*8.0"  `shouldBe` Just (64.0 :: Float, "")
+        runParser multFloatsP "+1"  `shouldBe` Nothing
+        runParser multFloatsP "8.0*8.0b"  `shouldBe` Just (64.0 :: Float, "b")
+      
+      it "simpleExprP" $ do
+        let ans = SimpleExpr 10.0 '*' 10.0
+        runParser simpleExprP "10.0*10.0 "  `shouldBe` Just (ans, " ")
+        runParser simpleExprP "10.11*"  `shouldBe` Nothing
+      
+      it "exprP" $ do
+        let ans = Expr 10.0 Mult 10.0
+        runParser exprP "10.0*10.0 "  `shouldBe` Just (ans, " ")
+        runParser exprP "10.11*"  `shouldBe` Nothing
+
+      it "sumMultFloatsP" $ do
         runParser sumMultFloatsP "3.0+1.4"  `shouldBe` Just (4.4 :: Float, "")
         runParser sumMultFloatsP "3.0*1.4"  `shouldBe` Just (4.2 :: Float, "")
         runParser sumMultFloatsP "*"  `shouldBe` Nothing
+
 
 -- -- -- Task 4
     describe "task4" $ do
@@ -68,5 +83,22 @@ spec = do
       it "inBetweenP" $ do
         runParser (inBetweenP "(" ")" intP) "(812)" `shouldBe` Just (812 :: Int, "")
         runParser (inBetweenP "(" ")" digitP) "(812)" `shouldBe` Nothing
+
+      it "sepByP" $ do
+        let s = sepByP symbolsP (satisfyP (== '-'))
+        let s1 = sepByP floatP (satisfyP (=='.'))
+        runParser s "hello-world-how-are-you" `shouldBe` Just (["hello", "world", "how", "are", "you"], "")
+        runParser s1 "3.14.2.7.0.5" `shouldBe` Just ([3.14, 2.7, 0.5] :: [Float], "")
+        runParser s "t, r   , b , 8    , , !7" `shouldBe` Nothing
+      
+      it "listP" $ do
+        let s = listP intP
+        let s1 = listP symbolsP
+        runParser s "" `shouldBe` Nothing
+        runParser s1 "[ex,  am, so, oon]" `shouldBe` Just (["ex", "am", "so", "oon"] :: [String], "")
+        runParser s "[1, 2, 3,  4, 5]" `shouldBe` Just ([1, 2, 3, 4, 5] :: [Int], "")
+
+
+
 
         

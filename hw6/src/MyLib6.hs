@@ -5,8 +5,8 @@ import           Data.Foldable       (foldl')
 import           Data.Map.Strict     (Map, fromList)
 import qualified Data.Text           as T
 import           Parser
-import Data.Char (digitToInt)
-import Data.List (stripPrefix)
+import           Data.Char          (digitToInt)
+
 
 
 
@@ -42,6 +42,8 @@ intP = foldl' (\acc x -> acc * 10 + x) 0 <$> digitsP
 
 -- | 1.c Парсит вещественное число формата `-?(0|[1-9]\d*).\d*` (0,75 балла)
 --
+
+
 floatP :: Parser Float
 floatP = (+) <$> integralPart <*> decimalPart
   where
@@ -50,17 +52,16 @@ floatP = (+) <$> integralPart <*> decimalPart
     intPart = intP
     readFirst = digitToInt <$> satisfyP (== '0') <|> intP
 
+
+
+
+
 ---------------------------------------
 
 -- | 1.d Парсит заданную строку (0,25 балла)
 --
 stringP :: String -> Parser String
-stringP str = Parser go
-  where
-    go :: String -> Maybe (String, String)
-    go input = case stripPrefix str input of
-      Just rest -> Just (str, rest)
-      Nothing   -> Nothing
+stringP = foldr (\ x -> (<*>) ((:) <$> satisfyP (== x))) (pure [])
 ---------------------------------------
 
 -- 1.e Парсит Value (0,25 баллa)
@@ -77,19 +78,6 @@ data Value = IntValue Int | FloatValue Float | StringValue String
 -- 1) intValueP
 -- 2) floatValueP
 -- 3) stringValueP
-digitsToInt :: [Int] -> Int
-digitsToInt = foldl (\acc x -> acc * 10 + x) 0
-
-intValueP :: Parser Value
-intValueP = IntValue . digitsToInt <$> digitsP
-
-
-
-symbolToString :: Parser String
-symbolToString = some symbolP
-
-stringValueP :: Parser Value
-stringValueP = StringValue <$> symbolToString
 
 -- Однако, мы не знаем, какой из них нам пригодится в моменте, поэтому хотим по порядку попробовать их все так,
 -- чтобы, если первый парсер зафейлился, мы бы попробовали второй и третий.
@@ -155,12 +143,13 @@ data SimpleExpr = SimpleExpr Float Char Float
 -- | Реализуйте парсер для SimpleExpr; операция может быть '+' и '*'
 --
 simpleExprP :: Parser SimpleExpr
-simpleExprP = SimpleExpr
-  <$> floatP
-  <* spaceP
-  <*> satisfyP (\a -> a == '+' || a == '*')
-  <* spaceP
-  <*> floatP
+simpleExprP =
+  SimpleExpr
+    <$> floatP
+    <* spaceP
+    <*> satisfyP (\a -> a `elem` ['+', '*'])
+    <* spaceP
+    <*> floatP
 
 -- -------------------------------------------------------------------------------
 -- | Более сложное выражение, в котором операция задана типом данных Operation
@@ -247,12 +236,14 @@ inBetweenP lBorder rBorder p = stringP lBorder *> p <* stringP rBorder
 --   принимает на вход 2 парсера: первый парсит элементы, в второй -- разделители
 -- 
 sepByP :: Parser a -> Parser b -> Parser [a]
-sepByP p sep = undefined
+sepByP p sep = (:) <$> (spaceP *> p) <*> some tailP <* spaceP
+  where
+    tailP = spaceP <* sep <* spaceP *> p
 
 -- | Функция принимает парсер, которым парсятся элементы списка
 --
 listP :: Parser a -> Parser [a]
-listP = undefined
+listP elementP = inBetweenP "[" "]" (sepByP (spaceP *> elementP <* spaceP) (stringP ","))
 
 -------------------------------------------------------------------------------
 
