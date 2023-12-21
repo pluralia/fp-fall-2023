@@ -2,10 +2,12 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module MyLib where
     
-import Control.Monad.State    (State, StateT, MonadState (..))
+import Control.Monad.State    (State, StateT, MonadState (..), gets)
+import Control.Monad.Except   (ExceptT)
 import Control.Monad.Identity (Identity)
 import Control.Monad.Trans    (MonadTrans (..))
 import Prelude hiding         (log)
@@ -19,6 +21,10 @@ data Logged a
       { logs :: [(LoggingLevel, String)] -- накопленный лог
       , val  :: a                        -- значение
       }
+
+instance Functor Logged where
+  fmap :: (a -> b) -> Logged a -> Logged b
+  fmap f (Logged lgs v) = Logged lgs (f v)
 
 -- | По уровню логирования можно понять, насколько важным
 --   является увиденное сообщение. Также введение уровней логировнаия
@@ -42,26 +48,40 @@ type Logger a = LoggerT Identity a
 -- 1. Чтобы всё это имело смысл, сделайте 'LoggerT' монадой (1 балл)
 --    При последовательных вычислениях логи должны объединяться.
 
+
 instance Functor m => Functor (LoggerT m) where
-  fmap  = undefined
+  fmap :: (a -> b) -> LoggerT m a -> LoggerT m b
+  fmap f (LoggerT x) = LoggerT $ fmap (fmap f) x
 
-instance Applicative m => Applicative (LoggerT m) where
-  pure  = undefined
-  (<*>) = undefined
-
+instance Monad m => Applicative (LoggerT m) where
+  pure :: a -> LoggerT m a
+  pure = lift . pure
+  
+  (<*>) :: LoggerT m (a -> b) -> LoggerT m a -> LoggerT m b
+  (<*>) mf mx = do
+    f <- mf
+    f <$> mx
+    
 instance Monad m => Monad (LoggerT m) where
-  return = undefined
-  (>>=)  = undefined
+  return :: a -> LoggerT m a
+  return = pure
+
+  (>>=) :: LoggerT m a -> (a -> LoggerT m b) -> LoggerT m b
+  (>>=) (LoggerT x) f = LoggerT $ do
+    Logged logs1 val1 <- x
+    Logged logs2 val2 <- runLoggerT $ f val1
+    return $ Logged (logs1 ++ logs2) val2
 
 instance MonadFail m => MonadFail (LoggerT m) where
-  fail = undefined
+  fail :: String -> LoggerT m a
+  fail = lift . fail
 
 -------------------------------------------------------------------------------
 
 -- | 2. Реализуйте функцию, позволяющую записать что-то в лог внутри трансформера 'LoggerT' (0,25 балла)
 --
-wrtiteLog :: Monad m => LoggingLevel -> String -> LoggerT m ()
-wrtiteLog = undefined
+writeLog :: Monad m => LoggingLevel -> String -> LoggerT m ()
+writeLog level m = LoggerT $ pure $ Logged [(level, m)] ()
 
 -------------------------------------------------------------------------------
 
@@ -75,7 +95,14 @@ wrtiteLog = undefined
 --      Про каждое из действий функция должна производить запись в лог на уровне INFO.
 
 loggingModification :: s -> (s -> Bool) -> (s -> s) -> StateT s (LoggerT Identity) (Maybe s)
-loggingModification def p f = undefined
+loggingModification def p f = do
+  s <- gets f
+  if p s
+    then do
+      return $ Just s
+    else do
+      put def
+      return Nothing
 
 -------------------------------------------------------------------------------
 
@@ -84,10 +111,18 @@ loggingModification def p f = undefined
 --      что и @loggingModification@ (1 балл)
 
 instance MonadTrans LoggerT where
-  lift = undefined
+  lift :: Monad m => m a -> LoggerT m a
+  lift = LoggerT . fmap (Logged [])
 
 modifyingLogging :: s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
-modifyingLogging def p f = undefined
+modifyingLogging def p f = do
+  s <- lift $ gets f
+  if p s
+    then do
+      return ()
+    else do
+      lift $ put def
+      return ()
 
 -------------------------------------------------------------------------------
 
@@ -99,11 +134,21 @@ modifyingLogging def p f = undefined
 --
 
 instance MonadState s m => MonadState s (LoggerT m) where
-  put = undefined
-  get = undefined
+  put :: s -> LoggerT m ()
+  put = lift . put
+
+  get :: LoggerT m s
+  get = lift get
 
 modifyingLogging' :: s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
-modifyingLogging' def p f = undefined
+modifyingLogging' def p f = do
+  s <- gets f
+  if p s
+    then do
+      return ()
+    else do
+      put def
+      return ()
 
 -------------------------------------------------------------------------------
 
@@ -120,13 +165,23 @@ class MonadLogger m where
   log :: LoggingLevel -> String -> m ()
 
 instance Monad m => MonadLogger (LoggerT m) where
-  log = undefined
+  log = writeLog
 
 instance (MonadTrans t, Monad m) => MonadLogger (t (LoggerT m)) where
-  log = undefined
+  log = (lift .) . writeLog
 
 loggingModification' :: s -> (s -> Bool) -> (s -> s) -> StateT s (LoggerT Identity) (Maybe s)
-loggingModification' def p f = undefined
+loggingModification' def p f = do
+  s <- gets f
+  log Info "Applying modification"
+  if p s
+    then do
+      log Info "Modification applied"
+      return $ Just s
+    else do
+      log Info "Modification not applied"
+      put def
+      return Nothing
 
 -------------------------------------------------------------------------------
 
@@ -138,7 +193,7 @@ loggingModification' def p f = undefined
 --
 --      Помните, что порядок, в котором вы заворачиваете друг в друга монады, важен. (1,5 балла)
 --
-type LoggingStateWithErrorInIO stateType errorType resType = ()
+type LoggingStateWithErrorInIO stateType errorType resType = StateT stateType (ExceptT errorType (LoggerT IO)) resType
 
 -------------------------------------------------------------------------------
 
@@ -166,14 +221,32 @@ type LoggingStateWithErrorInIO stateType errorType resType = ()
 --
 type UserId = Int
 
+data User = User {
+  id :: UserId,
+  rights :: [AccessRights]
+}
+
 -- | Тип возможных прав пользователей.
 --
 data AccessRights = Read | Write | ReadAndWrite | Admin
 
-data YourState = YourState
-data YourError = YourError
+newtype CustomState = CustomState {
+  users :: [User]
+}
+newtype CustomError = CustomError {
+  msg :: String
+}
 
-processUserDB :: FilePath -> FilePath -> FilePath -> LoggingStateWithErrorInIO YourState YourError ()
+readUsers :: FilePath -> IO [User]
+readUsers fp = do
+  content <- readFile fp
+  let 
+    ids :: [UserId]
+    ids = map read $ lines content 
+  return $ map (`User` []) ids
+
+
+processUserDB :: FilePath -> FilePath -> FilePath -> LoggingStateWithErrorInIO CustomState CustomError ()
 processUserDB pathToInputDB pathToLog pathToOutDB = undefined
 
 -------------------------------------------------------------------------------
