@@ -21,7 +21,6 @@ infLoop n count = do
     line <- getLine
 
     putStrLn line
-    let newCount = count + 1
 
     let logFile = "text_copy_" <> show n <> ".log"
     -- https://hackage.haskell.org/package/base-4.19.0.0/docs/System-IO.html#v:withFile
@@ -29,8 +28,11 @@ infLoop n count = do
     withFile logFile AppendMode $ \handle -> do
         hPutStrLn handle line
     
-    let newN = if count == 1000
+    let newN = if count == 999
         then n + 1
         else n
-    
+    let newCount = if count == 999
+        then 0
+        else count
+
     infLoop newN newCount
