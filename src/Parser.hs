@@ -1,7 +1,7 @@
 {-# LANGUAGE InstanceSigs #-}
 module Parser where
 
-import Data.Char           (digitToInt, isAlphaNum, isSpace, isDigit)
+import Data.Char           (digitToInt, isAlphaNum, isAlpha, isSpace, isDigit)
 import Control.Applicative (Alternative (..))
 import Data.Foldable       (foldl')
 
@@ -72,7 +72,7 @@ intP = foldl' (\acc x -> acc * 10 + x) 0 <$> some digitP
 floatP :: Parser Float
 floatP = (+) . fromIntegral
   <$> intP
-  <* satisfyP (== ',')
+  <* satisfyP (== '.')
   <*> helper
   where
     helper :: Parser Float

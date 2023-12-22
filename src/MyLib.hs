@@ -80,15 +80,11 @@ newtype InOrder a = In (Tree a)
 но тесты проходит
 -}
 instance Show a => Show (InOrder a) where
-    show (In tree) = inOrderShow tree
+    show (In tree) = inOrderSubtree [tree]
       where
-        inOrderShow :: Show a => Tree a -> String
-        inOrderShow (Node val subtree) = show val ++ inOrderSubtree subtree
-
         inOrderSubtree :: Show a => [Tree a] -> String
         inOrderSubtree [] = ""
-        inOrderSubtree [t] = inOrderShow t
-        inOrderSubtree (t:ts) = inOrderShow t ++ inOrderSubtree ts
+        inOrderSubtree (Node val subtree : ts) = show val ++ inOrderSubtree subtree ++ inOrderSubtree ts
 
 ----------------------------------------------------------------------------
 
@@ -299,7 +295,7 @@ atomP = PDBAtom
 
 connectP :: Parser PDBBond
 connectP = PDBBond
-  <$> stringP "CONNECT" <* spaceP -- аналогично, хочу парсить только строчку, без слова "CONECT"
+  <$> stringP "CONECT" <* spaceP -- аналогично, хочу парсить только строчку, без слова "CONECT"
   <*> intP <* spaceP
   <*> intP <* spaceP
   -- я хотела здесь через some, но оно не заработало
