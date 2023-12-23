@@ -191,8 +191,39 @@ sumMultFloatsP = (\expr ->
 
 -- 3.a | Реализуйте fmap4 через fmap -- прокомментируйте каждый шаг указанием типов (0,5 балла)
 --
-fmap4 :: Applicative f => (a -> b -> c -> d -> e) -> f a -> f b -> f c -> f d -> f c
-fmap4 = undefined
+fmap4 :: Applicative f => (a -> b -> c -> d -> e) -> f a -> f b -> f c -> f d -> f e
+fmap4 f fa fb fc fd = f <$> fa <*> fb <*> fc <*> fd
+
+-- fmap :: (x -> y) -> f x -> f y
+-- f :: (a -> b -> c -> d -> e) = (a -> (b -> c -> d -> e))
+-- x = a, y = b -> c -> d -> e
+-- fmap :: (a -> (b -> c -> d -> e)) -> f a -> f (b -> c -> d -> e)
+-- fmap f :: f a -> f (b -> c -> d -> e)
+-- ffa = f <$> fa :: f (b -> c -> d -> e)
+
+-- ffa :: f (b -> c -> d -> e)
+-- fb :: f b
+-- fc :: f c
+-- fd :: f d
+-- res :: f e
+
+-- <*> f (x -> y) -> f x -> fy
+-- x = b, y = c -> d -> e
+-- (<*>) :: f (b -> (c -> d -> e)) = f b -> f (c -> d -> e)
+-- ffa <*> :: f b -> f (c -> d -> e)
+-- ffafb = ffa <*> fb :: f (c -> d -> e)
+
+-- <*> f (x -> y) -> f x -> fy
+-- x = c, y = d -> e
+-- (<*>) :: f (c -> (d -> e)) = f c -> f (d -> e)
+-- ffafb <*> :: f c -> f (d -> e)
+-- ffafbfc = ffafb <*> fc :: f (d -> e)
+
+-- <*> f (x -> y) -> f x -> fy
+-- x = d, y = e
+-- (<*>) :: f (d -> e) = f d -> f e
+-- ffafbfc <*> :: f d -> f e
+-- ffafbfcfd = ffafbfc <*> fd :: fe
 
 ---------------------------------------
 
@@ -272,7 +303,7 @@ newtype Row = Row (Map String (Maybe Value))
 --   Названия колонок файла передаются аргументом (0,5 балла)
 --
 rowP :: [String] -> Parser Row
-rowP colNames = undefined
+rowP cNames = Row . M.fromList . zip cNames <$> sepBy (satisfyP (== ',')) valueP
 
 ---------------------------------------
 
@@ -281,7 +312,20 @@ rowP colNames = undefined
 --       Скорпируйте его и запустите на вашем rowP -- убедитесь, что все работает
 --
 csvP :: Parser CSV
-csvP = undefined
+csvP = Parser f
+  where
+    f :: String -> Maybe (CSV, String)
+    f s = case runParser colNamesP s of
+        Nothing             -> Nothing
+        Just (colNames, s') -> case runParser (rowsP colNames <|> pure []) s' of
+            Nothing -> Nothing
+            Just (rows, s'') -> Just (CSV colNames rows, s'')
+
+    colNamesP :: Parser [String]
+    colNamesP = sepBy (satisfyP (== ',')) symbolsP
+
+    rowsP :: [String] -> Parser [Row]
+    rowsP cNames = many (satisfyP (== '\n') *> rowP cNames)
 
 testIO :: IO (Maybe (CSV, String))
 testIO = do
