@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 module MyLib6 where
-import           Control.Applicative (Alternative (..))
+import           Control.Applicative (Alternative (..),optional)
 import           Data.Foldable       (foldl')
 import           Data.Map.Strict     (Map, fromList)
 import qualified Data.Text           as T
@@ -295,7 +295,7 @@ data CSV = CSV {
 --     x,,y  --> [Just x, Nothing, Just y]
 --
 newtype Row = Row (Map String (Maybe Value))
-  deriving (Show)
+  deriving (Show,Eq)
 
 ---------------------------------------
 
@@ -303,7 +303,7 @@ newtype Row = Row (Map String (Maybe Value))
 --   Названия колонок файла передаются аргументом (0,5 балла)
 --
 rowP :: [String] -> Parser Row
-rowP cNames = Row . M.fromList . zip cNames <$> sepBy (satisfyP (== ',')) valueP
+rowP cNames = Row . fromList . zip cNames <$> sepByP (optional valueP) (satisfyP (== ','))
 
 ---------------------------------------
 
@@ -317,12 +317,12 @@ csvP = Parser f
     f :: String -> Maybe (CSV, String)
     f s = case runParser colNamesP s of
         Nothing             -> Nothing
-        Just (colNames, s') -> case runParser (rowsP colNames <|> pure []) s' of
+        Just (colNames', s') -> case runParser (rowsP colNames' <|> pure []) s' of
             Nothing -> Nothing
-            Just (rows, s'') -> Just (CSV colNames rows, s'')
+            Just (rows', s'') -> Just (CSV colNames' rows', s'')
 
     colNamesP :: Parser [String]
-    colNamesP = sepBy (satisfyP (== ',')) symbolsP
+    colNamesP = sepByP symbolsP (satisfyP (== ','))
 
     rowsP :: [String] -> Parser [Row]
     rowsP cNames = many (satisfyP (== '\n') *> rowP cNames)
