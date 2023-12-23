@@ -97,8 +97,21 @@ spec = do
         runParser s "" `shouldBe` Nothing
         runParser s1 "[ex,  am, so, oon]" `shouldBe` Just (["ex", "am", "so", "oon"] :: [String], "")
         runParser s "[1, 2, 3,  4, 5]" `shouldBe` Just ([1, 2, 3, 4, 5] :: [Int], "")
+-- Task 6
+    describe "task6" $ do
+      it "rowP" $ do
+        let names = ["Name", "Age", "Country" :: String]
+        let data1 = "Alice,25,USA"
+        let data2 = ",30,Canada"
+        let res1 = Row $ fromList [("Name", Just $ StringValue "Alice"), 
+                                    ("Age", Just $ IntValue 25), 
+                                    ("Country", Just $ StringValue "USA")]
+        let res2 = Row $ fromList [("Name", Nothing), 
+                                    ("Age", Just $ IntValue 30), 
+                                    ("Country", Just $ StringValue "Canada")]
+        runParser (rowP names) data1 `shouldBe` Just (res1, "")
+        runParser (rowP names) data2 `shouldBe` Just (res2, "")
 
 
 
-
-        
+          
