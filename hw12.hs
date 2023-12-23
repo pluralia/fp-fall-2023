@@ -47,7 +47,6 @@ instance Applicative m => Applicative (LoggerT m) where
   (<*>) = undefined
 
 instance Monad m => Monad (LoggerT m) where
-  return = undefined
   (>>=)  = undefined
 
 instance MonadFail m => MonadFail (LoggerT m) where
@@ -83,7 +82,7 @@ loggingModification def p f = undefined
 instance MonadTrans LoggerT where
   lift = undefined
 
-modifyingLogging :: s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
+modifyingLogging :: s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) (Maybe s)
 modifyingLogging def p f = undefined
 
 -------------------------------------------------------------------------------
@@ -99,7 +98,7 @@ instance MonadState s m => MonadState s (LoggerT m) where
   put = undefined
   get = undefined
 
-modifyingLogging' :: s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
+modifyingLogging' :: s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) (Maybe s)
 modifyingLogging' def p f = undefined
 
 -------------------------------------------------------------------------------
