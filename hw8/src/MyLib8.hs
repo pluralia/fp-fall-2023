@@ -59,7 +59,7 @@ pythagoreanTriples n = do
   a <- [1..n]  
   b <- [1..a]
   c <- [1..b]
-  if a * a == b * b + c * c && a <= n && b <= a && c <= b
+  if a*a == b*b + c*c
     then return (a, b, c)
     else []
 
@@ -160,10 +160,10 @@ instance Monad (Reader' r) where
 
 instance MonadReader r (Reader' r) where
     ask :: Reader' r r
-    ask = undefined
+    ask =  Reader' $ \r -> Identity r
 
     local :: (r -> r) -> Reader' r a -> Reader' r a
-    local = undefined
+    local f (Reader' ra) = Reader' $ \r -> ra (f r)
 
 ---------------------------------------
 
