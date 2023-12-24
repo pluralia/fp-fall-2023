@@ -57,18 +57,20 @@ newtype Writer' w a = Writer' { runWriter' :: (Identity a, w) }
 
 instance Functor (Writer' w) where
     fmap :: (a -> b) -> Writer' w a -> Writer' w b
-    fmap = undefined
+    fmap f (Writer' (x, log)) = Writer' (f <$> x, log)
 
 instance Monoid w => Applicative (Writer' w) where
     pure :: a -> Writer' w a
-    pure = undefined
+    pure x = Writer' (pure x, mempty)
 
     (<*>) :: Writer' w (a -> b) -> Writer' w a -> Writer' w b
-    (<*>) = undefined
+    Writer' (f, log1) <*> Writer' (x, log2) = Writer' (f <*> x, log1 `mappend` log2)
 
 instance Monoid w => Monad (Writer' w) where
     (>>=) :: Writer' w a -> (a -> Writer' w b) -> Writer' w b
-    (>>=) = undefined
+    Writer' (x, log) >>= f = let (Identity a) = x
+                              in let Writer' (y, log') = f a
+                                in Writer' (y, log `mappend` log')
 
 ---------------------------------------
 
@@ -77,15 +79,16 @@ instance Monoid w => Monad (Writer' w) where
 
 instance (Monoid w) => MonadWriter w (Writer' w) where
     tell :: w -> Writer' w ()
-    tell = undefined
+    tell w = Writer' (Identity (), w)
 
     listen :: Writer' w a -> Writer' w (a, w)
-    listen = undefined
+    listen (Writer' (Identity x, log)) = Writer' (Identity (x, log), log)
 
     pass :: Writer' w (a, w -> w) -> Writer' w a
-    pass = undefined
+    pass (Writer' (Identity (x, f), log)) = Writer' (Identity x, f log)
 
 -- Почему нужно было определять `Writer' w a`, а не `Writer' a w`?
+-- чтобы соответствовать структуре моноида и иметь фиксированный лог.
 
 ---------------------------------------
 
