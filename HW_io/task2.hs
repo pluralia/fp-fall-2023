@@ -14,10 +14,18 @@
 --   Он может пригодиться вам для подсчёта числа байт в файле.
 --
 
+import System.Environment (getArgs)
+import qualified Data.ByteString.Char8 as B
+
 main :: IO ()
 main = do
-    content <- getContents
-    let linesCount = length . lines $ content
-        wordsCount = length . words $ content
-        bytesCount = length content
-    print (linesCount, wordsCount, bytesCount)
+    [path] <- getArgs
+    wcFunc path
+      where
+        wcFunc :: FilePath -> IO ()
+        wcFunc curPath = do
+            content <- B.readFile curPath
+            let linesCount = length (lines $ B.unpack content)
+                wordsCount = length (words $ B.unpack content)
+                bytesCount = B.length content
+            putStrLn $ "\t" ++ (show linesCount) ++ "\t" ++ (show wordsCount) ++ "\t" ++ (show bytesCount) ++ "\t" ++ curPath
