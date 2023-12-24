@@ -46,11 +46,11 @@ spec = do
                                Leaf
                          )
                          (Node 150 Leaf Leaf)
-        {- тесты должны быть такими, но я не понимаю, почему у меня 0 в сумме
+      
         sumAndTraceInOrder tree1 `shouldBe` (Writer' (Identity [1, 2, 3, 4, 11, 5, 13, 12, 14], Sum 65) :: Writer' (Sum Int) [Int])
         sumAndTraceInOrder tree2 `shouldBe` (Writer' (Identity [], Sum 0) :: Writer' (Sum Int) [Int])
         sumAndTraceInOrder tree3 `shouldBe` (Writer' (Identity [10, 50, 5, 150], Sum 215) :: Writer' (Sum Int) [Int])
-    -}
+    
     it "Task 10. Reader'" $ do
         testEvalExpr `shouldBe` (Just 5 :: Maybe Int)
         testEvalStmts `shouldBe` (Just 9 :: Maybe Int)
