@@ -46,7 +46,7 @@ getOne bounds = state (R.randomR bounds)
 --   заданного типа, не передавая состояния генератора случайных чисел в коде вручную
 --
 makeRandomValueST :: R.StdGen -> (MyType, R.StdGen)
-makeRandomValueST gen = runState action gen
+makeRandomValueST = runState action
   where
     action :: State R.StdGen MyType
     action = do
