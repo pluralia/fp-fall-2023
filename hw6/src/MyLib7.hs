@@ -65,7 +65,13 @@ data Fasta = Fasta {
 --   Напишите парсер контента такого файла (Пример в файле `test.fasta`)
 --
 fastaListP :: Parser [Fasta]
-fastaListP = undefined
+fastaListP = many $ 
+   Fasta <$> (satisfyP (== '>') *> many (satisfyP (/= '\n')))
+    <*>
+      many
+        (satisfyP (\ c -> c /= '>' && c /= ';')
+           <* many (satisfyP (== '\n')))
+
 
 -------------------------------------------------------------------------------
 

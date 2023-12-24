@@ -43,14 +43,17 @@ intP = foldl' (\acc x -> acc * 10 + x) 0 <$> digitsP
 -- | 1.c Парсит вещественное число формата `-?(0|[1-9]\d*).\d*` (0,75 балла)
 --
 
-
 floatP :: Parser Float
-floatP = (+) <$> integralPart <*> decimalPart
+floatP = (\sign first _ second -> sign * (fromIntegral first + second))
+    <$> signP
+    <*> integerP
+    <*> satisfyP (== '.')
+    <*> (decimalP <|> pure 0.0)
   where
-    integralPart = fromIntegral <$> readFirst <* satisfyP (== '.')
-    decimalPart = (\x -> fromIntegral x / 10 ^ length (show x)) <$> intPart <|> pure 0
-    intPart = intP
-    readFirst = digitToInt <$> satisfyP (== '0') <|> intP
+    signP = (-1 <$ satisfyP (== '-')) <|> pure 1
+    integerP = digitToInt <$> satisfyP (== '0') <|> intP
+    decimalP = foldr (\x acc -> (acc + fromIntegral x) / 10) 0 <$> digitsP
+
 
 
 
@@ -147,7 +150,7 @@ simpleExprP =
   SimpleExpr
     <$> floatP
     <* spaceP
-    <*> satisfyP (\a -> a `elem` ['+', '*'])
+    <*> satisfyP (`elem` "+*")
     <* spaceP
     <*> floatP
 

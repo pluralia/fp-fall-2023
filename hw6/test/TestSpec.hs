@@ -30,7 +30,7 @@ spec = do
       runParser floatP "Hi" `shouldBe` Nothing
       runParser floatP "1 litre" `shouldBe` Nothing
       runParser floatP "1.5 litre" `shouldBe` Just (1.5 :: Float, " litre")
-      -- runParser floatP "6.003" `shouldBe` Just (6.003 :: Float, "")
+      runParser floatP "6.003" `shouldBe` Just (6.003 :: Float, "")
 
     it "stringP" $ do
       runParser (stringP "hello") "world" `shouldBe` Nothing
@@ -112,6 +112,10 @@ spec = do
         runParser (rowP names) data1 `shouldBe` Just (res1, "")
         runParser (rowP names) data2 `shouldBe` Just (res2, "")
 
+-- HW 7
+  describe "task1" $ do
+      it "fastaListP" $ do
+        testFullyParsedIO "files_for_parsing/test.fasta" fastaListP `shouldReturn` True
 
 
           
