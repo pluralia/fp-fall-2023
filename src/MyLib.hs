@@ -187,31 +187,43 @@ returnExample = do
       then pure 200
       else realReturn 0
 
--- c предложенным типом как-то так выглядит, но мне не понятно, 
--- зачем здесь Bool - зачем так задавать, если у нас при проверке на  a == 0 pure возвращается в любом случае, мы же a задаем через let
+{-
+-- Мне Соня пояснила за смысл этого задания, но у меня ошибки в типах, которые я не знаю как убрать
+-- Соня навскидку предложила только вариант с Either
+
+-- то, что с Bool
+-- False - у нас не прошло значение
+-- True - у нас прошло значение
 data ReturnableCalculation a = ReturnableCalculation { val ::  a, returned :: Bool}
   deriving (Show, Eq)
 
 instance Functor ReturnableCalculation where
     fmap :: (a -> b) -> ReturnableCalculation a -> ReturnableCalculation b
-    fmap f (ReturnableCalculation x b) = ReturnableCalculation (f x) b
+    -- если False, то можно менять значение
+    fmap f (ReturnableCalculation x False) = ReturnableCalculation (f x) False
+    -- если True, то нельзя менять значение
+    fmap f (ReturnableCalculation x True) = ReturnableCalculation x True
 
--- здесь и в Monad c realReturn прописала (ReturnableCalculation x True), потому что у нас тип данных задан таким образом, что обязательно нужен второй аргумент
--- но я не понимаю, зачем здесь Bool
 instance Applicative ReturnableCalculation where
     pure :: a -> ReturnableCalculation a
     pure x = ReturnableCalculation x True
 
     (<*>) :: ReturnableCalculation (a -> b) -> ReturnableCalculation a -> ReturnableCalculation b
-    ReturnableCalculation f True <*> ReturnableCalculation x True = ReturnableCalculation (f x) True
+    ReturnableCalculation f True <*> ReturnableCalculation x True = ReturnableCalculation x True
+    -- все остальные варианты
+    ReturnableCalculation f _ <*> ReturnableCalculation x _ = ReturnableCalculation (f <*> x) False
 
 instance Monad ReturnableCalculation where
     (>>=) :: ReturnableCalculation a -> (a -> ReturnableCalculation b) -> ReturnableCalculation b
-    ReturnableCalculation x True >>= f = f x
+    ReturnableCalculation x True >>= ReturnableCalculation f True = ReturnableCalculation x True
+    -- все остальные варианты
+    ReturnableCalculation x False >>= _ = ReturnableCalculation x False
 
+
+-- нужно с False, потому что значение закреплено
 realReturn :: a -> ReturnableCalculation a
 realReturn x = ReturnableCalculation x True
-
+-}
 -------------------------------------------------------------------------------
 
 -- 9. Monad `Writer` (1,5 балла)
