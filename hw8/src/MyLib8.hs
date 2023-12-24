@@ -5,6 +5,7 @@
 module           MyLib8 where
 import           Control.Monad.Writer.Lazy
 import           Control.Monad.Reader
+import           Data.Monoid (Sum(..))
 import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
 
@@ -33,14 +34,16 @@ import qualified Data.Map.Strict as M
 
 fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
 fromDo11 aM bM =
-    fmap (+ 10) aM >>= \a ->
-    let aL = [a, a, a]
-        a' = a + length aL
-    in
-        bM >>
-        Just aL >>= \(a:b:c:_) ->
-        fmap (<> "abcd") bM >>= \b ->
-        pure (c, b)
+  aM
+    >>=
+      (\ a
+         -> let
+              aL = [a, a, a]
+              a' = a + length aL
+            in
+              bM >> Just aL
+                >>= \ (a : b : c : _) -> bM >>= (\ b -> pure (c, b)) . (<> "abcd"))
+        . (+ 10)
 
 
 
@@ -50,6 +53,16 @@ fromDo11 aM bM =
 
 --    С помощью монады списка создайте список, содержащий в себе все пифагоровы тройки. 
 --    В списке не должно быть дублей. Дублирования нужно убрать за счёт дополнительного условия в do-нотации
+
+pythagoreanTriples :: Int -> [(Int, Int, Int)]
+pythagoreanTriples n = do
+  a <- [1..n]  
+  b <- [1..a]
+  c <- [1..b]
+  if a * a == b * b + c * c && a <= n && b <= a && c <= b
+    then return (a, b, c)
+    else []
+
 
 -------------------------------------------------------------------------------
 
@@ -65,18 +78,20 @@ newtype Writer' w a = Writer' { runWriter' :: (Identity a, w) }
 
 instance Functor (Writer' w) where
     fmap :: (a -> b) -> Writer' w a -> Writer' w b
-    fmap = undefined
+    fmap f (Writer' (Identity a, w)) = Writer' (Identity (f a), w)
 
 instance Monoid w => Applicative (Writer' w) where
     pure :: a -> Writer' w a
-    pure = undefined
+    pure a = Writer' (Identity a, mempty)
 
     (<*>) :: Writer' w (a -> b) -> Writer' w a -> Writer' w b
-    (<*>) = undefined
+    Writer' (Identity f, w1) <*> Writer' (Identity a, w2) = Writer' (Identity (f a), w1 <> w2)
 
 instance Monoid w => Monad (Writer' w) where
     (>>=) :: Writer' w a -> (a -> Writer' w b) -> Writer' w b
-    (>>=) = undefined
+    Writer' (Identity a, log1) >>= f =
+        let Writer' (Identity b, log2) = f a
+        in Writer' (Identity b, log1 <> log2)
 
 ---------------------------------------
 
@@ -85,16 +100,16 @@ instance Monoid w => Monad (Writer' w) where
 
 instance (Monoid w) => MonadWriter w (Writer' w) where
     tell :: w -> Writer' w ()
-    tell = undefined
+    tell w = Writer' (Identity (), w)
 
     listen :: Writer' w a -> Writer' w (a, w)
-    listen = undefined
+    listen (Writer' (Identity a, w)) = Writer' (Identity (a, w), w)
 
     pass :: Writer' w (a, w -> w) -> Writer' w a
-    pass = undefined
+    pass (Writer' (Identity (a, f), w)) = Writer' (Identity a, f w)
 
 -- Почему нужно было определять `Writer' w a`, а не `Writer' a w`?
-
+-- w всегда моноид и фиксируется
 ---------------------------------------
 
 -- 9.c Реализуйте обход (любой) бинарного дерева и суммируйте элементы в вершинах с помощью Writer'
@@ -109,8 +124,8 @@ data BinaryTree a
     }
   deriving (Show, Eq)
 
--- sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
--- sumAndTraceInOrder = undefined
+sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
+sumAndTraceInOrder = undefined
 
 -------------------------------------------------------------------------------
 
@@ -125,18 +140,18 @@ newtype Reader' r a = Reader' { runReader' :: r -> Identity a }
 
 instance Functor (Reader' r) where
     fmap :: (a -> b) -> Reader' w a -> Reader' w b
-    fmap = undefined
+    fmap f (Reader' ra) = Reader' (fmap f . ra)
 
 instance Applicative (Reader' r) where
     pure :: a -> Reader' r a
-    pure = undefined
+    pure a = Reader' $ \_ -> pure a
 
     (<*>) :: Reader' r (a -> b) -> Reader' r a -> Reader' r b
-    (<*>) = undefined
+    (<*>) (Reader' rab) (Reader' ra) = Reader' $ \r -> rab r <*> ra r
 
 instance Monad (Reader' r) where
     (>>=) :: Reader' r a -> (a -> Reader' r b) -> Reader' r b
-    (>>=) = undefined
+    (>>=) (Reader' ra) f = Reader' $ \r -> runReader' (f $ runIdentity (ra r)) r
 
 ---------------------------------------
 

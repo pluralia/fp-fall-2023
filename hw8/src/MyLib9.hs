@@ -35,17 +35,25 @@ makeRandomValue g =
 -- | Возвращает случайное значение и обновляет состояние генератора случайных чисел
 --
 getAny :: (R.Random a) => State R.StdGen a
-getAny = undefined
+getAny = state R.random
 
 -- | Аналогична getAny, но генерирует значение в границах
 --
 getOne :: (R.Random a) => (a, a) -> State R.StdGen a
-getOne bounds = undefined
+getOne bounds = state (R.randomR bounds)
 
 -- | Используя монаду State с StdGen в качестве состояния, мы можем генерировать случаные значения
 --   заданного типа, не передавая состояния генератора случайных чисел в коде вручную
 --
 makeRandomValueST :: R.StdGen -> (MyType, R.StdGen)
-makeRandomValueST = undefined
+makeRandomValueST gen = runState action gen
+  where
+    action :: State R.StdGen MyType
+    action = do
+      n <- getOne (1, 100)
+      b <- getAny
+      c <- getOne ('a', 'z')
+      m <- getOne (-n, n)
+      return $ MT n b c m
 
 ------------------------------------------------------------------------------
