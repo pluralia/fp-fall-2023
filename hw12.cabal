@@ -19,10 +19,12 @@ library
     import:           warnings
     exposed-modules:  MyLib
     ghc-options:      -Wall
-    -- other-modules:
+    other-modules:    Parser,
+        MyBeautifulDB
     -- other-extensions:
     build-depends:    base ^>=4.18.1.0,
-        mtl
+        mtl,
+        containers
     hs-source-dirs:   src
     default-language: Haskell2010
 
