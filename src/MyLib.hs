@@ -234,10 +234,11 @@ instance Monoid w => Applicative (Writer' w) where
 
     (<*>) :: Writer' w (a -> b) -> Writer' w a -> Writer' w b
     Writer' (Identity f, wf) <*> Writer' (Identity a, wa) = Writer' (Identity (f a), mappend wf wa)
-
+-- ошибка была здесь, я пропустила лог
 instance Monoid w => Monad (Writer' w) where
     (>>=) :: Writer' w a -> (a -> Writer' w b) -> Writer' w b
-    Writer' (Identity a, wa) >>= f = f a
+    Writer' (Identity a, wa) >>= f = let Writer' (Identity newA, newWa) = f a
+                                     in Writer' (Identity newA, wa <> newWa)
 
 ---------------------------------------
 
