@@ -17,15 +17,29 @@ common warnings
 
 library
     import:           warnings
-    exposed-modules:  MyLib
+    exposed-modules:  MyLib,
+        Parser
     ghc-options:      -Wall
-    other-modules:    Parser,
-        MyBeautifulDB
     -- other-extensions:
+    -- other-modules:    Parser
     build-depends:    base ^>=4.18.1.0,
         mtl,
         containers
     hs-source-dirs:   src
+    default-language: Haskell2010
+
+executable hw12
+    import:           warnings
+    main-is:          Main.hs
+    ghc-options:      -Wall
+    -- other-modules:    
+    build-depends:    base ^>=4.18.1.0,
+        mtl,
+        directory,
+        filepath,
+        containers,
+        hw12
+    hs-source-dirs:   app
     default-language: Haskell2010
 
 test-suite hw12-test
