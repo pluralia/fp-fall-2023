@@ -6,6 +6,8 @@ import           Control.Monad.Writer.Lazy
 import           Control.Monad.Reader
 import           Data.Functor.Identity
 import qualified Data.Map.Strict as M
+import           Control.Monad (guard)
+import           Data.Monoid (Sum(..))
 
 ------------------------------------------------------------------------------
 
@@ -57,20 +59,20 @@ newtype Writer' w a = Writer' { runWriter' :: (Identity a, w) }
 
 instance Functor (Writer' w) where
     fmap :: (a -> b) -> Writer' w a -> Writer' w b
-    fmap f (Writer' (x, log)) = Writer' (f <$> x, log)
+    fmap f (Writer' (x, msg)) = Writer' (f <$> x, msg)
 
 instance Monoid w => Applicative (Writer' w) where
     pure :: a -> Writer' w a
-    pure x = Writer' (pure x, mempty)
+    pure x = Writer' (Identity x, mempty)
 
     (<*>) :: Writer' w (a -> b) -> Writer' w a -> Writer' w b
-    Writer' (f, log1) <*> Writer' (x, log2) = Writer' (f <*> x, log1 `mappend` log2)
+    Writer' (f, msg1) <*> Writer' (x, msg2) = Writer' (f <*> x, msg1 `mappend` msg2)
 
 instance Monoid w => Monad (Writer' w) where
     (>>=) :: Writer' w a -> (a -> Writer' w b) -> Writer' w b
-    Writer' (x, log) >>= f = let (Identity a) = x
-                              in let Writer' (y, log') = f a
-                                in Writer' (y, log `mappend` log')
+    Writer' (x, msg) >>= f = let (Identity a) = x
+                              in let Writer' (y, msg') = f a
+                                in Writer' (y, msg `mappend` msg')
 
 ---------------------------------------
 
@@ -82,10 +84,10 @@ instance (Monoid w) => MonadWriter w (Writer' w) where
     tell w = Writer' (Identity (), w)
 
     listen :: Writer' w a -> Writer' w (a, w)
-    listen (Writer' (Identity x, log)) = Writer' (Identity (x, log), log)
+    listen (Writer' (Identity x, msg)) = Writer' (Identity (x, msg), msg)
 
     pass :: Writer' w (a, w -> w) -> Writer' w a
-    pass (Writer' (Identity (x, f), log)) = Writer' (Identity x, f log)
+    pass (Writer' (Identity (x, f), msg)) = Writer' (Identity x, f msg)
 
 -- Почему нужно было определять `Writer' w a`, а не `Writer' a w`?
 -- чтобы соответствовать структуре моноида и иметь фиксированный лог.
@@ -105,7 +107,11 @@ data BinaryTree a
   deriving (Show, Eq)
 
 sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
-sumAndTraceInOrder = undefined
+sumAndTraceInOrder Leaf = tell mempty >> pure []
+sumAndTraceInOrder (Node v l r) = do
+    leftResult <- sumAndTraceInOrder l
+    tell (Sum v)
+    (v :) <$> ((leftResult <>) <$> sumAndTraceInOrder r)
 
 -------------------------------------------------------------------------------
 
@@ -120,18 +126,18 @@ newtype Reader' r a = Reader' { runReader' :: r -> Identity a }
 
 instance Functor (Reader' r) where
     fmap :: (a -> b) -> Reader' w a -> Reader' w b
-    fmap = undefined
+    fmap f reader = Reader' (fmap f . runReader' reader)
 
 instance Applicative (Reader' r) where
     pure :: a -> Reader' r a
-    pure = undefined
+    pure a = Reader' $ \_ -> pure a
 
     (<*>) :: Reader' r (a -> b) -> Reader' r a -> Reader' r b
-    (<*>) = undefined
+    rf <*> ra = Reader' $ \r -> runReader' rf r <*> runReader' ra r
 
 instance Monad (Reader' r) where
     (>>=) :: Reader' r a -> (a -> Reader' r b) -> Reader' r b
-    (>>=) = undefined
+    ra >>= f = Reader' $ \r -> runReader' (f $ runIdentity $ runReader' ra r) r
 
 ---------------------------------------
 
@@ -139,15 +145,14 @@ instance Monad (Reader' r) where
 --     https://hackage.haskell.org/package/mtl-2.3.1/docs/Control-Monad-Reader.html#t:MonadReader
 
 instance MonadReader r (Reader' r) where
-    ask :: Reader' r r
-    ask = undefined
-
     local :: (r -> r) -> Reader' r a -> Reader' r a
-    local = undefined
+    local f reader = Reader' $ \r -> runReader' reader (f r)
 
+    reader :: (r -> a) -> Reader' r a
+    reader f = Reader' $ \r -> pure (f r)
 ---------------------------------------
 
--- 9.c Вычислите список утверждений с помощью Reader' (1 балл)
+-- 10.c Вычислите список утверждений с помощью Reader' (1 балл)
 
 -- | Выражение будет задавать в виде бинарного дерева
 --
