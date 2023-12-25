@@ -97,11 +97,14 @@ writeLog level m = LoggerT $ pure $ Logged [(level, m)] ()
 loggingModification :: s -> (s -> Bool) -> (s -> s) -> StateT s (LoggerT Identity) (Maybe s)
 loggingModification def p f = do
   s <- gets f
+  lift $ writeLog Info "Trying to apply modification"
   if p s
     then do
+      lift $ writeLog Info "Modification applied"
       return $ Just s
     else do
       put def
+      lift $ writeLog Info "Modification failed to apply"
       return Nothing
 
 -------------------------------------------------------------------------------
@@ -117,10 +120,13 @@ instance MonadTrans LoggerT where
 modifyingLogging :: s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
 modifyingLogging def p f = do
   s <- lift $ gets f
+  writeLog Info "Trying to apply modification"
   if p s
     then do
+      writeLog Info "Modification applied"
       return ()
     else do
+      writeLog Info "Modification failed to apply"
       lift $ put def
       return ()
 
@@ -143,10 +149,13 @@ instance MonadState s m => MonadState s (LoggerT m) where
 modifyingLogging' :: s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
 modifyingLogging' def p f = do
   s <- gets f
+  writeLog Info "Trying to apply modification"
   if p s
     then do
+      writeLog Info "Modification applied"
       return ()
     else do
+      writeLog Info "Modification failed to apply"
       put def
       return ()
 
@@ -169,17 +178,23 @@ instance Monad m => MonadLogger (LoggerT m) where
 
 instance (MonadTrans t, Monad m) => MonadLogger (t (LoggerT m)) where
   log = (lift .) . writeLog
+  -- log level msg = lift $ writeLog level msg
+  -- log level msg = lift . writeLog level $ msg
+  -- log level = lift . writeLog level
+  -- log level = (lift .) $ writeLog level
+  -- log level = (lift .) . writeLog $ level
+  -- log = (lift .) . writeLog
 
 loggingModification' :: s -> (s -> Bool) -> (s -> s) -> StateT s (LoggerT Identity) (Maybe s)
 loggingModification' def p f = do
   s <- gets f
-  log Info "Applying modification"
+  log Info "Trying to apply modification"
   if p s
     then do
       log Info "Modification applied"
       return $ Just s
     else do
-      log Info "Modification not applied"
+      log Info "Modification failed to apply"
       put def
       return Nothing
 
