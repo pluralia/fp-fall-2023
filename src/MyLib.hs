@@ -99,7 +99,7 @@ instance MonadFail m => MonadFail (LoggerT m) where
 -- | 2. Реализуйте функцию, позволяющую записать что-то в лог внутри трансформера 'LoggerT' (0,25 балла)
 --
 writeLog :: Monad m => LoggingLevel -> String -> LoggerT m ()
-writeLog level str = LoggerT . pure $ Logged {logs=[(level, str)], val=()}
+writeLog level str = LoggerT . pure $ Logged [(level, str)] ()
 
 -------------------------------------------------------------------------------
 
@@ -112,10 +112,12 @@ writeLog level str = LoggerT . pure $ Logged {logs=[(level, str)], val=()}
 --
 --      Про каждое из действий функция должна производить запись в лог на уровне INFO.
 
-loggingModification :: s -> (s -> Bool) -> (s -> s) -> StateT s (LoggerT Identity) (Maybe s)
+loggingModification :: (Show s) => s -> (s -> Bool) -> (s -> s) -> StateT s (LoggerT Identity) (Maybe s)
 loggingModification def p f = do
     modify f
+    lift $ writeLog Info "State was changed."
     st <- get
+    lift $ writeLog Info $ "State was read: " ++ show st
     if p st 
         then do
             lift $ writeLog Info "Return correct state."
@@ -133,14 +135,14 @@ loggingModification def p f = do
 
 instance MonadTrans LoggerT where
   lift :: (Monad m) => m a -> LoggerT m a
-  lift xM = LoggerT $ do 
-    x <- xM
-    pure $ Logged {logs=[], val=x}
+  lift xM = LoggerT $ fmap (Logged []) xM
 
-modifyingLogging :: s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
+modifyingLogging :: (Show s) => s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
 modifyingLogging def p f = do
-    lift $ modify f
-    st <- lift get
+    modify f
+    writeLog Info "State was changed."
+    st <- get
+    writeLog Info $ "State was read: " ++ show st
     if p st
         then writeLog Info "Return correct state."
         else do
@@ -162,10 +164,12 @@ instance MonadState s m => MonadState s (LoggerT m) where
   get :: MonadState s m => LoggerT m s
   get = lift get
 
-modifyingLogging' :: s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
+modifyingLogging' :: (Show s) => s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
 modifyingLogging' def p f = do
     modify f
+    writeLog Info "State was changed."
     st <- get
+    writeLog Info $ "State was read: " ++ show st
     if p st
         then writeLog Info "Return correct state."
         else do

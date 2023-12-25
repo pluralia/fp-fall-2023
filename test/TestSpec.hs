@@ -30,10 +30,14 @@ spec = do
             let m2 = loggingModification iniState2 (all isUpper) (map toUpper) :: StateT String (LoggerT Identity) (Maybe String)
             
             runIdentity (runLoggerT (runStateT m1 "Hellow")) `shouldBe` 
-                Logged {logs=[(Info, "Return correct state.")], val=(Just "HELLOW", "HELLOW")}
+                Logged {logs=[(Info, "State was changed."), 
+                                        (Info, "State was read: \"HELLOW\""), 
+                                        (Info, "Return correct state.")],       val=(Just "HELLOW", "HELLOW")}
 
             runIdentity (runLoggerT (runStateT m2 "234jkl")) `shouldBe` 
-                Logged {logs=[(Info, "The state has been changed to default.")], val=(Nothing, iniState2)}
+                Logged {logs=[  (Info, "State was changed."), 
+                                (Info, "State was read: \"234JKL\""), 
+                                (Info, "The state has been changed to default.")], val=(Nothing, iniState2)}
 
         it "2. modifyingLogging" $ do
             
@@ -43,9 +47,13 @@ spec = do
             let m4 = modifyingLogging iniState2 (all isUpper) (map toUpper) :: LoggerT (State String) ()
             
             runStateT (runLoggerT m3) "hellow" `shouldBe` 
-                Identity (Logged {logs=[(Info, "Return correct state.")], val=()}, "HELLOW")
+                Identity (Logged {logs=[(Info, "State was changed."), 
+                                        (Info, "State was read: \"HELLOW\""), 
+                                        (Info, "Return correct state.")],       val=()}, "HELLOW")
             runStateT (runLoggerT m4) "234jkl" `shouldBe` 
-                Identity (Logged {logs=[(Info, "The state has been changed to default.")], val=()}, iniState2)
+                Identity (Logged {logs=[(Info, "State was changed."), 
+                                        (Info, "State was read: \"234JKL\""), 
+                                        (Info, "The state has been changed to default.")], val=()}, iniState2)
 
         it "3. modifyingLogging'" $ do
             
@@ -55,7 +63,11 @@ spec = do
             let m6 = modifyingLogging' iniState2 (all isUpper) (map toUpper) :: LoggerT (State String) ()
             
             runStateT (runLoggerT m5) "hellow" `shouldBe` 
-                Identity (Logged {logs=[(Info, "Return correct state.")], val=()}, "HELLOW")
+                Identity (Logged {logs=[(Info, "State was changed."), 
+                                        (Info, "State was read: \"HELLOW\""), 
+                                        (Info, "Return correct state.")],       val=()}, "HELLOW")
             runStateT (runLoggerT m6) "234jkl" `shouldBe` 
-                Identity (Logged {logs=[(Info, "The state has been changed to default.")], val=()}, iniState2)
+                Identity (Logged {logs=[(Info, "State was changed."), 
+                                        (Info, "State was read: \"234JKL\""), 
+                                        (Info, "The state has been changed to default.")], val=()}, iniState2)
 
