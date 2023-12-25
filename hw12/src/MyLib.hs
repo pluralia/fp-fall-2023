@@ -71,16 +71,13 @@ instance Monad m => Monad (LoggerT m) where
     pure $ Logged (logsA ++ logsB) b
 
 instance MonadFail m => MonadFail (LoggerT m) where
-  fail msg = LoggerT $ fail msg
+  fail = LoggerT . fail
 -------------------------------------------------------------------------------
 
 -- | 2. Реализуйте функцию, позволяющую записать что-то в лог внутри трансформера 'LoggerT' (0,25 балла)
 --
 writeLog :: Monad m => LoggingLevel -> String -> LoggerT m ()
-writeLog level msg = LoggerT $ do
-  logged <- runLoggerT $ return ()  -- получаем существующий лог без изменения значения
-  let newLogEntry = (level, msg)
-  return $ logged { logs = logs logged ++ [newLogEntry] }
+writeLog level msg = LoggerT $ return $ Logged [(level, msg)] ()
 
 exampleComputation :: LoggerT Identity Int
 exampleComputation = do
@@ -129,12 +126,12 @@ loggingModification def p f = do
 --      что и @loggingModification@ (1 балл)
 
 instance MonadTrans LoggerT where
-  lift ma = LoggerT $ do
-    Logged [] <$> ma
+  lift = LoggerT . fmap (Logged [])
 
 modifyingLogging :: s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
 modifyingLogging def p f = do
-  currentState <- lift get
+  currentState <- get -- можно, инстанс MonadTrans позволяет автоматически поднимать значения
+                      -- из базовой монады (в данном случае, State s) в трансформированную монаду (LoggerT (State s))
   writeLog Info "Performing state modification"
   let modifiedState = f currentState
   lift $ put modifiedState
@@ -145,8 +142,8 @@ modifyingLogging def p f = do
     else do
       writeLog Info "State does not satisfy the predicate, resetting to default"
       lift $ put def
-      return ()
-
+--      return ()
+-- он тут избыточен. блок do уже подразумевает return ()
 -------------------------------------------------------------------------------
 
 -- | 5. Сделайте так, чтобы была возможность обращаться к `LoggerT`
@@ -158,17 +155,16 @@ modifyingLogging def p f = do
 
 instance MonadState s m => MonadState s (LoggerT m) where
   put :: MonadState s m => s -> LoggerT m ()
-  put s = lift $ put s
+  put = lift . put
 
   get :: MonadState s m =>  LoggerT m s
   get = lift get
 
 modifyingLogging' :: MonadState s m => s -> (s -> Bool) -> (s -> s) -> LoggerT m ()
 modifyingLogging' def p f = do
-  currentState <- get
   writeLog Info "Performing state modification"
-  let modifiedState = f currentState
-  put modifiedState
+  modify f -- заменил
+  modifiedState <- get
   writeLog Info "State modification complete"
 
   if p modifiedState
@@ -176,7 +172,9 @@ modifyingLogging' def p f = do
     else do
       writeLog Info "State does not satisfy the predicate, resetting to default"
       put def
-      return ()
+
+--    return ()
+-- аналогично
 -------------------------------------------------------------------------------
 
 -- | 6. Сделайте 'LoggerT' представителем класса типов 'MonadLogger',
@@ -192,17 +190,16 @@ class MonadLogger m where
   log :: LoggingLevel -> String -> m ()
 
 instance Monad m => MonadLogger (LoggerT m) where
-  log level msg = LoggerT $ return $ Logged [(level, msg)] ()
+  log = writeLog -- поменял на writeLog
 
 instance (MonadTrans t, Monad m, MonadLogger m) => MonadLogger (t m) where
   log level msg = lift $ log level msg
 
-loggingModification' :: (MonadLogger m, Monad m) => s -> (s -> Bool) -> (s -> s) -> StateT s m (Maybe s)
+loggingModification' :: (MonadLogger m, MonadState s m) => s -> (s -> Bool) -> (s -> s) -> m (Maybe s)
 loggingModification' def p f = do
-  currentState <- get
   log Info "Performing state modification"
-  let modifiedState = f currentState
-  put modifiedState
+  modify f -- заменил
+  modifiedState <- get
   log Info "State modification complete"
 
   if p modifiedState
@@ -213,6 +210,7 @@ loggingModification' def p f = do
       log Info "State does not satisfy the predicate, resetting to default"
       put def
       return Nothing
+
 
 -------------------------------------------------------------------------------
 
@@ -227,7 +225,11 @@ loggingModification' def p f = do
 type LoggingStateWithErrorInIO stateType errorType resType =
   ExceptT errorType (LoggerT (StateT stateType IO)) resType
 
-
+-- Сначала IO – так как это самый внешний слой и может содержать все остальные эффекты.
+-- Затем StateT – для хранения состояния.
+-- Далее LoggerT – для записи в лог.
+-- Внутри ExceptT – для обработки ошибок.
+-- Этот порядок позволяет сначала выполнять IO-вычисления, затем обрабатывать состояние, записывать лог и, наконец, обрабатывать ошибки.
 -------------------------------------------------------------------------------
 
 -- | 8. Реализуйте функцию-программу `processUserDB`, которая:
