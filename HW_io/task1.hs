@@ -33,6 +33,6 @@ infLoop n count = do
         else n
     let newCount = if count == 999
         then 0
-        else count
+        else count + 1
 
     infLoop newN newCount
