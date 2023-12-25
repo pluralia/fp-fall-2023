@@ -192,8 +192,8 @@ returnExample = do
 -- Соня навскидку предложила только вариант с Either
 
 -- то, что с Bool
--- False - у нас не прошло значение
--- True - у нас прошло значение
+-- False - у нас не вызван realReturn
+-- True - у нас вызван realReturn
 data ReturnableCalculation a = ReturnableCalculation { val ::  a, returned :: Bool}
   deriving (Show, Eq)
 
@@ -209,18 +209,18 @@ instance Applicative ReturnableCalculation where
     pure x = ReturnableCalculation x True
 
     (<*>) :: ReturnableCalculation (a -> b) -> ReturnableCalculation a -> ReturnableCalculation b
-    ReturnableCalculation f True <*> ReturnableCalculation x True = ReturnableCalculation x True
+    ReturnableCalculation f False <*> ReturnableCalculation x False = ReturnableCalculation (f <*> x) False
     -- все остальные варианты
-    ReturnableCalculation f _ <*> ReturnableCalculation x _ = ReturnableCalculation (f <*> x) False
+    ReturnableCalculation f _ <*> ReturnableCalculation x _ = ReturnableCalculation x False
 
 instance Monad ReturnableCalculation where
     (>>=) :: ReturnableCalculation a -> (a -> ReturnableCalculation b) -> ReturnableCalculation b
-    ReturnableCalculation x True >>= ReturnableCalculation f True = ReturnableCalculation x True
+    ReturnableCalculation x False >>= f = ReturnableCalculation (f x) False
     -- все остальные варианты
-    ReturnableCalculation x False >>= _ = ReturnableCalculation x False
+    ReturnableCalculation x True >>= _ = ReturnableCalculation x True
 
 
--- нужно с False, потому что значение закреплено
+-- нужно с True, потому что значение закреплено
 realReturn :: a -> ReturnableCalculation a
 realReturn x = ReturnableCalculation x True
 -}
