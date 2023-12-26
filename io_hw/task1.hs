@@ -1,4 +1,6 @@
-module Main where
+module Task1 where
+
+import System.IO
 
 -- REPL (1,5 балла)
 
@@ -10,5 +12,23 @@ module Main where
 -- то должен создаваться файл text_copy_<N+1>.log.
 -- Запись последующих строк должна производиться в него, а хэндл файла text_copy_<N>.log должен быть закрыт.
 
+createFile :: Int -> String
+createFile n = "tex_copy" ++ show n ++ ".log"
+
+checkLine ::  Int -> Int -> IO ()
+checkLine n m
+    | m /= 1000 = logLoop n (m + 1)
+    | otherwise = logLoop (n + 1) 0
+
+logLoop :: Int -> Int -> IO ()
+logLoop n m = do
+    content <- getLine
+    logfile <- openFile (createFile n) AppendMode
+    hPutStrLn logfile content
+    hClose logfile
+    checkLine n m
+
+
+
 main :: IO ()
-main = undefined
+main = logLoop 0  0
