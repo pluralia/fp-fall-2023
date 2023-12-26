@@ -10,5 +10,29 @@ module Main where
 -- то должен создаваться файл text_copy_<N+1>.log.
 -- Запись последующих строк должна производиться в него, а хэндл файла text_copy_<N>.log должен быть закрыт.
 
+import System.IO
+import Control.Monad
+
 main :: IO ()
-main = undefined
+main = do
+    hSetBuffering stdout NoBuffering
+    createLog 0
+
+createLog :: Int -> IO ()
+createLog logNumber = do
+    let logFileName = "text_copy_" ++ show logNumber ++ ".log"
+    writeFile logFileName ""
+
+    let loop = do
+            putStr "> "
+            input <- getLine
+            putStrLn input
+            appendFile logFileName (input ++ "\n")
+            linesCount <- countLines logFileName
+            if linesCount >= 1000
+                then createLog (logNumber + 1)
+                else loop
+    loop
+
+countLines :: FilePath -> IO Int
+countLines file = length . lines <$> readFile file
