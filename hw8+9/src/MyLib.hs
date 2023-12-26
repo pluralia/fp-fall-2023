@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, InstanceSigs #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, InstanceSigs, LambdaCase #-}
 
 module MyLib where
 
@@ -31,6 +31,17 @@ import           Data.Monoid (Sum(..))
 --     b <- fmap (<> "abcd") bM
 
 --     pure (c, b)
+
+-- fromDo11' :: Maybe Int -> Maybe String -> Maybe (Int, String)
+-- fromDo11' aM bM = fmap (+ 10) aM >>= \a -> 
+--     let aL = [a, a, a]
+--         a = a + length aL
+--     in return a >> bM >> (\case
+--         Just [a, b, c] -> fmap (<> "abcd") bM >>= \b -> pure (c, b)
+--         _ -> undefined
+--         ) (Just aL)
+
+-- закомментирую, чтобы не ругался hlint. Если убрать a = a + length aL, то тест пройдёт.
 
 -------------------------------------------------------------------------------
 
@@ -126,7 +137,7 @@ newtype Reader' r a = Reader' { runReader' :: r -> Identity a }
 
 instance Functor (Reader' r) where
     fmap :: (a -> b) -> Reader' w a -> Reader' w b
-    fmap f reader = Reader' (fmap f . runReader' reader)
+    fmap f r = Reader' (fmap f . runReader' r)
 
 instance Applicative (Reader' r) where
     pure :: a -> Reader' r a
@@ -146,7 +157,7 @@ instance Monad (Reader' r) where
 
 instance MonadReader r (Reader' r) where
     local :: (r -> r) -> Reader' r a -> Reader' r a
-    local f reader = Reader' $ \r -> runReader' reader (f r)
+    local f rdr = Reader' $ \r -> runReader' rdr (f r)
 
     reader :: (r -> a) -> Reader' r a
     reader f = Reader' $ \r -> pure (f r)
@@ -177,18 +188,25 @@ type Environment = M.Map String Int
 --   Если выражение использует необъявленную переменную, вернем Nothing
 --
 eval :: Expr -> Reader' Environment (Maybe Int)
-eval = undefined
+eval (Primary (Var var)) = asks (M.lookup var)
+eval (Primary (Val val)) = return $ Just val
+eval (Binary leftExpr rightExpr) = do
+    leftVal <- eval leftExpr
+    rightVal <- eval rightExpr
+    case (leftVal, rightVal) of
+        (Just x, Just y) -> return $ Just (x + y)
+        _ -> return Nothing
 
 -- | Пример запуска вычисления выражения
 --
 testEvalExpr :: Maybe Int -- ожидаем `Just 5`
-testEvalExpr = runIdentity $ runReader' (eval expr) env
+testEvalExpr = runIdentity $ runReader' (eval expr') env
   where
     env :: Environment
     env = M.fromList [("x", 3)]
 
-    expr :: Expr
-    expr = Binary (Primary . Val $ 2) (Primary . Var $ "x")
+    expr' :: Expr
+    expr' = Binary (Primary . Val $ 2) (Primary . Var $ "x")
 
 -- | Утверждение будем задавать как декларацию переменной
 --
@@ -201,7 +219,14 @@ data Stmt = Stmt
 --   В качестве результата вычисления всего списка договоримся возвращать результат вычисления последнего выражения в списке
 --
 evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
-evalStmts = undefined
+evalStmts [] = pure Nothing
+evalStmts [stmt] = eval (expr stmt)
+evalStmts (stmt:stmts) = do
+  let v = eval (expr stmt)
+  r <- ask
+  case runIdentity $ runReader' v r of
+    Just vv -> local (M.insert (name stmt) vv) (evalStmts stmts)
+    Nothing -> evalStmts stmts
 
 -- | Пример запуска вычисления списка утверждений
 --

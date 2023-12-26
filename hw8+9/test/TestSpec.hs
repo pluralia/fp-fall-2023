@@ -7,6 +7,10 @@ import Data.Monoid (Sum(..))
 
 spec :: Spec
 spec = do    
+    -- describe "6. Do-нотация" $ do
+    --     it "fromDo11'" $
+    --         fromDo11' (Just 1) (Just "ttt") `shouldBe` Just (11, "tttabcd")
+
     describe "7. Пифагоровы тройки" $ do
         it "pythagor" $ do
             pythagor 0 `shouldBe` ([] :: [(Int, Int, Int)])
@@ -63,3 +67,8 @@ spec = do
             in do
                 runIdentity result `shouldSatisfy` (\res -> length res == 7)
                 logRes `shouldBe` expectedLogSum
+
+    describe "10. Monad `Reader`" $ do
+        it "Reader'" $ do
+            testEvalExpr `shouldBe` (Just 5 :: Maybe Int)
+            testEvalStmts `shouldBe` (Just 9 :: Maybe Int)
