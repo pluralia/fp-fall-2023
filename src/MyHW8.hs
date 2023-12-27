@@ -7,6 +7,8 @@ import           Control.Monad.Reader
 import           Control.Monad.Writer.Lazy
 import           Data.Functor.Identity
 import qualified Data.Map.Strict           as M
+import           Data.Maybe
+import           Data.Monoid
 import           Prelude
 
 ------------------------------------------------------------------------------
@@ -58,8 +60,7 @@ pythagoreanTriple x = do
     c <- [1..x]
     a <- [1..c]
     b <- [1..c]
-    _ <- if a < b then "Z" else []
-    _ <- if a * a + b * b == c * c then "Z" else []
+    _ <- if a < b && a * a + b * b == c * c then "Z" else []
     return (a, b, c)
 -------------------------------------------------------------------------------
 
@@ -75,18 +76,15 @@ newtype Writer' w a = Writer' { runWriter' :: (Identity a, w) }
 
 instance Functor (Writer' w) where
     fmap :: (a -> b) -> Writer' w a -> Writer' w b
-    fmap f m = let (Identity a, w) = runWriter' m
-               in Writer' (Identity $ f a, w)
+    fmap f (Writer' (Identity x, w)) = Writer' (Identity $ f x, w)
 
 instance Monoid w => Applicative (Writer' w) where
     pure :: a -> Writer' w a
     pure a = Writer' (Identity a, mempty)
 
     (<*>) :: Writer' w (a -> b) -> Writer' w a -> Writer' w b
-    (<*>) m1 m2 = Writer' (Identity $ g a, w' <> w)
-        where
-            (Identity a, w) = runWriter' m2
-            (Identity g, w') = runWriter' m1
+    (<*>) (Writer' (Identity g, w')) (Writer' (Identity a, w)) =
+        Writer' (Identity $ g a, w' <> w)
 
 instance Monoid w => Monad (Writer' w) where
     (>>=) :: Writer' w a -> (a -> Writer' w b) -> Writer' w b
@@ -105,14 +103,10 @@ instance (Monoid w) => MonadWriter w (Writer' w) where
     tell w = Writer' (Identity (), w)
 
     listen :: Writer' w a -> Writer' w (a, w)
-    listen m = Writer' (Identity (a, w), w)
-        where
-            (Identity a, w) = runWriter' m
+    listen (Writer' (Identity a, w)) = Writer' (Identity (a, w), w)
 
     pass :: Writer' w (a, w -> w) -> Writer' w a
-    pass m = Writer' (Identity a, f w)
-        where
-            (Identity (a, f), w) = runWriter' m
+    pass (Writer' (Identity (a, f), w)) = Writer' (Identity a, f w)
 
 -- Почему нужно было определять `Writer' w a`, а не `Writer' a w`?
 -- Моноид должен быть параметризован одним типом (в нашем случае типом `a`)
@@ -136,11 +130,11 @@ data BinaryTree a
 
 sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
 sumAndTraceInOrder Leaf = return []
-sumAndTraceInOrder (Node v l r) = do
-    tell (Sum v)
-    r1 <- sumAndTraceInOrder l
-    r2 <- sumAndTraceInOrder r
-    return $ r1 ++ [v] ++ r2
+sumAndTraceInOrder (Node val l r) = do
+    tell $ Sum val
+    resLeft <- sumAndTraceInOrder l
+    resRight <- sumAndTraceInOrder r
+    return $ val : (resLeft ++ resRight)
 
 -------------------------------------------------------------------------------
 
@@ -154,7 +148,7 @@ newtype Reader' r a = Reader' { runReader' :: r -> Identity a }
 -- 10.a Реализуйте для него `Monad` (док-во законов не нужно) (0,5 балла)
 
 instance Functor (Reader' r) where
-    fmap :: (a -> b) -> Reader' w a -> Reader' w b
+    fmap :: (a -> b) -> Reader' r a -> Reader' r b
     fmap f m =  Reader' $ \r ->
         let Identity a = runReader' m r
         in Identity $ f a
@@ -216,7 +210,7 @@ type Environment = M.Map String Int
 --
 eval :: Expr -> Reader' Environment (Maybe Int)
 eval (Primary (Val x)) = return $ Just x
-eval (Primary (Var x)) = asks $ M.lookup x
+eval (Primary (Var x)) = Reader' $ \r -> Identity $ M.lookup x r
 eval (Binary l r) = do
     resL <- eval l
     resR <- eval r
@@ -229,13 +223,23 @@ eval (Binary l r) = do
 -- | Пример запуска вычисления выражения
 --
 testEvalExpr :: Maybe Int -- ожидаем `Just 5`
-testEvalExpr = runIdentity $ runReader' (eval expr) env
+testEvalExpr = runIdentity $ runReader' (eval expr') env
   where
     env :: Environment
     env = M.fromList [("x", 3)]
 
-    expr :: Expr
-    expr = Binary (Primary . Val $ 2) (Primary . Var $ "x")
+    expr' :: Expr
+    expr' = Binary (Primary . Val $ 2) (Primary . Var $ "x")
+
+
+testEvalExpr' :: Maybe Int
+testEvalExpr' = runIdentity $ runReader' (eval expr') env
+  where
+    env :: Environment
+    env = M.fromList [("x", 3)]
+
+    expr' :: Expr
+    expr' = Binary (Primary . Val $ 2) (Primary . Var $ "t")
 
 -- | Утверждение будем задавать как декларацию переменной
 --
@@ -248,7 +252,13 @@ data Stmt = Stmt
 --   В качестве результата вычисления всего списка договоримся возвращать результат вычисления последнего выражения в списке
 --
 evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
-evalStmts = undefined
+evalStmts [] = return Nothing
+evalStmts [x] = eval $ expr x
+evalStmts (x : xs) = do
+    resExpr <- eval $ expr x
+    case resExpr of
+        Nothing  -> Reader' $ const (Identity Nothing)
+        (Just v) -> local (M.insert (name x) v) $ evalStmts xs
 
 -- | Пример запуска вычисления списка утверждений
 --
@@ -261,5 +271,15 @@ testEvalStmts = runIdentity $ runReader' (evalStmts [x, y, z, xx, w]) M.empty
     z = Stmt "z" $ Binary (Primary . Var $ "x") (Primary . Var $ "y")    -- z = 5
     xx = Stmt "x" $ Binary (Primary . Var $ "x") (Primary . Var $ "x")   -- xx = 4
     w = Stmt "w" $ Binary (Primary . Var $ "z") (Primary . Var $ "x")    -- w = 9
+
+testEvalStmts' :: Maybe Int
+testEvalStmts' = runIdentity $ runReader' (evalStmts [x, y, z, xx, w]) M.empty
+  where
+    x, y, z, xx, w :: Stmt
+    x = Stmt "x" $ Primary . Val $ 2                                     -- x = 2
+    y = Stmt "y" $ Primary . Val $ 3                                     -- y = 3
+    z = Stmt "z" $ Binary (Primary . Var $ "x") (Primary . Var $ "t")    -- z = -
+    xx = Stmt "x" $ Binary (Primary . Var $ "x") (Primary . Var $ "x")   -- xx = -
+    w = Stmt "w" $ Binary (Primary . Var $ "z") (Primary . Var $ "x")    -- w = -
 
 -------------------------------------------------------------------------------
