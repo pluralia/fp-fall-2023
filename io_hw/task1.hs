@@ -23,15 +23,15 @@ createLog logNumber = do
     let logFileName = "text_copy_" ++ show logNumber ++ ".log"
     writeFile logFileName ""
 
-    let loop = do
-            putStr "> "
-            input <- getLine
-            putStrLn input
-            appendFile logFileName (input ++ "\n")
-            linesCount <- countLines logFileName
-            if linesCount >= 1000
-                then createLog (logNumber + 1)
-                else loop
+    let loop = do 
+          putStr "> "
+          input <- getLine
+          putStrLn input
+          appendFile logFileName (input ++ "\n")
+          linesCount <- countLines logFileName
+          if linesCount >= 1000
+              then createLog (logNumber + 1)
+              else loop
     loop
 
 countLines :: FilePath -> IO Int

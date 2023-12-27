@@ -16,7 +16,22 @@ module Main where
 -- | Для представления файла как потока байт в Haskell есть тип `ByteString`.
 --   Он может пригодиться вам для подсчёта числа байт в файле.
 --
-import Data.ByteString (ByteString)
+import System.Environment (getArgs)
+import qualified Data.ByteString.Char8 as BS
 
 main :: IO ()
-main = undefined
+main = do
+    args <- getArgs
+    case args of
+        [filePath] -> do
+            fileContent <- BS.readFile filePath
+            let linesCount = BS.count '\n' fileContent
+                wordsCount = length $ BS.words fileContent
+                bytesCount = BS.length fileContent
+            putStrLn $ formatOutput linesCount wordsCount bytesCount filePath
+        _ -> putStrLn "format `./task2 <file_path>` needed"
+
+formatOutput :: Int -> Int -> Int -> FilePath -> String
+formatOutput linesCount wordsCount bytesCount filePath =
+    concat [show linesCount, "\t", show wordsCount, "\t", show bytesCount, "\t", filePath]
+
