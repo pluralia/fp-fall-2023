@@ -17,7 +17,7 @@ createFile n = "tex_copy" ++ show n ++ ".log"
 
 checkLine ::  Int -> Int -> IO ()
 checkLine n m
-    | m /= 1000 = logLoop n (m + 1)
+    | m /= 999 = logLoop n (m + 1)
     | otherwise = logLoop (n + 1) 0
 
 logLoop :: Int -> Int -> IO ()

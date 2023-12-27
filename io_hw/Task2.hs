@@ -22,13 +22,18 @@ import Text.Printf
 -- | Для представления файла как потока байт в Haskell есть тип `ByteString`.
 --   Он может пригодиться вам для подсчёта числа байт в файле.
 --
+
+emptyLines :: BS.ByteString -> Int
+emptyLines = length . filter BS.null . BS.lines
+
 wc :: FilePath -> IO ()
 wc file = do
     content <- BS.readFile file
     let bytes = BS.length content
-        lines = length $ BS.lines content
-        words = length $ wordsBy (\c -> c == ' ' || c == '\n' || c == '\t') (BS.unpack content)
-    putStrLn $ printf "%8d %8d %8d %s" lines words bytes file
+        linesCount = length $ BS.lines content
+        empty = emptyLines content
+        wordsCount = length $ wordsBy (\c -> c == ' ' || c == '\n' || c == '\t') (BS.unpack content)
+    putStrLn $ printf "%8d %8d %8d %s" (linesCount - empty) wordsCount bytes file
 
 main :: IO ()
 main = do
