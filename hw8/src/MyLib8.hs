@@ -34,16 +34,20 @@ import qualified Data.Map.Strict as M
 
 fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
 fromDo11 aM bM =
-  aM
-    >>=
-      (\ a
-         -> let
-              aL = [a, a, a]
-              a' = a + length aL
-            in
-              bM >> Just aL
-                >>= \ (a : b : c : _) -> bM >>= (\ b -> pure (c, b)) . (<> "abcd"))
-        . (+ 10)
+  aM >>= (\a ->
+    let
+      aL = [a, a, a]
+      a' = a + length aL
+    in
+      return a >>
+      bM >>
+      case aL of
+        (a : b : c : _) ->
+          bM >>= (\b -> pure (c, b <> "abcd"))
+        _ -> Nothing
+  ) . (+ 10)
+
+
 
 
 
@@ -125,7 +129,12 @@ data BinaryTree a
   deriving (Show, Eq)
 
 sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
-sumAndTraceInOrder = undefined
+sumAndTraceInOrder Leaf = return []
+sumAndTraceInOrder (Node val l r) = do
+  lRes <- sumAndTraceInOrder l
+  tell (Sum val)
+  rRes <- sumAndTraceInOrder r
+  return (lRes ++ [val] ++ rRes)
 
 -------------------------------------------------------------------------------
 
@@ -192,7 +201,17 @@ type Environment = M.Map String Int
 --   Если выражение использует необъявленную переменную, вернем Nothing
 --
 eval :: Expr -> Reader' Environment (Maybe Int)
-eval = undefined
+eval (Primary (Val x)) = pure $ Just x
+eval (Primary (Var var)) = do
+  env <- ask
+  return (M.lookup var env)
+eval (Binary l r) = do
+  lRes <- eval l
+  rRes <- eval r
+  return $ do
+    x <- lRes
+    y <- rRes
+    return $ x + y
 
 -- | Пример запуска вычисления выражения
 --
@@ -216,7 +235,11 @@ data Stmt = Stmt
 --   В качестве результата вычисления всего списка договоримся возвращать результат вычисления последнего выражения в списке
 --
 evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
-evalStmts = undefined
+evalStmts []  = return Nothing
+evalStmts [x] = eval (expr x)
+evalStmts (x : xs) = do
+  maybeVal <- eval $ expr x
+  local (maybe id (M.insert (name x)) maybeVal) $ evalStmts xs
 
 -- | Пример запуска вычисления списка утверждений
 --

@@ -4,9 +4,12 @@ import           Control.Monad.Writer.Lazy
 import           Control.Monad.Reader()
 import           Data.Functor.Identity
 import           Data.Map.Strict ()
+import           Data.Monoid (Sum(..))
+import           Control.Monad.State.Lazy
+import qualified System.Random as R
 
 
-import           Test.Hspec      (Spec, describe, it, shouldBe)
+import           Test.Hspec      (Spec, describe, it, shouldBe,shouldSatisfy)
 
 import           MyLib8       
 import           MyLib9
@@ -15,14 +18,14 @@ spec :: Spec
 spec = do
     describe "Task 1" $ do
         it "fromDo11" $ do
-            let input1 = Just 5
-                input2 = Just "test"
-                result = fromDo11 input1 input2
-            result `shouldBe` Just (15, "testabcd")
+            fromDo11 (Just 5 :: Maybe Int) (Just "test" :: Maybe String) `shouldBe` Just (15 :: Int, "testabcd" :: String) 
+            fromDo11 (Nothing :: Maybe Int) (Just "test" :: Maybe String) `shouldBe` Nothing  
+            fromDo11 (Just 5 :: Maybe Int) (Nothing :: Maybe String)      `shouldBe` Nothing  
+            fromDo11 (Nothing :: Maybe Int) (Nothing :: Maybe String)      `shouldBe` Nothing 
     
     describe "Task 2" $ do
         it "Pythagorean triples" $ do
-            pythagoreanTriples 4 `shouldBe` ([])
+            pythagoreanTriples 4 `shouldBe` []
             pythagoreanTriples 5 `shouldBe`  [(5, 4, 3)]
             pythagoreanTriples 10 `shouldBe` [(5, 4, 3), (10, 8, 6)]
 
@@ -54,7 +57,28 @@ spec = do
             let writerValue = do
                     tell "log message"
                     return 5
-            runWriter' (listen writerValue) `shouldBe` (Identity ((5 :: Int), "log message"), "log message")
+            runWriter' (listen writerValue) `shouldBe` (Identity (5 :: Int, "log message"), "log message")
+    
+    describe "Task 3c" $ do
+        it "sumAndTraceInOrder 4" $ do
+            let tree = Node 1 (Node 2 Leaf Leaf) (Node 3 (Node 4 Leaf Leaf) (Node 5 Leaf Leaf))
+                expectedSum = 15
+                (result, actualSum) = runWriter' (sumAndTraceInOrder tree)
+            runIdentity result `shouldBe` ([2, 1, 4, 3, 5] :: [Int])
+            getSum actualSum `shouldBe` expectedSum
+            
+    describe "Task 4" $ do
+        it "testEvalExpr & testEvalStmts" $ do
+            testEvalExpr  `shouldBe` (Just 5 :: Maybe Int)
+            testEvalStmts `shouldBe` (Just 9 :: Maybe Int)
+    
+    describe "MyLib9" $ do
+        it "getOne" $ do 
+            let 
+                bounds = (1, 100) :: (Int, Int)
+                (value, _) = runState (getOne bounds) (R.mkStdGen 100 :: R.StdGen)
+            value `shouldSatisfy` (\x -> x >= fst bounds && x <= snd bounds)
+
 
 
 
