@@ -34,7 +34,7 @@ import qualified Data.Map.Strict as M
 
 fromDo11 :: Maybe Int -> Maybe String -> Maybe (Int, String)
 fromDo11 aM bM =
-  aM >>= (\a ->
+  fmap (+ 10) aM >>= (\a ->
     let
       aL = [a, a, a]
       a' = a + length aL
@@ -42,10 +42,10 @@ fromDo11 aM bM =
       return a >>
       bM >>
       case aL of
-        (a : b : c : _) ->
-          bM >>= (\b -> pure (c, b <> "abcd"))
+        [a, b, c] ->
+          bM >>= (\b' -> pure (c, b' <> "abcd"))
         _ -> Nothing
-  ) . (+ 10)
+  )
 
 
 
