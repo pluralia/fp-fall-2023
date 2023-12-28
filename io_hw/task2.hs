@@ -34,6 +34,6 @@ myWC filePath = do
     bytesContent <- B.readFile filePath
     let textContent = toString bytesContent
     let ws = length . words $ textContent
-    let ls = length . lines $ textContent
+    let ls = length . filter (/= "") . lines $ textContent
     let bs = B.length bytesContent
-    putStrLn $ printf "%d %d %d" ws ls bs
+    putStrLn $ printf "%10d %10d %10d %s" ls ws bs filePath
