@@ -1,4 +1,7 @@
 module Main where
+import           Control.Monad
+import           System.IO
+import           Text.Printf
 
 -- REPL (1,5 балла)
 
@@ -10,5 +13,19 @@ module Main where
 -- то должен создаваться файл text_copy_<N+1>.log.
 -- Запись последующих строк должна производиться в него, а хэндл файла text_copy_<N>.log должен быть закрыт.
 
+writeToLog :: Integer -> IO ()
+writeToLog n = do
+    let filePath = printf "text_copy_%d.log" n
+    h <- openFile filePath WriteMode
+    forM_ [1..1000] $ \i -> do
+        inp <- getLine
+        putStrLn inp
+        hPutStrLn h inp
+        hFlush h
+
+    hClose h
+    writeToLog $ n + 1
+
+
 main :: IO ()
-main = undefined
+main = writeToLog 0
