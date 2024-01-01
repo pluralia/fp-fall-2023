@@ -18,37 +18,35 @@ maintainer:         dev.daniil.bakushkin@gmail.com
 -- category:
 extra-source-files: CHANGELOG.md
 
-
-common warnings
-    ghc-options: -Wall
-
 library
-    import:           warnings
     exposed-modules:  HW6, HW7, Parser
+
+    -- Modules included in this library but not exported.
     -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:    base ^>=4.17.2.0,
                       containers,
-                      text,
-
+                      array
     hs-source-dirs:   src
     default-language: Haskell2010
-    -- default-extensions: ImportQualifiedPost
+    ghc-options: -Wall
+    default-extensions: ImportQualifiedPost
 
 test-suite hw67-test
-    import:           warnings
     default-language: Haskell2010
-    -- other-modules:
-    -- other-extensions:
     type:             exitcode-stdio-1.0
     hs-source-dirs:   test
     main-is:          MyLibTest.hs
-    build-depends:
-        base ^>=4.17.2.0,
-        hw67,
-        hspec,
-        hspec-discover,
-        text,
-        containers
-    other-modules:    TestSpec
-    -- default-extensions: ImportQualifiedPost
+    build-depends:    base ^>=4.17.2.0,
+                      hspec,
+                      hspec-discover,
+                      hw67,
+                      array,
+                      containers
+    build-tool-depends: hspec-discover:hspec-discover
+    ghc-options: -Wall
+    other-modules: TestSpec
+    default-extensions: ImportQualifiedPost
+    

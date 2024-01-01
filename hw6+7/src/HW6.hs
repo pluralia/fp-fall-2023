@@ -1,9 +1,12 @@
+{-# LANGUAGE InstanceSigs #-}
 module HW6 where
-import           Control.Applicative (Alternative (..), optional)
-import           Data.Char           (digitToInt)
-import           Data.Foldable       (foldl')
-import           Data.Map.Strict     (Map, fromList)
-import           Parser
+
+import Control.Applicative (Alternative (..), optional)
+import Data.Char (digitToInt)
+import Data.Foldable (foldl')
+import Data.Map.Strict (Map, fromList)
+import Parser
+
 -------------------------------------------------------------------------------
 
 -- В этой домашке вам потребуется подгружать одновременно 2 файла в ghci:
@@ -128,7 +131,6 @@ runMultIntsP' = runParser multDigitsP "33 * 6" -- Nothing
 multIntsP :: Parser Int
 multIntsP = (*) <$> intP <* spaceP <* satisfyP (== '*') <* spaceP <*> intP
 
--- | Парсит 2 вещественных числа и перемножает их
 multFloatsP :: Parser Float
 multFloatsP = (*) <$> floatP <* spaceP <* satisfyP (== '*') <* spaceP <*> floatP
 
@@ -298,7 +300,6 @@ sepByP p sep = (:) <$> (spaceP *> p) <*> some tailP <* spaceP
   where
     tailP = spaceP <* sep <* spaceP *> p
 
-
 -- | Функция принимает парсер, которым парсятся элементы списка
 listP :: Parser a -> Parser [a]
 listP p = inBetweenP "[" "]" $ sepByP' p (satisfyP (== ',')) <|> pure []
@@ -313,8 +314,8 @@ listP p = inBetweenP "[" "]" $ sepByP' p (satisfyP (== ',')) <|> pure []
 data CSV = CSV
   { colNames :: [String], -- названия колонок в файле
     rows :: [Row] -- список строк со значениями из файла
-  } deriving (Show)
-
+  }
+  deriving (Show)
 
 -- data Value = IntValue Int | FloatValue Float | StringValue String
 --   deriving (Eq, Show)
@@ -334,6 +335,9 @@ data CSV = CSV
 newtype Row = Row (Map String (Maybe Value))
   deriving (Show)
 
+instance Eq Row where
+  (==) :: Row -> Row -> Bool
+  (==) (Row map1) (Row map2) = map1 == map2
 ---------------------------------------
 
 -- | 6.a Реализуйте парсер, который парсит 'Row'.
@@ -355,19 +359,18 @@ rowP colnames = Row . fromList . zip colnames <$> rowMaybeP
 --       На практике 7 лекции мы разобрали, как писать парсер CSV
 --       Скорпируйте его и запустите на вашем rowP -- убедитесь, что все работает
 
--- (っ˘ڡ˘ς)
-
 -------------------------------------------------------------------------------
 
+-- (っ˘ڡ˘ς)
 csvP :: Parser CSV
 csvP = Parser f
   where
     f :: String -> Maybe (CSV, String)
     f s = case runParser colNamesP s of
-        Nothing             -> Nothing
-        Just (cols, s') -> case runParser (rowsP cols <|> pure []) s' of
-            Nothing           -> Nothing
-            Just (rowss, s'') -> Just (CSV cols rowss, s'')
+      Nothing -> Nothing
+      Just (cols, s') -> case runParser (rowsP cols <|> pure []) s' of
+        Nothing -> Nothing
+        Just (rowss, s'') -> Just (CSV cols rowss, s'')
 
     colNamesP :: Parser [String]
     colNamesP = sepByP symbolsP (satisfyP (== ','))
@@ -377,5 +380,5 @@ csvP = Parser f
 
 testIO :: IO (Maybe (CSV, String))
 testIO = do
-    content <- readFile "../../files_for_parsing/test.csv"
-    return $ runParser csvP content
+  content <- readFile "../../files_for_parsing/test.csv"
+  return $ runParser csvP content

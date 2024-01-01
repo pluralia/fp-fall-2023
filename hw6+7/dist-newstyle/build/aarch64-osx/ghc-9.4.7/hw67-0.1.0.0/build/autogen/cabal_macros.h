@@ -10,6 +10,16 @@
   (major1) == 0 && (major2) <  1 || \
   (major1) == 0 && (major2) == 1 && (minor) <= 0)
 #endif /* MIN_VERSION_hw67 */
+/* package array-0.5.4.0 */
+#ifndef VERSION_array
+#define VERSION_array "0.5.4.0"
+#endif /* VERSION_array */
+#ifndef MIN_VERSION_array
+#define MIN_VERSION_array(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  5 || \
+  (major1) == 0 && (major2) == 5 && (minor) <= 4)
+#endif /* MIN_VERSION_array */
 /* package base-4.17.2.0 */
 #ifndef VERSION_base
 #define VERSION_base "4.17.2.0"
@@ -30,16 +40,6 @@
   (major1) == 0 && (major2) <  6 || \
   (major1) == 0 && (major2) == 6 && (minor) <= 7)
 #endif /* MIN_VERSION_containers */
-/* package text-2.0.2 */
-#ifndef VERSION_text
-#define VERSION_text "2.0.2"
-#endif /* VERSION_text */
-#ifndef MIN_VERSION_text
-#define MIN_VERSION_text(major1,major2,minor) (\
-  (major1) <  2 || \
-  (major1) == 2 && (major2) <  0 || \
-  (major1) == 2 && (major2) == 0 && (minor) <= 2)
-#endif /* MIN_VERSION_text */
 
 /* tool gcc-14.0.0 */
 #ifndef TOOL_VERSION_gcc
