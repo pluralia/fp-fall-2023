@@ -33,8 +33,11 @@ makeRandomValue g =
 
 -- | Возвращает случайное значение и обновляет состояние генератора случайных чисел
 --
-getAny :: (R.Random a) => State R.StdGen a
-getAny = undefined
+-- newtype State s a = State {runState :: s -> (a, s)}
+-- getAny :: (R.Random a) => State R.StdGen a
+-- getAny = State $ \s -> 
+--     where
+--         f = runState 
 
 -- | Аналогична getAny, но генерирует значение в границах
 --
