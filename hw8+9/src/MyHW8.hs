@@ -7,9 +7,7 @@ import           Control.Monad.Reader
 import           Control.Monad.Writer.Lazy
 import           Data.Functor.Identity
 import qualified Data.Map.Strict           as M
-import           Data.Monoid
 import           Prelude
-import Data.Maybe (isNothing)
 
 ------------------------------------------------------------------------------
 
@@ -63,7 +61,7 @@ withoutDo11 aM bM = fmap (+10) aM
 --    С помощью монады списка создайте список, содержащий в себе все пифагоровы тройки. 
 --    В списке не должно быть дублей. Дублирования нужно убрать за счёт дополнительного условия в do-нотации
 
-pythagoreanTriple :: Int -> [(Int, Int, Int)]
+pythagoreanTriple :: Integer -> [(Integer, Integer, Integer)]
 pythagoreanTriple x = do
     c <- [1 .. x]
     a <- [1 .. c] 
@@ -78,7 +76,7 @@ pythagoreanTriple x = do
 -- | Зададим свой Writer
 -- newtype Writer' w a = Writer' { runWriter' :: (Identity a, w) }
 newtype Writer' w a = Writer' { runWriter' ::  (,) (Identity a) w }
-  deriving (Show)
+  deriving (Show, Eq)
 
 ---------------------------------------
 
@@ -141,11 +139,16 @@ data BinaryTree a
     }
   deriving (Show, Eq)
 
-tree1 = Node 1 (Node 2 Leaf Leaf) Leaf
 -- :p понятно
 sumAndTraceInOrder :: Num a => BinaryTree a -> Writer' (Sum a) [a]
-sumAndTraceInOrder Leaf = pure []
-sumAndTraceInOrder (Node nodeValue leftChild rightChild) = do
+sumAndTraceInOrder Leaf = return []
+sumAndTraceInOrder (Node val l r) = do
+    tell $ Sum val
+    resLeft <- sumAndTraceInOrder l
+    resRight <- sumAndTraceInOrder r
+    return $ val : (resLeft ++ resRight)
+
+  
   -- Sum a -> Writer' (Sum a) ()
   
   -- Writer' w a
@@ -156,11 +159,6 @@ sumAndTraceInOrder (Node nodeValue leftChild rightChild) = do
 
   -- tell :: w -> Writer' w ()
   -- tell w = Writer' (Identity (), w)
-  
-  tell $ Sum nodeValue
-  val1 <- sumAndTraceInOrder leftChild
-  val2 <- sumAndTraceInOrder leftChild
-  return (nodeValue : val1 <> val2)
 -------------------------------------------------------------------------------
 
 -- 10. Monad `Reader` (1,75 балла)
@@ -257,9 +255,9 @@ type Environment = M.Map String Int
 eval :: Expr -> Reader' Environment (Maybe Int)
 eval (Primary (Val x)) = return . Just $ x
 eval (Primary (Var x)) = reader $ \r -> M.lookup x r
-eval (Binary left right) =
-    eval left >>= (\resLeft ->
-        eval right >>= (\resRight ->
+eval (Binary left' right') =
+    eval left' >>= (\resLeft ->
+        eval right' >>= (\resRight ->
             pure $ resLeft >>= (\x -> resRight >>= (\y -> pure $ x + y))
         )
     )
@@ -268,13 +266,13 @@ eval (Binary left right) =
 --
 -- списал с лекции, ничего не понял :(
 testEvalExpr :: Maybe Int -- ожидаем `Just 5`
-testEvalExpr = runIdentity $ runReader' (eval expr) env
+testEvalExpr = runIdentity $ runReader' (eval expr') env
   where
     env :: Environment
     env = M.fromList [("x", 3)]
 
-    expr :: Expr
-    expr = Binary (Primary . Val $ 2) (Primary . Var $ "x")
+    expr' :: Expr
+    expr' = Binary (Primary . Val $ 2) (Primary . Var $ "x")
 
 -- | Утверждение будем задавать как декларацию переменной
 --
@@ -286,17 +284,17 @@ data Stmt = Stmt
 -- | Вычислите список утверждений, используя Reader' (постарайтесь использовать функции из MonadReader)
 --   В качестве результата вычисления всего списка договоримся возвращать результат вычисления последнего выражения в списке
 --
-evalStmts :: [Stmt] -> Reader' Environment (Maybe Int)
-evalStmts []                      = return Nothing
-evalStmts [Stmt _ expr]           = eval expr
-evalStmts ((Stmt name expr) : xs) =
-    eval expr >>= (\maybeVal -> ask >>= (\env ->local (maybe id (M.insert name) maybeVal) (evalStmts xs)))
+evalStmts' :: [Stmt] -> Reader' Environment (Maybe Int)
+evalStmts' []                      = return Nothing
+evalStmts' [Stmt _ expr']           = eval expr'
+evalStmts' ((Stmt name' expr') : xs) =
+    eval expr' >>= (\maybeVal -> ask >>= (\_ ->local (maybe id (M.insert name') maybeVal) (evalStmts' xs)))
 
 
 -- | Пример запуска вычисления списка утверждений
 --
 testEvalStmts :: Maybe Int
-testEvalStmts = runIdentity $ runReader' (evalStmts [x, y, z, xx, w]) M.empty
+testEvalStmts = runIdentity $ runReader' (evalStmts' [x, y, z, xx, w]) M.empty
   where
     x, y, z, xx, w :: Stmt
     x = Stmt "x" $ Primary . Val $ 2                                     -- x = 2

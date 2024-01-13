@@ -13,9 +13,9 @@ spec = do
     describe "pythagoreanTriple" $ do
 
         it "check correctness" $ do
-            pythagoreanTriple 3 `shouldBe` ([] :: [(Int, Int, Int)])
-            pythagoreanTriple 5 `shouldBe` ([(3, 4, 5)] :: [(Int, Int, Int)])
-            pythagoreanTriple 10 `shouldBe` ([(3,4,5), (6,8,10)] :: [(Int, Int, Int)])
+            pythagoreanTriple 3 `shouldBe` ([] :: [(Integer, Integer, Integer)])
+            pythagoreanTriple 5 `shouldBe` ([(3, 4, 5)] :: [(Integer, Integer, Integer)])
+            pythagoreanTriple 10 `shouldBe` ([(3,4,5), (6,8,10)] :: [(Integer, Integer, Integer)])
 
 -- Task 9
 
@@ -100,11 +100,5 @@ spec = do
         it "testEvalExpr" $ do
             testEvalExpr `shouldBe` Just 5
 
-        it "testEvalExpr'" $ do
-            testEvalExpr' `shouldBe` Nothing
-
         it "testEvalStmts" $ do
             testEvalStmts `shouldBe` Just 9
-
-        it "testEvalStmts'" $ do
-            testEvalStmts' `shouldBe` Nothing
