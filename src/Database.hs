@@ -48,7 +48,7 @@ processUserDB pathToInputDB loggerFunction pathToOutDB = do
     command <- liftIO getLine
     executeCommands command
     myDB <- get
-    liftIO $ writeDBFile pathToOutDB myDB
+    liftIO $ writeDBFile myDB
 
     where
       executeCommands :: String -> LoggingStateWithErrorInIO MyState MyError ()
@@ -81,15 +81,15 @@ processUserDB pathToInputDB loggerFunction pathToOutDB = do
             newCommand <- lift . lift . lift $ getLine
             executeCommands newCommand
 
-      writeDBFile :: FilePath -> MyState -> IO ()
-      writeDBFile pathToOutDB' (DB db) = do
-        withFile pathToOutDB' WriteMode $ \h -> do
+      writeDBFile :: MyState -> IO ()
+      writeDBFile (DB db) = do
+        withFile pathToOutDB WriteMode $ \h -> do
           let keys = M.keys db
-              partResults = map (\key -> "User " ++ show key ++ " have this rules: " ++ printRights (db M.! key)) keys
+              partResults = map (\key -> "User " ++ show key ++ " have this rules: " ++ showRights (db M.! key)) keys
               result = intercalate "\n" partResults
           hPutStrLn h result
 
         where
-          printRights :: [AccessRights] -> String
-          printRights []   = "Default"
-          printRights list = unwords . map show . S.toList $ S.fromList list
+          showRights :: [AccessRights] -> String
+          showRights []   = "Default"
+          showRights list = unwords . map show . S.toList $ S.fromList list
