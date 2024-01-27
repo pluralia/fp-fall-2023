@@ -18,7 +18,11 @@ common warnings
 library
     import:           warnings
     exposed-modules:  MyLib,
-        Parser
+        Objects,
+        Errors,
+        Logging,
+        Parser,
+        Database
     ghc-options:      -Wall
     -- other-extensions:
     -- other-modules:    Parser
@@ -38,7 +42,8 @@ executable hw12
         directory,
         filepath,
         containers,
-        hw12
+        hw12,
+        time
     hs-source-dirs:   app
     default-language: Haskell2010
 

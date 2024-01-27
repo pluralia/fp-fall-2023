@@ -137,6 +137,10 @@ instance MonadTrans LoggerT where
   lift :: (Monad m) => m a -> LoggerT m a
   lift xM = LoggerT $ fmap (Logged []) xM
 
+instance (MonadIO m) => MonadIO (LoggerT m) where
+    liftIO :: MonadIO m => IO a -> LoggerT m a
+    liftIO = lift . liftIO
+
 modifyingLogging :: (Show s) => s -> (s -> Bool) -> (s -> s) -> LoggerT (State s) ()
 modifyingLogging def p f = do
     modify f

@@ -1,10 +1,15 @@
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE InstanceSigs, TupleSections #-}
 
 module Parser where
 
-import Data.Char           (digitToInt, isAlphaNum, isSpace, isDigit)
-import Control.Applicative (Alternative (..))
-import Data.Foldable       (foldl')
+import           Objects
+import           Data.Char           (digitToInt, isAlphaNum, isSpace, isDigit)
+import           Control.Applicative (Alternative (..))
+import           Data.Foldable       (foldl')
+import qualified Data.Map                                                       as M
+import           Data.Functor        ( ($>) )
+import           Errors 
+
 
 newtype Parser a = Parser { runParser :: String -> Maybe (a, String) }
 
@@ -85,18 +90,6 @@ stringP str = Parser (helper str)
 intP :: Parser Int
 intP = foldl' (\acc x -> acc * 10 + x) 0 <$> some digitP
 
-floatP :: Parser Float
-floatP = (+) . fromIntegral
-  <$> intP
-  <* satisfyP (== '.')
-  <*> helper
-  where
-    helper :: Parser Float
-    helper = foldl' (\ acc x -> 0.1 * (acc + fromIntegral x)) 0.0 . reverse <$> digitsP
-
-floatP' :: Parser Float
-floatP' = ((*(-1.0 :: Float)) <$ satisfyP (=='-') <*> floatP) <|> floatP
-
 sepBy :: Parser a -> Parser b -> Parser [b]
 sepBy sep element = (:)
   <$> element
@@ -105,3 +98,22 @@ sepBy sep element = (:)
 
 newLineP :: Parser Char
 newLineP = satisfyP (== '\n')
+
+dataBaseP :: Parser MyState
+dataBaseP = DB . M.fromList . map (, [] :: [AccessRights]) <$ spaceP <*> sepBy (satisfyP (=='\n')) intP
+
+accessRightP :: Parser AccessRights
+accessRightP =  (stringP "ReadAndWrite" $> ReadAndWrite) <|> (stringP "Read" $> Read) 
+            <|> (stringP "Write" $> Write) <|> (stringP "Admin" $> Admin)
+
+commandP :: Parser (UserID, Either String AccessRights)
+commandP =  (,)
+        <$  spaceP
+        <*  stringP "GIVE"
+        <*  spaceP
+        <*  stringP "ACCESS"
+        <*  spaceP
+        <*> intP
+        <*  spaceP
+        <*> (Right <$> accessRightP <|> pure (Left $ show IncorrectAccessRight))
+        <*  spaceP
